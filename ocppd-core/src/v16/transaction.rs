@@ -24,6 +24,7 @@ pub enum Transaction {
         transaction_id: i32,
         id_tag: IdToken,
         last_sample: u64,
+        last_register_wh: f64,
     },
     Stopping,
     Finished,
@@ -181,6 +182,7 @@ impl ChargePoint {
             transaction_id,
             id_tag,
             last_sample: now,
+            last_register_wh: self.station.connectors[index].register_wh,
         };
         if response.id_tag_info.status != AuthorizationStatus::Accepted {
             return self.stop(out, now, index, Reason::DeAuthorized);

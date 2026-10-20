@@ -12,10 +12,13 @@ pub const METER_VALUES_SAMPLED_DATA: &str = "MeterValuesSampledData";
 
 const DEFAULT_MEASURANDS: &str =
     "Energy.Active.Import.Register,Power.Active.Import,Current.Import,Voltage";
-const SUPPORTED_MEASURANDS: [Measurand; 4] = [
+const SUPPORTED_MEASURANDS: [Measurand; 7] = [
     Measurand::EnergyActiveImportRegister,
+    Measurand::EnergyActiveImportInterval,
     Measurand::PowerActiveImport,
+    Measurand::PowerOffered,
     Measurand::CurrentImport,
+    Measurand::CurrentOffered,
     Measurand::Voltage,
 ];
 
@@ -58,7 +61,7 @@ impl Configuration {
                 DEFAULT_MEASURANDS,
                 Access::Measurands,
             ),
-            ("MeterValuesSampledDataMaxLength", "4", Access::ReadOnly),
+            ("MeterValuesSampledDataMaxLength", "7", Access::ReadOnly),
             (METER_VALUE_SAMPLE_INTERVAL, "60", Access::Integer),
             (
                 "NumberOfConnectors",

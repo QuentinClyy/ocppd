@@ -2,7 +2,7 @@ use super::charge_point::ChargePoint;
 use super::configuration::METER_VALUE_SAMPLE_INTERVAL;
 use super::messages::meter_value::MeterValuesRequest;
 use super::messages::status::ChargePointStatus;
-use super::meter_values::meter_value;
+use super::meter_values::{Reading, meter_value};
 use super::transaction::Transaction;
 use crate::event::{EventKind, Output};
 use serde_json::json;
@@ -18,6 +18,7 @@ impl ChargePoint {
                 transaction_id,
                 id_tag,
                 last_sample,
+                last_register_wh,
             } = self.transactions[index].clone()
             else {
                 continue;
@@ -25,12 +26,18 @@ impl ChargePoint {
             if now < last_sample + interval {
                 continue;
             }
-            let sample = self.station.connectors[index].sample(now);
+            let connector = &self.station.connectors[index];
+            let sample = connector.sample(now);
             if !measurands.is_empty() {
+                let reading = Reading {
+                    sample,
+                    offered_w: connector.offered_w().unwrap_or(self.station.limit_w()),
+                    interval_wh: sample.register_wh - last_register_wh,
+                };
                 let request = MeterValuesRequest {
                     connector_id: index as u32 + 1,
                     transaction_id: Some(transaction_id),
-                    meter_value: vec![meter_value(now, &sample, &self.station, &measurands)],
+                    meter_value: vec![meter_value(now, &reading, &self.station, &measurands)],
                 };
                 self.outbox
                     .push("MeterValues", index as u32 + 1, json!(request));
@@ -46,6 +53,7 @@ impl ChargePoint {
                 transaction_id,
                 id_tag,
                 last_sample: now,
+                last_register_wh: sample.register_wh,
             };
         }
     }

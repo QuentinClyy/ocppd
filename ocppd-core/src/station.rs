@@ -83,6 +83,11 @@ impl Connector {
         }
     }
 
+    pub fn offered_w(&self) -> Option<f64> {
+        let charging = self.plugged.as_ref()?.charging.as_ref()?;
+        Some(charging.limit_w)
+    }
+
     pub fn finish_time(&self) -> Option<u64> {
         let plugged = self.plugged.as_ref()?;
         charge::finish_time(plugged.charging.as_ref()?, &plugged.ev)
