@@ -1,4 +1,6 @@
 use super::ChargePoint;
+use super::configuration::{LOCAL_AUTH_LIST_MAX_LENGTH, SEND_LOCAL_LIST_MAX_LENGTH};
+use super::local_list::Limits;
 use crate::api::event::EventKind;
 use crate::api::io::Output;
 use crate::v16::messages::core::configuration::{
@@ -15,6 +17,10 @@ use crate::v16::messages::core::remote_control::{
     UnlockConnectorResponse,
 };
 use crate::v16::messages::datatypes::generic_status::GenericStatus;
+use crate::v16::messages::local_auth::{
+    GetLocalListVersionRequest, GetLocalListVersionResponse, SendLocalListRequest,
+    SendLocalListResponse, UpdateStatus,
+};
 use crate::v16::messages::remote_trigger::{TriggerMessageRequest, TriggerMessageResponse};
 use crate::v16::messages::reservation::{
     CancelReservationRequest, CancelReservationResponse, ReserveNowRequest, ReserveNowResponse,
@@ -95,6 +101,16 @@ impl ChargePoint {
                     status: self.cancel_reservation(out, now, request),
                 }
             }),
+            "SendLocalList" => answer(payload, |request: SendLocalListRequest| {
+                SendLocalListResponse {
+                    status: self.send_local_list(out, now, &request),
+                }
+            }),
+            "GetLocalListVersion" => answer(payload, |_: GetLocalListVersionRequest| {
+                GetLocalListVersionResponse {
+                    list_version: self.local_list.version(),
+                }
+            }),
             "DataTransfer" => answer(payload, |_: DataTransferRequest| DataTransferResponse {
                 status: DataTransferStatus::UnknownVendorId,
                 data: None,
@@ -140,6 +156,28 @@ impl ChargePoint {
             self.emit(out, now, kind);
         }
         ChangeConfigurationResponse { status }
+    }
+
+    fn send_local_list(
+        &mut self,
+        out: &mut Vec<Output>,
+        now: u64,
+        request: &SendLocalListRequest,
+    ) -> UpdateStatus {
+        let limit = |key| self.configuration.number(key).unwrap_or(0) as usize;
+        let limits = Limits {
+            per_update: limit(SEND_LOCAL_LIST_MAX_LENGTH),
+            total: limit(LOCAL_AUTH_LIST_MAX_LENGTH),
+        };
+        let status = self.local_list.update(request, limits);
+        if status == UpdateStatus::Accepted {
+            let kind = EventKind::LocalListUpdated {
+                version: self.local_list.version(),
+                entries: self.local_list.len(),
+            };
+            self.emit(out, now, kind);
+        }
+        status
     }
 }
 

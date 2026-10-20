@@ -90,6 +90,10 @@ pub enum EventKind {
     CallAbandoned {
         action: String,
     },
+    LocalListUpdated {
+        version: i32,
+        entries: usize,
+    },
     Reserved {
         connector: u32,
         reservation_id: i32,

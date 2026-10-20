@@ -27,6 +27,10 @@ impl<const N: usize> CiString<N> {
     pub fn as_str(&self) -> &str {
         &self.0
     }
+
+    pub fn matches(&self, other: &Self) -> bool {
+        self.0.eq_ignore_ascii_case(&other.0)
+    }
 }
 
 impl<const N: usize> TryFrom<String> for CiString<N> {

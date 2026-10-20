@@ -2,6 +2,7 @@ mod configuration;
 mod csms_call;
 mod driver;
 mod held;
+mod local_list;
 mod meter_values;
 mod registration;
 mod remote_control;
@@ -25,6 +26,7 @@ use crate::wire::frame::{self, Frame};
 use crate::wire::outbox::{Call, Outbox, Sent};
 use configuration::Configuration;
 use held::Held;
+use local_list::LocalList;
 use registration::Registration;
 use reservation::Reservation;
 use serde::de::DeserializeOwned;
@@ -42,6 +44,7 @@ pub struct ChargePoint {
     held: Option<Held>,
     reservations: Vec<Option<Reservation>>,
     configuration: Configuration,
+    local_list: LocalList,
     boot_request: BootNotificationRequest,
     registration: Registration,
 }
@@ -71,6 +74,7 @@ impl ChargePoint {
             held: None,
             reservations: vec![None; connectors],
             configuration: Configuration::new(connectors)?,
+            local_list: LocalList::default(),
             boot_request,
             registration: Registration::Offline,
         })

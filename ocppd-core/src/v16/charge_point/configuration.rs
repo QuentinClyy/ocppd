@@ -8,8 +8,10 @@ use serde_json::Value;
 
 pub const CONNECTION_TIME_OUT: &str = "ConnectionTimeOut";
 pub const HEARTBEAT_INTERVAL: &str = "HeartbeatInterval";
+pub const LOCAL_AUTH_LIST_MAX_LENGTH: &str = "LocalAuthListMaxLength";
 pub const METER_VALUE_SAMPLE_INTERVAL: &str = "MeterValueSampleInterval";
 pub const METER_VALUES_SAMPLED_DATA: &str = "MeterValuesSampledData";
+pub const SEND_LOCAL_LIST_MAX_LENGTH: &str = "SendLocalListMaxLength";
 pub const TRANSACTION_MESSAGE_ATTEMPTS: &str = "TransactionMessageAttempts";
 pub const TRANSACTION_MESSAGE_RETRY_INTERVAL: &str = "TransactionMessageRetryInterval";
 
@@ -56,6 +58,7 @@ impl Configuration {
             ("ConnectorPhaseRotation", "1.RST", Access::CurrentValueOnly),
             ("GetConfigurationMaxKeys", "50", Access::ReadOnly),
             (HEARTBEAT_INTERVAL, "86400", Access::Integer),
+            (LOCAL_AUTH_LIST_MAX_LENGTH, "100", Access::ReadOnly),
             ("LocalAuthorizeOffline", "false", Access::CurrentValueOnly),
             ("LocalPreAuthorize", "false", Access::CurrentValueOnly),
             ("MeterValuesAlignedData", "", Access::CurrentValueOnly),
@@ -73,6 +76,7 @@ impl Configuration {
             ),
             ("ReserveConnectorZeroSupported", "false", Access::ReadOnly),
             ("ResetRetries", "0", Access::Integer),
+            (SEND_LOCAL_LIST_MAX_LENGTH, "100", Access::ReadOnly),
             (
                 "StopTransactionOnEVSideDisconnect",
                 "true",
@@ -87,7 +91,7 @@ impl Configuration {
             ("StopTxnSampledData", "", Access::CurrentValueOnly),
             (
                 "SupportedFeatureProfiles",
-                "Core,RemoteTrigger,Reservation",
+                "Core,LocalAuthListManagement,RemoteTrigger,Reservation",
                 Access::ReadOnly,
             ),
             (TRANSACTION_MESSAGE_ATTEMPTS, "3", Access::Integer),

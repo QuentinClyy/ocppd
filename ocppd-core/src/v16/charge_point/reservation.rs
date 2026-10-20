@@ -111,12 +111,11 @@ impl ChargePoint {
         let Some(reservation) = &self.reservations[index] else {
             return false;
         };
-        let same = |a: &IdToken, b: &IdToken| a.as_str().eq_ignore_ascii_case(b.as_str());
         let by_parent = match (&reservation.parent_id_tag, parent_id_tag) {
-            (Some(reserved), Some(presented)) => same(reserved, presented),
+            (Some(reserved), Some(presented)) => reserved.matches(presented),
             _ => false,
         };
-        !same(&reservation.id_tag, id_tag) && !by_parent
+        !reservation.id_tag.matches(id_tag) && !by_parent
     }
 
     fn end_reservation(
