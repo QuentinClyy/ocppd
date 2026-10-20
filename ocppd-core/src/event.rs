@@ -57,7 +57,8 @@ pub enum EventKind {
         id: String,
     },
     IntentRejected {
-        connector: u32,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        connector: Option<u32>,
         reason: String,
     },
     StatusChanged {
@@ -65,7 +66,8 @@ pub enum EventKind {
         status: ChargePointStatus,
     },
     Authorization {
-        connector: u32,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        connector: Option<u32>,
         id_tag: String,
         status: AuthorizationStatus,
     },
@@ -94,5 +96,15 @@ pub enum EventKind {
     },
     Reset {
         reset_type: ResetType,
+    },
+    AuthorizationExpired {
+        id_tag: String,
+    },
+    RemoteStart {
+        #[serde(skip_serializing_if = "Option::is_none")]
+        connector: Option<u32>,
+        id_tag: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        expires: Option<u64>,
     },
 }

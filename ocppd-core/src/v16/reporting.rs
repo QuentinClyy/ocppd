@@ -107,6 +107,9 @@ impl ChargePoint {
         if self.unavailable(index) && !in_transaction {
             return ChargePointStatus::Unavailable;
         }
+        if connector.plugged.is_none() && self.held_for(index) {
+            return ChargePointStatus::Preparing;
+        }
         if connector.plugged.is_none() {
             return ChargePointStatus::Available;
         }

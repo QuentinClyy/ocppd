@@ -165,7 +165,7 @@ impl Csms {
 
 pub fn authorize(id_tag: &str) -> Intent {
     Intent::Authorize {
-        connector: 1,
+        connector: Some(1),
         id_tag: id_tag.into(),
     }
 }

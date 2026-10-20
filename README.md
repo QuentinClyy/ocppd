@@ -36,7 +36,7 @@ This starts station `CP1`, which connects to `<csms>/CP1` using the
 |---|---|
 | `{"command":"spawn","prefix":"CP","count":2}` | start stations `CP1` and `CP2` |
 | `{"command":"plug_in","station":"CP1","connector":1}` | plug an EV into connector 1 |
-| `{"command":"authorize","station":"CP1","connector":1,"id_tag":"TAG1"}` | present a card; starts a transaction once accepted |
+| `{"command":"authorize","station":"CP1","id_tag":"TAG1"}` | present a card; starts a transaction once accepted and plugged in (an optional `"connector":1` picks the connector) |
 | `{"command":"stop","station":"CP1","connector":1}` | stop the transaction locally |
 | `{"command":"unplug","station":"CP1","connector":1}` | unplug the EV; stops a running transaction |
 

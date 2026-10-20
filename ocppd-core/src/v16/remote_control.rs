@@ -11,22 +11,40 @@ use crate::event::{EventKind, Output};
 impl ChargePoint {
     pub(super) fn remote_start(
         &mut self,
+        out: &mut Vec<Output>,
         now: u64,
         request: RemoteStartTransactionRequest,
     ) -> GenericStatus {
-        let ready = |index: usize| {
-            self.transactions[index] == Transaction::Idle
-                && self.station.connectors[index].plugged.is_some()
-                && !self.unavailable(index)
+        let usable = |index: usize| {
+            self.transactions[index] == Transaction::Idle && !self.unavailable(index)
         };
-        let index = match request.connector_id {
-            Some(connector) => self.index_of(connector).filter(|&index| ready(index)),
-            None => (0..self.transactions.len()).find(|&index| ready(index)),
+        let plugged = |index: usize| self.station.connectors[index].plugged.is_some();
+        let target = match request.connector_id {
+            Some(connector) => self
+                .index_of(connector)
+                .filter(|&index| usable(index))
+                .map(Some),
+            None => {
+                let ready =
+                    (0..self.transactions.len()).find(|&index| usable(index) && plugged(index));
+                let any = (0..self.transactions.len()).any(usable);
+                ready.map(Some).or(any.then_some(None))
+            }
         };
-        let Some(index) = index else {
+        let (Some(connector), None) = (target, &self.held) else {
             return GenericStatus::Rejected;
         };
-        self.start_transaction(now, index, request.id_tag);
+        let id_tag = request.id_tag.as_str().to_owned();
+        match connector {
+            Some(index) if plugged(index) => self.start_transaction(now, index, request.id_tag),
+            _ => self.hold_authorized(now, request.id_tag, connector),
+        }
+        let kind = EventKind::RemoteStart {
+            connector: connector.map(|index| index as u32 + 1),
+            id_tag,
+            expires: self.held_deadline(),
+        };
+        self.emit(out, now, kind);
         GenericStatus::Accepted
     }
 
@@ -80,6 +98,7 @@ impl ChargePoint {
                 reset_type: request.kind,
             },
         );
+        self.held = None;
         self.resetting = true;
         GenericStatus::Accepted
     }

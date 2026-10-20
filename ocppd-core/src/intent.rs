@@ -10,7 +10,8 @@ pub enum Intent {
         ev: EvSpec,
     },
     Authorize {
-        connector: u32,
+        #[serde(default)]
+        connector: Option<u32>,
         id_tag: String,
     },
     Stop {
@@ -22,12 +23,12 @@ pub enum Intent {
 }
 
 impl Intent {
-    pub fn connector(&self) -> u32 {
+    pub fn connector(&self) -> Option<u32> {
         match self {
+            Intent::Authorize { connector, .. } => *connector,
             Intent::PlugIn { connector, .. }
-            | Intent::Authorize { connector, .. }
             | Intent::Stop { connector }
-            | Intent::Unplug { connector } => *connector,
+            | Intent::Unplug { connector } => Some(*connector),
         }
     }
 }

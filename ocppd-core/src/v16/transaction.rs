@@ -32,15 +32,18 @@ pub enum Transaction {
 
 impl ChargePoint {
     pub(super) fn intent(&mut self, out: &mut Vec<Output>, now: u64, intent: Intent) {
+        if let Intent::Authorize { connector, id_tag } = &intent {
+            return self.authorize(out, now, *connector, id_tag);
+        }
         let connector = intent.connector();
-        let Some(index) = self.index_of(connector) else {
+        let Some(index) = connector.and_then(|connector| self.index_of(connector)) else {
             return self.reject(out, now, connector, "unknown connector");
         };
         match intent {
             Intent::PlugIn { ev, .. } => self.plug_in(out, now, index, ev),
-            Intent::Authorize { id_tag, .. } => self.authorize(out, now, index, &id_tag),
             Intent::Stop { .. } => self.stop_by_driver(out, now, index),
             Intent::Unplug { .. } => self.unplug(out, now, index),
+            Intent::Authorize { .. } => {}
         }
     }
 
@@ -89,6 +92,9 @@ impl ChargePoint {
 
     pub(super) fn connection_lost(&mut self) {
         self.reported.fill(None);
+        if self.held_deadline().is_none() {
+            self.held = None;
+        }
         for index in 0..self.transactions.len() {
             match self.transactions[index] {
                 Transaction::Authorizing { .. } | Transaction::Starting { .. } => {
@@ -103,30 +109,55 @@ impl ChargePoint {
     fn plug_in(&mut self, out: &mut Vec<Output>, now: u64, index: usize, ev: EvSpec) {
         let connector = &mut self.station.connectors[index];
         if connector.plugged.is_some() {
-            return self.reject(out, now, index as u32 + 1, "already plugged in");
+            return self.reject(out, now, Some(index as u32 + 1), "already plugged in");
         }
         connector.plug_in(ev.ev(), ev.soc);
+        self.start_held(now);
     }
 
-    fn authorize(&mut self, out: &mut Vec<Output>, now: u64, index: usize, id_tag: &str) {
-        let connector = index as u32 + 1;
-        if self.station.connectors[index].plugged.is_none() {
-            return self.reject(out, now, connector, "nothing plugged in");
+    fn authorize(&mut self, out: &mut Vec<Output>, now: u64, connector: Option<u32>, id_tag: &str) {
+        let id_tag = match CiString::new(id_tag) {
+            Ok(id_tag) => id_tag,
+            Err(err) => return self.reject(out, now, connector, &err.to_string()),
+        };
+        if self.held.is_some() {
+            return self.reject(out, now, connector, "authorization pending");
         }
+        let index = match connector {
+            Some(connector) => match self.index_of(connector) {
+                Some(index) => index,
+                None => return self.reject(out, now, Some(connector), "unknown connector"),
+            },
+            None => {
+                let waiting: Vec<usize> = (0..self.transactions.len())
+                    .filter(|&index| {
+                        self.station.connectors[index].plugged.is_some()
+                            && self.transactions[index] == Transaction::Idle
+                            && !self.unavailable(index)
+                    })
+                    .collect();
+                match waiting[..] {
+                    [index] => index,
+                    [] => return self.hold_for_authorization(id_tag, None),
+                    _ => return self.reject(out, now, None, "ambiguous connector"),
+                }
+            }
+        };
+        let connector = Some(index as u32 + 1);
         if self.transactions[index] != Transaction::Idle {
             return self.reject(out, now, connector, "transaction in progress");
         }
         if self.unavailable(index) {
             return self.reject(out, now, connector, "unavailable");
         }
-        let id_tag = match CiString::new(id_tag) {
-            Ok(id_tag) => id_tag,
-            Err(err) => return self.reject(out, now, connector, &err.to_string()),
-        };
+        if self.station.connectors[index].plugged.is_none() {
+            return self.hold_for_authorization(id_tag, Some(index));
+        }
         let request = AuthorizeRequest {
             id_tag: id_tag.clone(),
         };
-        self.outbox.push("Authorize", connector, json!(request));
+        self.outbox
+            .push("Authorize", index as u32 + 1, json!(request));
         self.transactions[index] = Transaction::Authorizing { id_tag };
     }
 
@@ -140,7 +171,7 @@ impl ChargePoint {
     ) {
         let connector = index as u32 + 1;
         let kind = EventKind::Authorization {
-            connector,
+            connector: Some(connector),
             id_tag: String::from(id_tag.clone()),
             status,
         };
@@ -200,14 +231,14 @@ impl ChargePoint {
 
     fn stop_by_driver(&mut self, out: &mut Vec<Output>, now: u64, index: usize) {
         if !matches!(self.transactions[index], Transaction::Active { .. }) {
-            return self.reject(out, now, index as u32 + 1, "no active transaction");
+            return self.reject(out, now, Some(index as u32 + 1), "no active transaction");
         }
         self.stop(out, now, index, Reason::Local);
     }
 
     fn unplug(&mut self, out: &mut Vec<Output>, now: u64, index: usize) {
         if self.station.connectors[index].plugged.is_none() {
-            return self.reject(out, now, index as u32 + 1, "nothing plugged in");
+            return self.reject(out, now, Some(index as u32 + 1), "nothing plugged in");
         }
         match self.transactions[index] {
             Transaction::Active { .. } => self.stop(out, now, index, Reason::EvDisconnected),

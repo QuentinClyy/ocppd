@@ -1,4 +1,5 @@
 use super::configuration::{Configuration, HEARTBEAT_INTERVAL};
+use super::held::Held;
 use super::messages::boot::{
     BootNotificationRequest, BootNotificationResponse, HeartbeatRequest, RegistrationStatus,
 };
@@ -28,6 +29,7 @@ pub struct ChargePoint {
     pub(super) reported: Vec<Option<ChargePointStatus>>,
     pub(super) inoperative: Vec<bool>,
     pub(super) resetting: bool,
+    pub(super) held: Option<Held>,
     pub(super) configuration: Configuration,
     boot_request: BootNotificationRequest,
     state: State,
@@ -54,6 +56,7 @@ impl ChargePoint {
             reported: vec![None; connectors + 1],
             inoperative: vec![false; connectors + 1],
             resetting: false,
+            held: None,
             configuration: Configuration::new(connectors)?,
             boot_request,
             state: State::Offline,
@@ -77,6 +80,7 @@ impl ChargePoint {
             state_deadline,
             self.outbox.deadline(),
             self.transaction_deadline(),
+            self.held_deadline(),
         ]
         .into_iter()
         .flatten()
@@ -147,6 +151,7 @@ impl ChargePoint {
         }
         if self.is_accepted() {
             self.sample_meters(out, now);
+            self.expire_held(out, now);
         }
     }
 
@@ -183,6 +188,7 @@ impl ChargePoint {
     fn call_succeeded(&mut self, out: &mut Vec<Output>, now: u64, call: &Call, payload: Value) {
         match call.action.as_str() {
             "BootNotification" => self.booted(out, now, payload),
+            "Authorize" if call.connector_id == 0 => self.held_reply(out, now, payload),
             "Authorize" | "StartTransaction" | "StopTransaction" => {
                 self.transaction_reply(out, now, call, payload)
             }
@@ -197,6 +203,7 @@ impl ChargePoint {
                     retry_at: now + RETRY_MS,
                 }
             }
+            "Authorize" if call.connector_id == 0 => self.held = None,
             "Authorize" | "StartTransaction" | "StopTransaction" => self.transaction_failed(call),
             _ => {}
         }
@@ -264,7 +271,13 @@ impl ChargePoint {
         }
     }
 
-    pub(super) fn reject(&self, out: &mut Vec<Output>, now: u64, connector: u32, reason: &str) {
+    pub(super) fn reject(
+        &self,
+        out: &mut Vec<Output>,
+        now: u64,
+        connector: Option<u32>,
+        reason: &str,
+    ) {
         let reason = reason.to_owned();
         self.emit(out, now, EventKind::IntentRejected { connector, reason });
     }

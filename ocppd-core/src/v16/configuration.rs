@@ -6,6 +6,7 @@ use super::messages::meter_value::Measurand;
 use crate::ci_string::{CiString, TooLong};
 use serde_json::Value;
 
+pub const CONNECTION_TIME_OUT: &str = "ConnectionTimeOut";
 pub const HEARTBEAT_INTERVAL: &str = "HeartbeatInterval";
 pub const METER_VALUE_SAMPLE_INTERVAL: &str = "MeterValueSampleInterval";
 pub const METER_VALUES_SAMPLED_DATA: &str = "MeterValuesSampledData";
@@ -49,7 +50,7 @@ impl Configuration {
                 Access::CurrentValueOnly,
             ),
             ("ClockAlignedDataInterval", "0", Access::CurrentValueOnly),
-            ("ConnectionTimeOut", "60", Access::Integer),
+            (CONNECTION_TIME_OUT, "60", Access::Integer),
             ("ConnectorPhaseRotation", "1.RST", Access::CurrentValueOnly),
             ("GetConfigurationMaxKeys", "50", Access::ReadOnly),
             (HEARTBEAT_INTERVAL, "86400", Access::Integer),

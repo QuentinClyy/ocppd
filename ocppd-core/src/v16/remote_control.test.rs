@@ -1,6 +1,6 @@
 use crate::event::EventKind;
 use crate::event::Input;
-use crate::fixtures::v16::fake_csms::{Csms, MINUTE};
+use crate::fixtures::v16::fake_csms::{Csms, MINUTE, authorize};
 use crate::fixtures::v16::plugged::plugged;
 use crate::fixtures::v16::replies::status;
 use crate::intent::{EvSpec, Intent};
@@ -51,6 +51,16 @@ fn inoperative_connector() -> Csms {
     csms
 }
 
+fn plug_in(csms: &mut Csms) {
+    csms.intent(
+        0,
+        Intent::PlugIn {
+            connector: 1,
+            ev: EvSpec::default(),
+        },
+    );
+}
+
 fn connector_1_statuses(csms: &Csms) -> Vec<ChargePointStatus> {
     csms.events
         .iter()
@@ -69,6 +79,21 @@ fn scheduled_inoperative_station() -> Csms {
     let whole_station = json!({"connectorId": 0, "type": "Inoperative"});
     csms.call(MINUTE, "ChangeAvailability", whole_station);
     csms
+}
+
+#[test]
+fn given_inoperative_connector_with_plugged_ev_when_id_tag_presented_then_refused_as_unavailable() {
+    let mut csms = inoperative_connector();
+    plug_in(&mut csms);
+    csms.events.clear();
+
+    csms.intent(0, authorize("TAG1"));
+
+    let rejected = EventKind::IntentRejected {
+        connector: Some(1),
+        reason: "unavailable".into(),
+    };
+    assert_eq!(csms.events, vec![rejected]);
 }
 
 #[test]
@@ -110,6 +135,28 @@ fn given_scheduled_inoperative_station_when_transaction_stopped_then_unavailable
         csms.statuses().last(),
         Some(&ChargePointStatus::Unavailable)
     );
+}
+
+#[test]
+fn given_plugged_ev_when_remote_start_on_its_connector_then_accepted_and_started_without_authorize()
+{
+    let mut csms = plugged();
+
+    let reply = csms.call(
+        0,
+        "RemoteStartTransaction",
+        json!({"connectorId": 1, "idTag": "R1"}),
+    );
+
+    assert_eq!(status(reply), "Accepted");
+    let start = csms.expect("StartTransaction");
+    assert_eq!(start["idTag"], "R1");
+    assert!(csms.sent("Authorize").is_empty());
+    assert!(csms.events.contains(&EventKind::RemoteStart {
+        connector: Some(1),
+        id_tag: "R1".into(),
+        expires: None
+    }));
 }
 
 #[test]

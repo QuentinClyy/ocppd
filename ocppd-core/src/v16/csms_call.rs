@@ -52,7 +52,7 @@ impl ChargePoint {
             "RemoteStartTransaction" => {
                 answer(payload, |request: RemoteStartTransactionRequest| {
                     RemoteStartTransactionResponse {
-                        status: self.remote_start(now, request),
+                        status: self.remote_start(out, now, request),
                     }
                 })
             }
