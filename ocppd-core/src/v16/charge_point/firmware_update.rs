@@ -39,10 +39,7 @@ impl ChargePoint {
         while let Some(update) = &self.firmware {
             let next = match update.stage {
                 Stage::Waiting { until } if now >= until => {
-                    if !SCHEMES
-                        .iter()
-                        .any(|scheme| update.location.starts_with(scheme))
-                    {
+                    if !reachable(&update.location) {
                         self.firmware = None;
                         self.firmware_status(out, now, FirmwareStatus::DownloadFailed);
                         return;
@@ -130,6 +127,10 @@ impl ChargePoint {
             .iter()
             .all(|transaction| matches!(transaction, Transaction::Idle | Transaction::Finished))
     }
+}
+
+pub fn reachable(location: &str) -> bool {
+    SCHEMES.iter().any(|scheme| location.starts_with(scheme))
 }
 
 #[cfg(test)]

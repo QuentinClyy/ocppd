@@ -3,7 +3,7 @@ use crate::v16::messages::core::remote_control::ResetType;
 use crate::v16::messages::core::status::ChargePointStatus;
 use crate::v16::messages::core::transaction::Reason;
 use crate::v16::messages::datatypes::id_tag::AuthorizationStatus;
-use crate::v16::messages::firmware::FirmwareStatus;
+use crate::v16::messages::firmware::{DiagnosticsStatus, FirmwareStatus};
 use serde::Serialize;
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -102,6 +102,9 @@ pub enum EventKind {
     },
     FirmwareStatus {
         status: FirmwareStatus,
+    },
+    DiagnosticsStatus {
+        status: DiagnosticsStatus,
     },
     ChargingLimitChanged {
         connector: u32,

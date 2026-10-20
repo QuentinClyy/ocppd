@@ -1,0 +1,61 @@
+use super::ChargePoint;
+use super::firmware_update::reachable;
+use crate::api::event::EventKind;
+use crate::api::io::Output;
+use crate::v16::messages::firmware::{
+    DiagnosticsStatus, DiagnosticsStatusNotificationRequest, GetDiagnosticsRequest,
+    GetDiagnosticsResponse,
+};
+use crate::wire::ci_string::CiString;
+use serde_json::json;
+
+const UPLOAD_MS: u64 = 10_000;
+
+impl ChargePoint {
+    pub(super) fn get_diagnostics(
+        &mut self,
+        out: &mut Vec<Output>,
+        now: u64,
+        request: GetDiagnosticsRequest,
+    ) -> GetDiagnosticsResponse {
+        let file_name = format!("{}-diagnostics.log", self.station.id);
+        let Ok(file_name) = CiString::new(&file_name) else {
+            return GetDiagnosticsResponse { file_name: None };
+        };
+        if reachable(&request.location) {
+            self.uploading_until = Some(now + UPLOAD_MS);
+            self.diagnostics_status(out, now, DiagnosticsStatus::Uploading);
+        } else {
+            self.uploading_until = None;
+            self.diagnostics_status(out, now, DiagnosticsStatus::UploadFailed);
+        }
+        GetDiagnosticsResponse {
+            file_name: Some(file_name),
+        }
+    }
+
+    pub(super) fn advance_diagnostics(&mut self, out: &mut Vec<Output>, now: u64) {
+        if self.uploading_until.is_some_and(|until| now >= until) {
+            self.uploading_until = None;
+            self.diagnostics_status(out, now, DiagnosticsStatus::Uploaded);
+        }
+    }
+
+    pub(super) fn current_diagnostics_status(&self) -> DiagnosticsStatus {
+        match self.uploading_until {
+            Some(_) => DiagnosticsStatus::Uploading,
+            None => DiagnosticsStatus::Idle,
+        }
+    }
+
+    fn diagnostics_status(&mut self, out: &mut Vec<Output>, now: u64, status: DiagnosticsStatus) {
+        let request = DiagnosticsStatusNotificationRequest { status };
+        self.outbox
+            .push("DiagnosticsStatusNotification", 0, json!(request));
+        self.emit(out, now, EventKind::DiagnosticsStatus { status });
+    }
+}
+
+#[cfg(test)]
+#[path = "diagnostics.test.rs"]
+mod tests;

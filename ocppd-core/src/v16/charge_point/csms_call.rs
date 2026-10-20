@@ -18,7 +18,9 @@ use crate::v16::messages::core::remote_control::{
     UnlockConnectorResponse,
 };
 use crate::v16::messages::datatypes::generic_status::GenericStatus;
-use crate::v16::messages::firmware::{UpdateFirmwareRequest, UpdateFirmwareResponse};
+use crate::v16::messages::firmware::{
+    GetDiagnosticsRequest, UpdateFirmwareRequest, UpdateFirmwareResponse,
+};
 use crate::v16::messages::local_auth::{
     GetLocalListVersionRequest, GetLocalListVersionResponse, SendLocalListRequest,
     SendLocalListResponse, UpdateStatus,
@@ -136,6 +138,9 @@ impl ChargePoint {
             "UpdateFirmware" => answer(payload, |request: UpdateFirmwareRequest| {
                 self.update_firmware(now, request);
                 UpdateFirmwareResponse {}
+            }),
+            "GetDiagnostics" => answer(payload, |request: GetDiagnosticsRequest| {
+                self.get_diagnostics(out, now, request)
             }),
             "DataTransfer" => answer(payload, |_: DataTransferRequest| DataTransferResponse {
                 status: DataTransferStatus::UnknownVendorId,

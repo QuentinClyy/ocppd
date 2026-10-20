@@ -2,6 +2,7 @@ mod charging_profiles;
 mod composite;
 mod configuration;
 mod csms_call;
+mod diagnostics;
 mod driver;
 mod firmware_update;
 mod held;
@@ -59,6 +60,7 @@ pub struct ChargePoint {
     charging_profiles: ChargingProfiles,
     limit_change_at: Option<u64>,
     firmware: Option<FirmwareUpdate>,
+    uploading_until: Option<u64>,
     boot_request: BootNotificationRequest,
     registration: Registration,
 }
@@ -93,6 +95,7 @@ impl ChargePoint {
             charging_profiles: ChargingProfiles::default(),
             limit_change_at: None,
             firmware: None,
+            uploading_until: None,
             boot_request,
             registration: Registration::Offline,
         })
@@ -111,6 +114,7 @@ impl ChargePoint {
             self.reservation_deadline(),
             self.limit_change_at,
             self.firmware_deadline(),
+            self.uploading_until,
         ]
         .into_iter()
         .flatten()
@@ -139,6 +143,7 @@ impl ChargePoint {
             self.report_statuses(&mut out, now);
         }
         self.advance_firmware(&mut out, now);
+        self.advance_diagnostics(&mut out, now);
         if self.reset_due(now) {
             self.rebooted();
             out.push(Output::Close);
