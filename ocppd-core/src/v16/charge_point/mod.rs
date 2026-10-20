@@ -3,6 +3,7 @@ mod composite;
 mod configuration;
 mod csms_call;
 mod driver;
+mod firmware_update;
 mod held;
 mod id_tags;
 mod local_authorization;
@@ -32,6 +33,7 @@ use crate::wire::frame::{self, Frame};
 use crate::wire::outbox::{Call, Outbox, Sent};
 use charging_profiles::ChargingProfiles;
 use configuration::Configuration;
+use firmware_update::FirmwareUpdate;
 use held::Held;
 use id_tags::IdTags;
 use local_list::LocalList;
@@ -56,6 +58,7 @@ pub struct ChargePoint {
     cache: IdTags,
     charging_profiles: ChargingProfiles,
     limit_change_at: Option<u64>,
+    firmware: Option<FirmwareUpdate>,
     boot_request: BootNotificationRequest,
     registration: Registration,
 }
@@ -89,6 +92,7 @@ impl ChargePoint {
             cache: IdTags::default(),
             charging_profiles: ChargingProfiles::default(),
             limit_change_at: None,
+            firmware: None,
             boot_request,
             registration: Registration::Offline,
         })
@@ -106,6 +110,7 @@ impl ChargePoint {
             self.held_deadline(),
             self.reservation_deadline(),
             self.limit_change_at,
+            self.firmware_deadline(),
         ]
         .into_iter()
         .flatten()
@@ -133,6 +138,7 @@ impl ChargePoint {
         if self.is_accepted() {
             self.report_statuses(&mut out, now);
         }
+        self.advance_firmware(&mut out, now);
         if self.reset_due(now) {
             self.rebooted();
             out.push(Output::Close);

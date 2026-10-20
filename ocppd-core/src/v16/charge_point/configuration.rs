@@ -109,7 +109,7 @@ impl Configuration {
             ("StopTxnSampledData", "", Access::CurrentValueOnly),
             (
                 "SupportedFeatureProfiles",
-                "Core,LocalAuthListManagement,RemoteTrigger,Reservation,SmartCharging",
+                "Core,FirmwareManagement,LocalAuthListManagement,RemoteTrigger,Reservation,SmartCharging",
                 Access::ReadOnly,
             ),
             (TRANSACTION_MESSAGE_ATTEMPTS, "3", Access::Integer),

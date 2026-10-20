@@ -32,7 +32,7 @@ impl ChargePoint {
             return ChargingProfileStatus::Rejected;
         }
         let max = self.limit(MAX_CHARGING_PROFILES_INSTALLED) as usize;
-        match self.install(out, now, connector, profile, max) {
+        match self.install_profile(out, now, connector, profile, max) {
             true => ChargingProfileStatus::Accepted,
             false => ChargingProfileStatus::Rejected,
         }
@@ -59,7 +59,7 @@ impl ChargePoint {
     ) {
         profile.transaction_id = Some(transaction_id);
         let accepted_with_the_remote_start = usize::MAX;
-        self.install(
+        self.install_profile(
             out,
             now,
             index as u32 + 1,
@@ -68,7 +68,7 @@ impl ChargePoint {
         );
     }
 
-    fn install(
+    fn install_profile(
         &mut self,
         out: &mut Vec<Output>,
         now: u64,

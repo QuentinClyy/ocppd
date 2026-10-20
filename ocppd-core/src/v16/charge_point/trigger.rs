@@ -2,8 +2,7 @@ use super::ChargePoint;
 use super::transaction::Transaction;
 use crate::v16::messages::datatypes::meter_value::ReadingContext;
 use crate::v16::messages::firmware::{
-    DiagnosticsStatus, DiagnosticsStatusNotificationRequest, FirmwareStatus,
-    FirmwareStatusNotificationRequest,
+    DiagnosticsStatus, DiagnosticsStatusNotificationRequest, FirmwareStatusNotificationRequest,
 };
 use crate::v16::messages::remote_trigger::{
     MessageTrigger, TriggerMessageRequest, TriggerMessageStatus,
@@ -51,7 +50,7 @@ impl ChargePoint {
             }
             MessageTrigger::FirmwareStatusNotification => {
                 let request = FirmwareStatusNotificationRequest {
-                    status: FirmwareStatus::Idle,
+                    status: self.current_firmware_status(),
                 };
                 self.outbox
                     .push("FirmwareStatusNotification", 0, json!(request));
