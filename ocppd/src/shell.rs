@@ -1,3 +1,4 @@
+use crate::basic_auth;
 use futures_util::{SinkExt, StreamExt};
 use ocppd_core::api::event::Event;
 use ocppd_core::api::intent::Intent;
@@ -54,18 +55,20 @@ pub async fn run(
         {
             Wake::Input(input) => input,
             Wake::Lost(reason) => link.lose(&reason),
-            Wake::Reconnect => match connect(&url).await {
-                Ok(socket) => {
-                    link.socket = Some(socket);
-                    link.failures = 0;
-                    Input::Connected
+            Wake::Reconnect => {
+                match connect(&url, &link.id, charge_point.basic_auth_password()).await {
+                    Ok(socket) => {
+                        link.socket = Some(socket);
+                        link.failures = 0;
+                        Input::Connected
+                    }
+                    Err(err) => {
+                        eprintln!("{}: connect to {url} failed: {err}", link.id);
+                        link.schedule_reconnect();
+                        continue;
+                    }
                 }
-                Err(err) => {
-                    eprintln!("{}: connect to {url} failed: {err}", link.id);
-                    link.schedule_reconnect();
-                    continue;
-                }
-            },
+            }
         };
         while let Some(reason) = execute(&mut charge_point, input, &mut link.socket, &events).await
         {
@@ -97,12 +100,22 @@ fn backoff(id: &str, failures: u32, jitter: bool) -> Duration {
     }
 }
 
-async fn connect(url: &str) -> Result<Socket, tungstenite::Error> {
+async fn connect(
+    url: &str,
+    id: &str,
+    password: Option<Vec<u8>>,
+) -> Result<Socket, tungstenite::Error> {
     let mut request = url.into_client_request()?;
-    request.headers_mut().insert(
+    let headers = request.headers_mut();
+    headers.insert(
         "Sec-WebSocket-Protocol",
         HeaderValue::from_static("ocpp1.6"),
     );
+    if let Some(password) = password {
+        let credentials = basic_auth::header(id, &password);
+        let value = HeaderValue::from_str(&credentials).map_err(tungstenite::http::Error::from)?;
+        headers.insert("Authorization", value);
+    }
     let (socket, _) = connect_async(request).await?;
     Ok(socket)
 }

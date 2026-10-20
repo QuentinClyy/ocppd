@@ -178,7 +178,7 @@ impl Configuration {
                     .parse::<u32>()
                     .is_ok_and(|profile| (current..=3).contains(&profile))
             }
-            Access::WriteOnly => (16..=40).contains(&value.chars().count()),
+            Access::WriteOnly => hex(value).is_some_and(|key| (16..=20).contains(&key.len())),
         };
         if !valid {
             return ConfigurationStatus::Rejected;
@@ -204,6 +204,10 @@ impl Configuration {
     pub fn flag(&self, name: &str) -> bool {
         self.find(name)
             .is_some_and(|key| key.value.as_str() == "true")
+    }
+
+    pub fn text(&self, name: &str) -> Option<&str> {
+        Some(self.find(name)?.value.as_str())
     }
 
     pub fn number(&self, name: &str) -> Option<u32> {
@@ -251,6 +255,16 @@ fn measurands(list: &str) -> Option<Vec<Measurand>> {
         parsed.push(measurand);
     }
     Some(parsed)
+}
+
+pub fn hex(text: &str) -> Option<Vec<u8>> {
+    if !text.len().is_multiple_of(2) {
+        return None;
+    }
+    (0..text.len())
+        .step_by(2)
+        .map(|at| u8::from_str_radix(text.get(at..at + 2)?, 16).ok())
+        .collect()
 }
 
 #[cfg(test)]

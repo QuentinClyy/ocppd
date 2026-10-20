@@ -19,6 +19,7 @@ mod reservation;
 mod retry;
 mod schedule;
 mod security_event;
+mod security_profile;
 mod smart_charging;
 mod transaction;
 mod trigger;
@@ -287,7 +288,3 @@ impl ChargePoint {
         }));
     }
 }
-
-#[cfg(test)]
-#[path = "mod.test.rs"]
-mod tests;

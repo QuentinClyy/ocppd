@@ -44,6 +44,27 @@ async fn given_booted_station_when_stdout_read_then_connected_and_boot_status_re
 }
 
 #[tokio::test]
+async fn given_station_booted_with_a_1_second_interval_when_a_second_passes_then_heartbeat_sent() {
+    let mut run = start(SPAWN, 1).await;
+
+    let frame = run.next_call().await;
+
+    assert_eq!(frame[2], "Heartbeat");
+}
+
+#[tokio::test]
+async fn given_security_profile_1_and_authorization_key_when_connecting_then_basic_auth_with_the_key()
+ {
+    let spawn = r#"{"command":"spawn","prefix":"CP","count":1,
+        "configuration":{"SecurityProfile":"1","AuthorizationKey":"30313233343536373839616263646566"}}"#;
+
+    let run = start(&spawn.replace('\n', ""), 300).await;
+
+    let expected = "Basic Q1AxOjAxMjM0NTY3ODlhYmNkZWY=";
+    assert_eq!(run.authorization.as_deref(), Some(expected));
+}
+
+#[tokio::test]
 async fn given_authorized_tag_when_start_transaction_accepted_then_transaction_started_on_stdout() {
     let mut run = plugged().await;
     run.command(AUTHORIZE).await;
