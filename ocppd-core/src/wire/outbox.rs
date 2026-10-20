@@ -3,6 +3,8 @@ use serde_json::Value;
 use std::collections::VecDeque;
 
 const CALL_TIMEOUT_MS: u64 = 30_000;
+const SURVIVES_DISCONNECT: [&str; 3] = ["StartTransaction", "StopTransaction", "MeterValues"];
+const SENT_BEFORE_REGISTRATION: &str = "BootNotification";
 
 pub struct Outbox {
     queue: VecDeque<(Call, Value)>,
@@ -19,6 +21,7 @@ pub struct Call {
 struct Pending {
     id: String,
     call: Call,
+    payload: Value,
     deadline: u64,
 }
 
@@ -39,17 +42,22 @@ impl Outbox {
         self.queue.push_back((call, payload));
     }
 
-    pub fn next_frame(&mut self, now: u64) -> Option<Frame> {
+    pub fn next_frame(&mut self, now: u64, registered: bool) -> Option<Frame> {
         if self.pending.is_some() {
             return None;
         }
-        let (call, payload) = self.queue.pop_front()?;
+        let index = self
+            .queue
+            .iter()
+            .position(|(call, _)| registered || call.action == SENT_BEFORE_REGISTRATION)?;
+        let (call, payload) = self.queue.remove(index)?;
         self.last_id += 1;
         let id = self.last_id.to_string();
         let action = call.action.clone();
         self.pending = Some(Pending {
             id: id.clone(),
             call,
+            payload: payload.clone(),
             deadline: now + CALL_TIMEOUT_MS,
         });
         Some(Frame::Call {
@@ -81,8 +89,11 @@ impl Outbox {
         self.pending.as_ref().map(|pending| pending.deadline)
     }
 
-    pub fn clear(&mut self) {
-        self.queue.clear();
-        self.pending = None;
+    pub fn keep_transaction_messages(&mut self) {
+        if let Some(pending) = self.pending.take() {
+            self.queue.push_front((pending.call, pending.payload));
+        }
+        self.queue
+            .retain(|(call, _)| SURVIVES_DISCONNECT.contains(&call.action.as_str()));
     }
 }

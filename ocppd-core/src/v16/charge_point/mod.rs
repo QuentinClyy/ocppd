@@ -9,6 +9,7 @@ mod reporting;
 mod transaction;
 
 use crate::api::event::{Event, EventKind};
+use crate::api::intent::Intent;
 use crate::api::io::{Input, Output};
 use crate::station::Station;
 use crate::v16::messages::core::boot::BootNotificationRequest;
@@ -73,14 +74,15 @@ impl ChargePoint {
     }
 
     pub fn next_deadline(&self) -> Option<u64> {
-        let registered = [self.transaction_deadline(), self.held_deadline()]
-            .into_iter()
-            .filter(|_| self.is_accepted());
-        [self.registration_deadline(), self.outbox.deadline()]
-            .into_iter()
-            .chain(registered)
-            .flatten()
-            .min()
+        [
+            self.registration_deadline(),
+            self.outbox.deadline(),
+            self.transaction_deadline(),
+            self.held_deadline(),
+        ]
+        .into_iter()
+        .flatten()
+        .min()
     }
 
     pub fn handle(&mut self, now: u64, input: Input) -> Vec<Output> {
@@ -92,22 +94,22 @@ impl ChargePoint {
             }
             Input::Disconnected => {
                 self.registration = Registration::Offline;
-                self.outbox.clear();
+                self.outbox.keep_transaction_messages();
                 self.connection_lost();
                 self.emit(&mut out, now, EventKind::Disconnected);
             }
             Input::Tick => self.tick(&mut out, now),
             Input::Frame(text) => self.receive(&mut out, now, &text),
-            Input::Intent(intent) if self.is_accepted() => self.intent(&mut out, now, intent),
-            Input::Intent(intent) => {
-                self.reject(&mut out, now, intent.connector(), "not registered")
+            Input::Intent(Intent::Authorize { connector, .. }) if !self.is_accepted() => {
+                self.reject(&mut out, now, connector, "not registered")
             }
+            Input::Intent(intent) => self.intent(&mut out, now, intent),
         }
         if self.is_accepted() {
             self.report_statuses(&mut out, now);
         }
         if self.is_connected() {
-            if let Some(frame) = self.outbox.next_frame(now) {
+            if let Some(frame) = self.outbox.next_frame(now, self.is_accepted()) {
                 out.push(Output::Send(frame));
             }
         }
@@ -125,10 +127,8 @@ impl ChargePoint {
             self.call_failed(now, &call);
         }
         self.registration_tick(now);
-        if self.is_accepted() {
-            self.sample_meters(out, now);
-            self.expire_held(out, now);
-        }
+        self.sample_meters(out, now);
+        self.expire_held(out, now);
     }
 
     fn receive(&mut self, out: &mut Vec<Output>, now: u64, text: &str) {

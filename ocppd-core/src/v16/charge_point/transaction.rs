@@ -78,13 +78,9 @@ impl ChargePoint {
         if self.held_deadline().is_none() {
             self.held = None;
         }
-        for index in 0..self.transactions.len() {
-            match self.transactions[index] {
-                Transaction::Authorizing { .. } | Transaction::Starting { .. } => {
-                    self.transactions[index] = Transaction::Idle;
-                }
-                Transaction::Stopping => self.transaction_ended(index),
-                _ => {}
+        for transaction in &mut self.transactions {
+            if let Transaction::Authorizing { .. } = transaction {
+                *transaction = Transaction::Idle;
             }
         }
     }
@@ -196,3 +192,7 @@ impl ChargePoint {
         };
     }
 }
+
+#[cfg(test)]
+#[path = "transaction.test.rs"]
+mod tests;

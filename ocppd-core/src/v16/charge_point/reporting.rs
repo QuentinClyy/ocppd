@@ -6,6 +6,7 @@ use crate::api::event::EventKind;
 use crate::api::io::Output;
 use crate::v16::messages::core::meter_values::MeterValuesRequest;
 use crate::v16::messages::core::status::ChargePointStatus;
+use crate::v16::messages::datatypes::meter_value::Measurand;
 use serde_json::json;
 
 impl ChargePoint {
@@ -15,48 +16,61 @@ impl ChargePoint {
         };
         let measurands = self.configuration.measurands();
         for index in 0..self.transactions.len() {
-            let Transaction::Active {
-                transaction_id,
-                id_tag,
-                last_sample,
-                last_register_wh,
-            } = self.transactions[index].clone()
-            else {
-                continue;
-            };
-            if now < last_sample + interval {
-                continue;
+            while let Transaction::Active { last_sample, .. } = self.transactions[index] {
+                let due = last_sample + interval;
+                if now < due {
+                    break;
+                }
+                self.sample_meter(out, index, due, &measurands);
             }
-            let connector = &self.station.connectors[index];
-            let sample = connector.sample(now);
-            if !measurands.is_empty() {
-                let reading = Reading {
-                    sample,
-                    offered_w: connector.offered_w().unwrap_or(self.station.limit_w()),
-                    interval_wh: sample.register_wh - last_register_wh,
-                };
-                let request = MeterValuesRequest {
-                    connector_id: index as u32 + 1,
-                    transaction_id: Some(transaction_id),
-                    meter_value: vec![meter_value(now, &reading, &self.station, &measurands)],
-                };
-                self.outbox
-                    .push("MeterValues", index as u32 + 1, json!(request));
-            }
-            let kind = EventKind::MeterSample {
-                connector: index as u32 + 1,
-                register_wh: sample.register_wh,
-                power_w: sample.power_w,
-                soc: sample.soc,
-            };
-            self.emit(out, now, kind);
-            self.transactions[index] = Transaction::Active {
-                transaction_id,
-                id_tag,
-                last_sample: now,
-                last_register_wh: sample.register_wh,
-            };
         }
+    }
+
+    fn sample_meter(
+        &mut self,
+        out: &mut Vec<Output>,
+        index: usize,
+        at: u64,
+        measurands: &[Measurand],
+    ) {
+        let Transaction::Active {
+            transaction_id,
+            id_tag,
+            last_register_wh,
+            ..
+        } = self.transactions[index].clone()
+        else {
+            return;
+        };
+        let connector = &self.station.connectors[index];
+        let sample = connector.sample(at);
+        if !measurands.is_empty() {
+            let reading = Reading {
+                sample,
+                offered_w: connector.offered_w().unwrap_or(self.station.limit_w()),
+                interval_wh: sample.register_wh - last_register_wh,
+            };
+            let request = MeterValuesRequest {
+                connector_id: index as u32 + 1,
+                transaction_id: Some(transaction_id),
+                meter_value: vec![meter_value(at, &reading, &self.station, measurands)],
+            };
+            self.outbox
+                .push("MeterValues", index as u32 + 1, json!(request));
+        }
+        let kind = EventKind::MeterSample {
+            connector: index as u32 + 1,
+            register_wh: sample.register_wh,
+            power_w: sample.power_w,
+            soc: sample.soc,
+        };
+        self.emit(out, at, kind);
+        self.transactions[index] = Transaction::Active {
+            transaction_id,
+            id_tag,
+            last_sample: at,
+            last_register_wh: sample.register_wh,
+        };
     }
 
     pub(super) fn transaction_deadline(&self) -> Option<u64> {

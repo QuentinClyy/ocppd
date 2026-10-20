@@ -70,6 +70,15 @@ impl Csms {
         csms
     }
 
+    pub fn disconnect(&mut self, now: u64) {
+        self.pending = None;
+        self.input(now, Input::Disconnected);
+    }
+
+    pub fn reconnect(&mut self, now: u64) {
+        self.input(now, Input::Connected);
+    }
+
     pub fn input(&mut self, now: u64, input: Input) {
         let outputs = self.charge_point.handle(now, input);
         for output in outputs {
