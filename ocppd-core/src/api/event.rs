@@ -95,6 +95,13 @@ pub enum EventKind {
         version: i32,
         entries: usize,
     },
+    ChargingProfileSet {
+        connector: u32,
+        charging_profile_id: i32,
+    },
+    ChargingProfilesCleared {
+        count: usize,
+    },
     Reserved {
         connector: u32,
         reservation_id: i32,

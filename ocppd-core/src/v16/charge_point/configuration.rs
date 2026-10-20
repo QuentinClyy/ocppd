@@ -7,12 +7,15 @@ use crate::wire::ci_string::{CiString, TooLong};
 use serde_json::Value;
 
 pub const AUTHORIZATION_CACHE_ENABLED: &str = "AuthorizationCacheEnabled";
+pub const CHARGE_PROFILE_MAX_STACK_LEVEL: &str = "ChargeProfileMaxStackLevel";
+pub const CHARGING_SCHEDULE_MAX_PERIODS: &str = "ChargingScheduleMaxPeriods";
 pub const CONNECTION_TIME_OUT: &str = "ConnectionTimeOut";
 pub const HEARTBEAT_INTERVAL: &str = "HeartbeatInterval";
 pub const LOCAL_AUTH_LIST_ENABLED: &str = "LocalAuthListEnabled";
 pub const LOCAL_AUTHORIZE_OFFLINE: &str = "LocalAuthorizeOffline";
 pub const LOCAL_AUTH_LIST_MAX_LENGTH: &str = "LocalAuthListMaxLength";
 pub const LOCAL_PRE_AUTHORIZE: &str = "LocalPreAuthorize";
+pub const MAX_CHARGING_PROFILES_INSTALLED: &str = "MaxChargingProfilesInstalled";
 pub const METER_VALUE_SAMPLE_INTERVAL: &str = "MeterValueSampleInterval";
 pub const METER_VALUES_SAMPLED_DATA: &str = "MeterValuesSampledData";
 pub const SEND_LOCAL_LIST_MAX_LENGTH: &str = "SendLocalListMaxLength";
@@ -59,6 +62,13 @@ impl Configuration {
                 "false",
                 Access::CurrentValueOnly,
             ),
+            (CHARGE_PROFILE_MAX_STACK_LEVEL, "10", Access::ReadOnly),
+            (
+                "ChargingScheduleAllowedChargingRateUnit",
+                "Current,Power",
+                Access::ReadOnly,
+            ),
+            (CHARGING_SCHEDULE_MAX_PERIODS, "24", Access::ReadOnly),
             ("ClockAlignedDataInterval", "0", Access::CurrentValueOnly),
             (CONNECTION_TIME_OUT, "60", Access::Integer),
             ("ConnectorPhaseRotation", "1.RST", Access::CurrentValueOnly),
@@ -68,6 +78,7 @@ impl Configuration {
             (LOCAL_AUTH_LIST_MAX_LENGTH, "100", Access::ReadOnly),
             (LOCAL_AUTHORIZE_OFFLINE, "false", Access::Boolean),
             (LOCAL_PRE_AUTHORIZE, "false", Access::Boolean),
+            (MAX_CHARGING_PROFILES_INSTALLED, "20", Access::ReadOnly),
             ("MeterValuesAlignedData", "", Access::CurrentValueOnly),
             (
                 METER_VALUES_SAMPLED_DATA,
@@ -98,7 +109,7 @@ impl Configuration {
             ("StopTxnSampledData", "", Access::CurrentValueOnly),
             (
                 "SupportedFeatureProfiles",
-                "Core,LocalAuthListManagement,RemoteTrigger,Reservation",
+                "Core,LocalAuthListManagement,RemoteTrigger,Reservation,SmartCharging",
                 Access::ReadOnly,
             ),
             (TRANSACTION_MESSAGE_ATTEMPTS, "3", Access::Integer),

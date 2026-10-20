@@ -247,6 +247,7 @@ impl ChargePoint {
     }
 
     fn transaction_ended(&mut self, index: usize) {
+        self.charging_profiles.end_transaction(index as u32 + 1);
         let plugged = self.station.connectors[index].plugged.is_some();
         self.transactions[index] = if plugged {
             Transaction::Finished

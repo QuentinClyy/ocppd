@@ -1,3 +1,4 @@
+mod charging_profiles;
 mod configuration;
 mod csms_call;
 mod driver;
@@ -12,6 +13,7 @@ mod remote_control;
 mod reporting;
 mod reservation;
 mod retry;
+mod smart_charging;
 mod transaction;
 mod trigger;
 
@@ -26,6 +28,7 @@ use crate::v16::messages::core::status::{
 use crate::wire::ci_string::{CiString, TooLong};
 use crate::wire::frame::{self, Frame};
 use crate::wire::outbox::{Call, Outbox, Sent};
+use charging_profiles::ChargingProfiles;
 use configuration::Configuration;
 use held::Held;
 use id_tags::IdTags;
@@ -49,6 +52,7 @@ pub struct ChargePoint {
     configuration: Configuration,
     local_list: LocalList,
     cache: IdTags,
+    charging_profiles: ChargingProfiles,
     boot_request: BootNotificationRequest,
     registration: Registration,
 }
@@ -80,6 +84,7 @@ impl ChargePoint {
             configuration: Configuration::new(connectors)?,
             local_list: LocalList::default(),
             cache: IdTags::default(),
+            charging_profiles: ChargingProfiles::default(),
             boot_request,
             registration: Registration::Offline,
         })

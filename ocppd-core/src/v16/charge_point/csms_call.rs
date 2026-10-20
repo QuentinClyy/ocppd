@@ -26,6 +26,10 @@ use crate::v16::messages::remote_trigger::{TriggerMessageRequest, TriggerMessage
 use crate::v16::messages::reservation::{
     CancelReservationRequest, CancelReservationResponse, ReserveNowRequest, ReserveNowResponse,
 };
+use crate::v16::messages::smart_charging::{
+    ClearChargingProfileRequest, ClearChargingProfileResponse, SetChargingProfileRequest,
+    SetChargingProfileResponse,
+};
 use crate::wire::frame::Frame;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
@@ -113,6 +117,16 @@ impl ChargePoint {
             "GetLocalListVersion" => answer(payload, |_: GetLocalListVersionRequest| {
                 GetLocalListVersionResponse {
                     list_version: self.local_list.version(),
+                }
+            }),
+            "SetChargingProfile" => answer(payload, |request: SetChargingProfileRequest| {
+                SetChargingProfileResponse {
+                    status: self.set_charging_profile(out, now, request),
+                }
+            }),
+            "ClearChargingProfile" => answer(payload, |request: ClearChargingProfileRequest| {
+                ClearChargingProfileResponse {
+                    status: self.clear_charging_profile(out, now, request),
                 }
             }),
             "DataTransfer" => answer(payload, |_: DataTransferRequest| DataTransferResponse {
