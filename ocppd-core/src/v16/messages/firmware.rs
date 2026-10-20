@@ -1,5 +1,5 @@
-use crate::ci_string::CiString;
-use crate::date_time::DateTime;
+use crate::wire::ci_string::CiString;
+use crate::wire::date_time::DateTime;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

@@ -1,5 +1,5 @@
+use crate::api::intent::{EvSpec, Intent};
 use crate::fixtures::v16::fake_csms::Csms;
-use crate::intent::{EvSpec, Intent};
 
 pub fn plugged() -> Csms {
     let mut csms = Csms::booted();

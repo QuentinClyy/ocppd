@@ -1,12 +1,12 @@
-use crate::event::EventKind;
-use crate::event::{Input, Output};
+use crate::api::event::EventKind;
+use crate::api::intent::{EvSpec, Intent};
+use crate::api::io::{Input, Output};
 use crate::fixtures::v16::raw::v16_kind;
-use crate::frame::Frame;
-use crate::intent::{EvSpec, Intent};
-use crate::station::Connector;
 use crate::station::Station;
+use crate::station::connector::Connector;
 use crate::v16::charge_point::ChargePoint;
-use crate::v16::messages::status::ChargePointStatus;
+use crate::v16::messages::core::status::ChargePointStatus;
+use crate::wire::frame::Frame;
 use serde_json::{Value, json};
 
 pub const MINUTE: u64 = 60_000;

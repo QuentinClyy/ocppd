@@ -7,3 +7,7 @@ pub fn round_trip<T: Serialize + DeserializeOwned>(value: &Value) -> Value {
         .unwrap_or_else(|err| panic!("decoding {value}: {err}"));
     serde_json::to_value(&typed).unwrap()
 }
+
+pub fn decodes<T: DeserializeOwned>(value: &Value) -> bool {
+    serde_json::from_value::<T>(value.clone()).is_ok()
+}

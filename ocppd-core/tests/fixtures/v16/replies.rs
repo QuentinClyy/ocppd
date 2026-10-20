@@ -1,4 +1,4 @@
-use crate::frame::Frame;
+use crate::wire::frame::Frame;
 use serde_json::Value;
 
 pub fn status(frame: Frame) -> Value {

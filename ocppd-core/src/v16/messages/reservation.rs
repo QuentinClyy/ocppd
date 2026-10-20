@@ -1,6 +1,6 @@
-use super::generic_status::GenericStatus;
-use super::id_tag::IdToken;
-use crate::date_time::DateTime;
+use crate::v16::messages::datatypes::generic_status::GenericStatus;
+use crate::v16::messages::datatypes::id_tag::IdToken;
+use crate::wire::date_time::DateTime;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

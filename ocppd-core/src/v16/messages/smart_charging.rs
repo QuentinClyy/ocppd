@@ -1,8 +1,8 @@
-use super::charging_profile::{
+use crate::v16::messages::datatypes::charging_profile::{
     ChargingProfile, ChargingProfilePurpose, ChargingRateUnit, ChargingSchedule,
 };
-use super::generic_status::GenericStatus;
-use crate::date_time::DateTime;
+use crate::v16::messages::datatypes::generic_status::GenericStatus;
+use crate::wire::date_time::DateTime;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

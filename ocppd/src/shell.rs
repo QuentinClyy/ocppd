@@ -1,8 +1,9 @@
 use futures_util::{SinkExt, StreamExt};
-use ocppd_core::event::{Event, Input, Output};
-use ocppd_core::frame;
-use ocppd_core::intent::Intent;
+use ocppd_core::api::event::Event;
+use ocppd_core::api::intent::Intent;
+use ocppd_core::api::io::{Input, Output};
 use ocppd_core::v16::charge_point::ChargePoint;
+use ocppd_core::wire::frame;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tokio::net::TcpStream;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};

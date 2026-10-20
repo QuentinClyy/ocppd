@@ -1,0 +1,92 @@
+use super::ChargePoint;
+use super::configuration::HEARTBEAT_INTERVAL;
+use crate::api::event::EventKind;
+use crate::api::io::Output;
+use crate::v16::messages::core::boot::{
+    BootNotificationResponse, HeartbeatRequest, RegistrationStatus,
+};
+use serde_json::{Value, json};
+
+const RETRY_MS: u64 = 60_000;
+
+pub enum Registration {
+    Offline,
+    Booting,
+    Waiting { retry_at: u64 },
+    Accepted { last_heartbeat: u64 },
+}
+
+impl ChargePoint {
+    pub(super) fn is_accepted(&self) -> bool {
+        matches!(self.registration, Registration::Accepted { .. })
+    }
+
+    pub(super) fn boot(&mut self) {
+        self.registration = Registration::Booting;
+        self.outbox
+            .push("BootNotification", 0, json!(self.boot_request));
+    }
+
+    pub(super) fn boot_failed(&mut self, now: u64) {
+        self.registration = Registration::Waiting {
+            retry_at: now + RETRY_MS,
+        };
+    }
+
+    pub(super) fn booted(&mut self, out: &mut Vec<Output>, now: u64, payload: Value) {
+        let Some(response) =
+            self.decode::<BootNotificationResponse>(out, now, "BootNotification", payload)
+        else {
+            return self.boot_failed(now);
+        };
+        let status = response.status;
+        self.emit(out, now, EventKind::BootStatus { status });
+        let interval_ms = match response.interval {
+            0 => RETRY_MS,
+            seconds => u64::from(seconds) * 1000,
+        };
+        if status != RegistrationStatus::Accepted {
+            self.registration = Registration::Waiting {
+                retry_at: now + interval_ms,
+            };
+            return;
+        }
+        self.registration = Registration::Accepted {
+            last_heartbeat: now,
+        };
+        let seconds = (interval_ms / 1000) as u32;
+        self.configuration.set_seconds(HEARTBEAT_INTERVAL, seconds);
+        self.reported.fill(None);
+    }
+
+    pub(super) fn registration_tick(&mut self, now: u64) {
+        let heartbeat_interval = self.configuration.interval_ms(HEARTBEAT_INTERVAL);
+        match (&self.registration, heartbeat_interval) {
+            (Registration::Waiting { retry_at }, _) if now >= *retry_at => self.boot(),
+            (Registration::Accepted { last_heartbeat }, Some(interval))
+                if now >= last_heartbeat + interval =>
+            {
+                self.outbox.push("Heartbeat", 0, json!(HeartbeatRequest {}));
+                self.registration = Registration::Accepted {
+                    last_heartbeat: now,
+                };
+            }
+            _ => {}
+        }
+    }
+
+    pub(super) fn registration_deadline(&self) -> Option<u64> {
+        match self.registration {
+            Registration::Waiting { retry_at } => Some(retry_at),
+            Registration::Accepted { last_heartbeat } => self
+                .configuration
+                .interval_ms(HEARTBEAT_INTERVAL)
+                .map(|interval| last_heartbeat + interval),
+            Registration::Offline | Registration::Booting => None,
+        }
+    }
+}
+
+#[cfg(test)]
+#[path = "registration.test.rs"]
+mod tests;

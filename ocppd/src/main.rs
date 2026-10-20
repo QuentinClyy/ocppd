@@ -1,8 +1,9 @@
 mod shell;
 
-use ocppd_core::event::Event;
-use ocppd_core::intent::Intent;
-use ocppd_core::station::{Connector, Station};
+use ocppd_core::api::event::Event;
+use ocppd_core::api::intent::Intent;
+use ocppd_core::station::Station;
+use ocppd_core::station::connector::Connector;
 use ocppd_core::v16::charge_point::ChargePoint;
 use serde::Deserialize;
 use serde_json::Value;
@@ -69,6 +70,9 @@ async fn read_commands(csms: &str, events: UnboundedSender<Event>) {
                 return;
             }
         };
+        if line.trim().is_empty() {
+            continue;
+        }
         match parse(&line) {
             Ok(Command::Spawn(command)) => spawn(csms, &command, &events, &mut stations),
             Ok(Command::Routed(command)) => route(command, &stations),

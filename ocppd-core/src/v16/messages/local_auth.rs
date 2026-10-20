@@ -1,4 +1,4 @@
-use super::id_tag::{IdTagInfo, IdToken};
+use crate::v16::messages::datatypes::id_tag::{IdTagInfo, IdToken};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
