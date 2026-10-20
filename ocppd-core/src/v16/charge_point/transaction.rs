@@ -42,6 +42,7 @@ impl ChargePoint {
                 if let Some(response) =
                     self.decode::<AuthorizeResponse>(out, now, "Authorize", payload)
                 {
+                    self.remember(&id_tag, &response.id_tag_info);
                     self.authorized(out, now, index, id_tag, response.id_tag_info);
                 } else {
                     self.transactions[index] = Transaction::Idle;
@@ -177,6 +178,7 @@ impl ChargePoint {
         id_tag: IdToken,
         response: StartTransactionResponse,
     ) {
+        self.remember(&id_tag, &response.id_tag_info);
         let connector = index as u32 + 1;
         let transaction_id = response.transaction_id;
         let kind = EventKind::TransactionStarted {

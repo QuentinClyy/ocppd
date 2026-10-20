@@ -52,6 +52,7 @@ impl ChargePoint {
         else {
             return;
         };
+        self.remember(&held.id_tag, &response.id_tag_info);
         let status = response.id_tag_info.status;
         self.held_decided(out, now, held.id_tag, held.connector, status);
     }

@@ -6,6 +6,7 @@ use crate::v16::messages::datatypes::meter_value::Measurand;
 use crate::wire::ci_string::{CiString, TooLong};
 use serde_json::Value;
 
+pub const AUTHORIZATION_CACHE_ENABLED: &str = "AuthorizationCacheEnabled";
 pub const CONNECTION_TIME_OUT: &str = "ConnectionTimeOut";
 pub const HEARTBEAT_INTERVAL: &str = "HeartbeatInterval";
 pub const LOCAL_AUTH_LIST_ENABLED: &str = "LocalAuthListEnabled";
@@ -52,6 +53,7 @@ enum Access {
 impl Configuration {
     pub fn new(connectors: usize) -> Result<Self, TooLong> {
         let table = [
+            (AUTHORIZATION_CACHE_ENABLED, "true", Access::Boolean),
             (
                 "AuthorizeRemoteTxRequests",
                 "false",

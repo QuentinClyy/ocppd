@@ -1,5 +1,6 @@
 use super::ChargePoint;
 use super::configuration::{LOCAL_AUTH_LIST_MAX_LENGTH, SEND_LOCAL_LIST_MAX_LENGTH};
+use super::id_tags::IdTags;
 use super::local_list::Limits;
 use crate::api::event::EventKind;
 use crate::api::io::Output;
@@ -85,8 +86,11 @@ impl ChargePoint {
                     status: self.change_availability(out, now, request),
                 }
             }),
-            "ClearCache" => answer(payload, |_: ClearCacheRequest| ClearCacheResponse {
-                status: GenericStatus::Accepted,
+            "ClearCache" => answer(payload, |_: ClearCacheRequest| {
+                self.cache = IdTags::default();
+                ClearCacheResponse {
+                    status: GenericStatus::Accepted,
+                }
             }),
             "TriggerMessage" => answer(payload, |request: TriggerMessageRequest| {
                 TriggerMessageResponse {

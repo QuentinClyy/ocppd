@@ -1,12 +1,11 @@
-use super::ChargePoint;
-use super::configuration::{LOCAL_AUTH_LIST_ENABLED, LOCAL_AUTHORIZE_OFFLINE, LOCAL_PRE_AUTHORIZE};
-use crate::v16::messages::datatypes::id_tag::{AuthorizationStatus, IdTagInfo, IdToken};
+use super::id_tags::IdTags;
+use crate::v16::messages::datatypes::id_tag::{IdTagInfo, IdToken};
 use crate::v16::messages::local_auth::{SendLocalListRequest, UpdateStatus, UpdateType};
 
 #[derive(Default)]
 pub struct LocalList {
     version: i32,
-    entries: Vec<(IdToken, IdTagInfo)>,
+    tags: IdTags,
 }
 
 pub struct Limits {
@@ -20,14 +19,11 @@ impl LocalList {
     }
 
     pub fn find(&self, id_tag: &IdToken) -> Option<&IdTagInfo> {
-        self.entries
-            .iter()
-            .find(|(listed, _)| listed.matches(id_tag))
-            .map(|(_, info)| info)
+        self.tags.find(id_tag)
     }
 
     pub fn len(&self) -> usize {
-        self.entries.len()
+        self.tags.len()
     }
 
     pub fn update(&mut self, request: &SendLocalListRequest, limits: Limits) -> UpdateStatus {
@@ -42,37 +38,19 @@ impl LocalList {
         if request.list_version < 1 || changes.len() > limits.per_update {
             return UpdateStatus::Failed;
         }
-        let mut entries = match request.update_type {
-            UpdateType::Full => Vec::new(),
-            UpdateType::Differential => self.entries.clone(),
+        let mut tags = match request.update_type {
+            UpdateType::Full => IdTags::default(),
+            UpdateType::Differential => self.tags.clone(),
         };
         for change in changes {
-            entries.retain(|(id_tag, _)| !id_tag.matches(&change.id_tag));
-            if let Some(info) = &change.id_tag_info {
-                entries.push((change.id_tag.clone(), info.clone()));
-            }
+            tags.set(&change.id_tag, change.id_tag_info.as_ref());
         }
-        if entries.len() > limits.total {
+        if tags.len() > limits.total {
             return UpdateStatus::Failed;
         }
-        self.entries = entries;
+        self.tags = tags;
         self.version = request.list_version;
         UpdateStatus::Accepted
-    }
-}
-
-impl ChargePoint {
-    pub(super) fn locally_authorized(&self, id_tag: &IdToken, now: u64) -> Option<IdTagInfo> {
-        let when = match self.is_connected() {
-            true => LOCAL_PRE_AUTHORIZE,
-            false => LOCAL_AUTHORIZE_OFFLINE,
-        };
-        let enabled =
-            self.configuration.flag(LOCAL_AUTH_LIST_ENABLED) && self.configuration.flag(when);
-        let info = self.local_list.find(id_tag).filter(|_| enabled)?;
-        let valid = info.status == AuthorizationStatus::Accepted
-            && info.expiry_date.is_none_or(|expiry| expiry.unix_ms > now);
-        valid.then(|| info.clone())
     }
 }
 

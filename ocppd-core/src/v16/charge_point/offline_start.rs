@@ -23,6 +23,7 @@ impl ChargePoint {
         else {
             return;
         };
+        self.remember(&id_tag, &response.id_tag_info);
         let transaction_id = response.transaction_id;
         self.fill_transaction_id(index, transaction_id);
         self.transactions[index] = Transaction::Active {

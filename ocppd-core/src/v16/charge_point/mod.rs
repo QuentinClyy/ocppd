@@ -2,6 +2,8 @@ mod configuration;
 mod csms_call;
 mod driver;
 mod held;
+mod id_tags;
+mod local_authorization;
 mod local_list;
 mod meter_values;
 mod offline_start;
@@ -26,6 +28,7 @@ use crate::wire::frame::{self, Frame};
 use crate::wire::outbox::{Call, Outbox, Sent};
 use configuration::Configuration;
 use held::Held;
+use id_tags::IdTags;
 use local_list::LocalList;
 use registration::Registration;
 use reservation::Reservation;
@@ -45,6 +48,7 @@ pub struct ChargePoint {
     reservations: Vec<Option<Reservation>>,
     configuration: Configuration,
     local_list: LocalList,
+    cache: IdTags,
     boot_request: BootNotificationRequest,
     registration: Registration,
 }
@@ -75,6 +79,7 @@ impl ChargePoint {
             reservations: vec![None; connectors],
             configuration: Configuration::new(connectors)?,
             local_list: LocalList::default(),
+            cache: IdTags::default(),
             boot_request,
             registration: Registration::Offline,
         })
