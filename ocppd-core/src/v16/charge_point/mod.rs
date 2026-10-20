@@ -8,6 +8,7 @@ mod remote_control;
 mod reporting;
 mod retry;
 mod transaction;
+mod trigger;
 
 use crate::api::event::{Event, EventKind};
 use crate::api::intent::Intent;

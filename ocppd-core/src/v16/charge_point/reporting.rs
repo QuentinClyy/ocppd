@@ -6,7 +6,7 @@ use crate::api::event::EventKind;
 use crate::api::io::Output;
 use crate::v16::messages::core::meter_values::MeterValuesRequest;
 use crate::v16::messages::core::status::ChargePointStatus;
-use crate::v16::messages::datatypes::meter_value::Measurand;
+use crate::v16::messages::datatypes::meter_value::{Measurand, ReadingContext};
 use serde_json::json;
 
 impl ChargePoint {
@@ -42,22 +42,9 @@ impl ChargePoint {
         else {
             return;
         };
-        let connector = &self.station.connectors[index];
-        let sample = connector.sample(at);
-        if !measurands.is_empty() {
-            let reading = Reading {
-                sample,
-                offered_w: connector.offered_w().unwrap_or(self.station.limit_w()),
-                interval_wh: sample.register_wh - last_register_wh,
-            };
-            let request = MeterValuesRequest {
-                connector_id: index as u32 + 1,
-                transaction_id: Some(transaction_id),
-                meter_value: vec![meter_value(at, &reading, &self.station, measurands)],
-            };
-            self.outbox
-                .push("MeterValues", index as u32 + 1, json!(request));
-        }
+        let reading = self.reading(index, at, last_register_wh, ReadingContext::SamplePeriodic);
+        let sample = reading.sample;
+        self.push_meter_values(index, at, Some(transaction_id), &reading, measurands);
         let kind = EventKind::MeterSample {
             connector: index as u32 + 1,
             register_wh: sample.register_wh,
@@ -71,6 +58,43 @@ impl ChargePoint {
             last_sample: at,
             last_register_wh: sample.register_wh,
         };
+    }
+
+    pub(super) fn reading(
+        &self,
+        index: usize,
+        at: u64,
+        last_register_wh: f64,
+        context: ReadingContext,
+    ) -> Reading {
+        let connector = &self.station.connectors[index];
+        let sample = connector.sample(at);
+        Reading {
+            sample,
+            offered_w: connector.offered_w().unwrap_or(self.station.limit_w()),
+            interval_wh: sample.register_wh - last_register_wh,
+            context,
+        }
+    }
+
+    pub(super) fn push_meter_values(
+        &mut self,
+        index: usize,
+        at: u64,
+        transaction_id: Option<i32>,
+        reading: &Reading,
+        measurands: &[Measurand],
+    ) {
+        if measurands.is_empty() {
+            return;
+        }
+        let request = MeterValuesRequest {
+            connector_id: index as u32 + 1,
+            transaction_id,
+            meter_value: vec![meter_value(at, reading, &self.station, measurands)],
+        };
+        self.outbox
+            .push("MeterValues", index as u32 + 1, json!(request));
     }
 
     pub(super) fn transaction_deadline(&self) -> Option<u64> {

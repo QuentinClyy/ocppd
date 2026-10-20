@@ -84,7 +84,11 @@ impl Configuration {
             ),
             ("StopTxnAlignedData", "", Access::CurrentValueOnly),
             ("StopTxnSampledData", "", Access::CurrentValueOnly),
-            ("SupportedFeatureProfiles", "Core", Access::ReadOnly),
+            (
+                "SupportedFeatureProfiles",
+                "Core,RemoteTrigger",
+                Access::ReadOnly,
+            ),
             (TRANSACTION_MESSAGE_ATTEMPTS, "3", Access::Integer),
             (TRANSACTION_MESSAGE_RETRY_INTERVAL, "60", Access::Integer),
             (

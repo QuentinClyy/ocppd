@@ -15,6 +15,7 @@ use crate::v16::messages::core::remote_control::{
     UnlockConnectorResponse,
 };
 use crate::v16::messages::datatypes::generic_status::GenericStatus;
+use crate::v16::messages::remote_trigger::{TriggerMessageRequest, TriggerMessageResponse};
 use crate::wire::frame::Frame;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
@@ -77,6 +78,11 @@ impl ChargePoint {
             }),
             "ClearCache" => answer(payload, |_: ClearCacheRequest| ClearCacheResponse {
                 status: GenericStatus::Accepted,
+            }),
+            "TriggerMessage" => answer(payload, |request: TriggerMessageRequest| {
+                TriggerMessageResponse {
+                    status: self.trigger(now, request),
+                }
             }),
             "DataTransfer" => answer(payload, |_: DataTransferRequest| DataTransferResponse {
                 status: DataTransferStatus::UnknownVendorId,

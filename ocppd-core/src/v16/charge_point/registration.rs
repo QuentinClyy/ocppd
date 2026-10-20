@@ -98,12 +98,18 @@ impl ChargePoint {
             (Registration::Accepted { last_heartbeat }, Some(interval))
                 if now >= last_heartbeat + interval =>
             {
-                self.outbox.push("Heartbeat", 0, json!(HeartbeatRequest {}));
-                self.registration = Registration::Accepted {
-                    last_heartbeat: now,
-                };
+                self.heartbeat(now)
             }
             _ => {}
+        }
+    }
+
+    pub(super) fn heartbeat(&mut self, now: u64) {
+        self.outbox.push("Heartbeat", 0, json!(HeartbeatRequest {}));
+        if self.is_accepted() {
+            self.registration = Registration::Accepted {
+                last_heartbeat: now,
+            };
         }
     }
 
