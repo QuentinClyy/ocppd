@@ -1,7 +1,8 @@
 use futures_util::{SinkExt, StreamExt};
 use ocppd_core::event::{Event, Input, Output};
 use ocppd_core::frame;
-use ocppd_core::v16::station::{Config, Station};
+use ocppd_core::station::Station;
+use ocppd_core::v16::charge_point::ChargePoint;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tokio::net::TcpStream;
 use tokio::sync::mpsc::UnboundedSender;
@@ -15,15 +16,15 @@ const RECONNECT_DELAY: Duration = Duration::from_secs(5);
 
 type Socket = WebSocketStream<MaybeTlsStream<TcpStream>>;
 
-pub async fn run(config: Config, url: String, events: UnboundedSender<Event>) {
-    let id = config.id.clone();
-    let mut station = Station::new(config);
+pub async fn run(station: Station, url: String, events: UnboundedSender<Event>) {
+    let id = station.id.clone();
+    let mut charge_point = ChargePoint::new(station);
     loop {
         match connect(&url).await {
             Ok(socket) => {
-                let reason = serve(&id, &mut station, socket, &events).await;
+                let reason = serve(&id, &mut charge_point, socket, &events).await;
                 eprintln!("{id}: disconnected: {reason}");
-                for output in station.handle(now_ms(), Input::Disconnected) {
+                for output in charge_point.handle(now_ms(), Input::Disconnected) {
                     if let Output::Emit(event) = output {
                         emit(&events, event);
                     }
@@ -47,13 +48,13 @@ async fn connect(url: &str) -> Result<Socket, tungstenite::Error> {
 
 async fn serve(
     id: &str,
-    station: &mut Station,
+    charge_point: &mut ChargePoint,
     mut socket: Socket,
     events: &UnboundedSender<Event>,
 ) -> String {
     let mut input = Input::Connected;
     loop {
-        for output in station.handle(now_ms(), input) {
+        for output in charge_point.handle(now_ms(), input) {
             match output {
                 Output::Send(frame) => {
                     let text = frame::serialize(&frame);
@@ -64,7 +65,7 @@ async fn serve(
                 Output::Emit(event) => emit(events, event),
             }
         }
-        input = match next_input(id, &mut socket, station.next_deadline()).await {
+        input = match next_input(id, &mut socket, charge_point.next_deadline()).await {
             Ok(input) => input,
             Err(reason) => return reason,
         };

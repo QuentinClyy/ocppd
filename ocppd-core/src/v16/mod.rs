@@ -1,2 +1,2 @@
-pub mod station;
+pub mod charge_point;
 pub mod types;

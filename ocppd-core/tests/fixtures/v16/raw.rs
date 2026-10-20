@@ -1,15 +1,22 @@
-use crate::event::{Event, EventKind, Input, Output};
+use crate::event::Event;
+use crate::event::EventKind;
+use crate::event::{Input, Output};
 use crate::frame::Frame;
-use crate::v16::station::{Config, Station};
+use crate::station::Station;
+use crate::v16::charge_point::ChargePoint;
 use serde_json::{Value, json};
 
-pub fn charge_point() -> Station {
-    Station::new(Config {
+pub fn station() -> Station {
+    Station {
         id: "CP1".into(),
         vendor: "ocppd".into(),
         model: "sim".into(),
         connectors: 1,
-    })
+    }
+}
+
+pub fn charge_point() -> ChargePoint {
+    ChargePoint::new(station())
 }
 
 pub fn calls(outputs: &[Output]) -> Vec<(String, String, Value)> {
@@ -48,6 +55,16 @@ pub fn result(id: &str, payload: Value) -> Input {
 
 pub fn boot_response(status: &str, interval: u64) -> Value {
     json!({"status": status, "currentTime": "2026-10-19T00:00:00Z", "interval": interval})
+}
+
+pub fn accepted_charge_point(now: u64, interval: u64) -> ChargePoint {
+    let mut charge_point = charge_point();
+    let (id, _, _) = only_call(&charge_point.handle(0, Input::Connected));
+    let mut outputs = charge_point.handle(now, result(&id, boot_response("Accepted", interval)));
+    while let Some((id, _, _)) = calls(&outputs).pop() {
+        outputs = charge_point.handle(now, result(&id, json!({})));
+    }
+    charge_point
 }
 
 pub fn v16_kind(event: Event) -> EventKind {

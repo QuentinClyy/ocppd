@@ -5,16 +5,10 @@ use super::types::{
 use crate::event::{Event, EventKind, Input, Output};
 use crate::frame::{self, Frame};
 use crate::outbox::Outbox;
+use crate::station::Station;
 use serde_json::{Value, json};
 
 const RETRY_MS: u64 = 60_000;
-
-pub struct Config {
-    pub id: String,
-    pub vendor: String,
-    pub model: String,
-    pub connectors: u32,
-}
 
 enum State {
     Offline,
@@ -28,16 +22,16 @@ enum State {
     },
 }
 
-pub struct Station {
-    config: Config,
+pub struct ChargePoint {
+    station: Station,
     state: State,
     outbox: Outbox,
 }
 
-impl Station {
-    pub fn new(config: Config) -> Self {
-        Station {
-            config,
+impl ChargePoint {
+    pub fn new(station: Station) -> Self {
+        ChargePoint {
+            station,
             state: State::Offline,
             outbox: Outbox::new(),
         }
@@ -79,8 +73,8 @@ impl Station {
     fn boot(&mut self) {
         self.state = State::Booting;
         let request = BootNotificationRequest {
-            charge_point_vendor: self.config.vendor.clone(),
-            charge_point_model: self.config.model.clone(),
+            charge_point_vendor: self.station.vendor.clone(),
+            charge_point_model: self.station.model.clone(),
         };
         self.outbox.push("BootNotification", json!(request));
     }
@@ -196,7 +190,7 @@ impl Station {
                     next_heartbeat: now + interval_ms,
                     interval_ms,
                 };
-                for connector_id in 0..=self.config.connectors {
+                for connector_id in 0..=self.station.connectors {
                     let request = StatusNotificationRequest {
                         connector_id,
                         error_code: ChargePointErrorCode::NoError,
@@ -215,7 +209,7 @@ impl Station {
 
     fn emit(&self, out: &mut Vec<Output>, now: u64, kind: EventKind) {
         out.push(Output::Emit(Event {
-            station: self.config.id.clone(),
+            station: self.station.id.clone(),
             at: now,
             kind,
         }));
@@ -223,5 +217,5 @@ impl Station {
 }
 
 #[cfg(test)]
-#[path = "station.test.rs"]
+#[path = "charge_point.test.rs"]
 mod tests;

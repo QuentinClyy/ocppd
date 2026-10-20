@@ -1,7 +1,7 @@
 mod shell;
 
 use ocppd_core::event::Event;
-use ocppd_core::v16::station::Config;
+use ocppd_core::station::Station;
 use serde::Deserialize;
 use std::process::ExitCode;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
@@ -61,13 +61,13 @@ fn spawn(csms: &str, prefix: &str, count: u32, events: &UnboundedSender<Event>) 
     for n in 1..=count {
         let id = format!("{prefix}{n}");
         let url = format!("{csms}/{id}");
-        let config = Config {
+        let station = Station {
             id,
             vendor: "ocppd".into(),
             model: "sim".into(),
             connectors: 1,
         };
-        tokio::spawn(shell::run(config, url, events.clone()));
+        tokio::spawn(shell::run(station, url, events.clone()));
     }
 }
 
