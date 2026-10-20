@@ -52,6 +52,29 @@ impl ChargingProfiles {
         before - self.0.len()
     }
 
+    pub fn stacked(
+        &self,
+        connector: u32,
+        purpose: ChargingProfilePurpose,
+    ) -> Vec<&ChargingProfile> {
+        let mut profiles: Vec<_> = self
+            .0
+            .iter()
+            .filter(|installed| installed.connector == connector)
+            .map(|installed| &installed.profile)
+            .filter(|profile| profile.charging_profile_purpose == purpose)
+            .collect();
+        profiles.sort_by_key(|profile| std::cmp::Reverse(profile.stack_level));
+        profiles
+    }
+
+    pub fn for_connector(&self, connector: u32) -> impl Iterator<Item = &ChargingProfile> {
+        self.0
+            .iter()
+            .filter(move |installed| installed.connector == 0 || installed.connector == connector)
+            .map(|installed| &installed.profile)
+    }
+
     pub fn end_transaction(&mut self, connector: u32) {
         self.0.retain(|installed| {
             installed.connector != connector

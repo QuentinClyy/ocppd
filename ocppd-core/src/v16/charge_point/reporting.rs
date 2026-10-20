@@ -35,10 +35,9 @@ impl ChargePoint {
     ) {
         let Transaction::Active {
             transaction_id,
-            id_tag,
             last_register_wh,
             ..
-        } = self.transactions[index].clone()
+        } = self.transactions[index]
         else {
             return;
         };
@@ -52,12 +51,15 @@ impl ChargePoint {
             soc: sample.soc,
         };
         self.emit(out, at, kind);
-        self.transactions[index] = Transaction::Active {
-            transaction_id,
-            id_tag,
-            last_sample: at,
-            last_register_wh: sample.register_wh,
-        };
+        if let Transaction::Active {
+            last_sample,
+            last_register_wh,
+            ..
+        } = &mut self.transactions[index]
+        {
+            *last_sample = at;
+            *last_register_wh = sample.register_wh;
+        }
     }
 
     pub(super) fn reading(

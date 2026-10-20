@@ -22,6 +22,7 @@ pub enum Transaction {
     Active {
         transaction_id: Option<i32>,
         id_tag: IdToken,
+        start: u64,
         last_sample: u64,
         last_register_wh: f64,
     },
@@ -205,6 +206,7 @@ impl ChargePoint {
         self.transactions[index] = Transaction::Active {
             transaction_id,
             id_tag,
+            start: now,
             last_sample: now,
             last_register_wh: self.station.connectors[index].register_wh,
         };

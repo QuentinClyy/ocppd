@@ -17,8 +17,7 @@ impl ChargePoint {
         let Transaction::Active {
             transaction_id: None,
             id_tag,
-            last_sample,
-            last_register_wh,
+            ..
         } = self.transactions[index].clone()
         else {
             return;
@@ -26,12 +25,12 @@ impl ChargePoint {
         self.remember(&id_tag, &response.id_tag_info);
         let transaction_id = response.transaction_id;
         self.fill_transaction_id(index, transaction_id);
-        self.transactions[index] = Transaction::Active {
-            transaction_id: Some(transaction_id),
-            id_tag,
-            last_sample,
-            last_register_wh,
-        };
+        if let Transaction::Active {
+            transaction_id: id, ..
+        } = &mut self.transactions[index]
+        {
+            *id = Some(transaction_id);
+        }
         let kind = EventKind::TransactionStarted {
             connector: index as u32 + 1,
             transaction_id,

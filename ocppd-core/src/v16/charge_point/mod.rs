@@ -1,4 +1,5 @@
 mod charging_profiles;
+mod composite;
 mod configuration;
 mod csms_call;
 mod driver;
@@ -13,6 +14,7 @@ mod remote_control;
 mod reporting;
 mod reservation;
 mod retry;
+mod schedule;
 mod smart_charging;
 mod transaction;
 mod trigger;

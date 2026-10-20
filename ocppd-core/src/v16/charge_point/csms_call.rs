@@ -27,8 +27,8 @@ use crate::v16::messages::reservation::{
     CancelReservationRequest, CancelReservationResponse, ReserveNowRequest, ReserveNowResponse,
 };
 use crate::v16::messages::smart_charging::{
-    ClearChargingProfileRequest, ClearChargingProfileResponse, SetChargingProfileRequest,
-    SetChargingProfileResponse,
+    ClearChargingProfileRequest, ClearChargingProfileResponse, GetCompositeScheduleRequest,
+    SetChargingProfileRequest, SetChargingProfileResponse,
 };
 use crate::wire::frame::Frame;
 use serde::Serialize;
@@ -128,6 +128,9 @@ impl ChargePoint {
                 ClearChargingProfileResponse {
                     status: self.clear_charging_profile(out, now, request),
                 }
+            }),
+            "GetCompositeSchedule" => answer(payload, |request: GetCompositeScheduleRequest| {
+                self.composite_schedule(now, request)
             }),
             "DataTransfer" => answer(payload, |_: DataTransferRequest| DataTransferResponse {
                 status: DataTransferStatus::UnknownVendorId,
