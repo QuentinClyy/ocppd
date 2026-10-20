@@ -5,7 +5,7 @@ use super::configuration::{
 use super::transaction::Transaction;
 use crate::api::event::EventKind;
 use crate::api::io::Output;
-use crate::v16::messages::datatypes::charging_profile::ChargingProfilePurpose;
+use crate::v16::messages::datatypes::charging_profile::{ChargingProfile, ChargingProfilePurpose};
 use crate::v16::messages::smart_charging::{
     ChargingProfileStatus, ClearChargingProfileRequest, ClearChargingProfileStatus,
     SetChargingProfileRequest,
@@ -28,23 +28,73 @@ impl ChargePoint {
                 .index_of(connector)
                 .is_some_and(|index| self.runs_transaction(index, profile.transaction_id)),
         };
-        let limit = |key| self.configuration.number(key).unwrap_or(0);
-        let within_limits = profile.stack_level <= limit(CHARGE_PROFILE_MAX_STACK_LEVEL)
-            && profile.charging_schedule.charging_schedule_period.len()
-                <= limit(CHARGING_SCHEDULE_MAX_PERIODS) as usize;
-        if !(known && allowed && within_limits) {
+        if !(known && allowed && self.within_limits(&profile)) {
             return ChargingProfileStatus::Rejected;
         }
-        let max = limit(MAX_CHARGING_PROFILES_INSTALLED) as usize;
+        let max = self.limit(MAX_CHARGING_PROFILES_INSTALLED) as usize;
+        match self.install(out, now, connector, profile, max) {
+            true => ChargingProfileStatus::Accepted,
+            false => ChargingProfileStatus::Rejected,
+        }
+    }
+
+    pub(super) fn fits_remote_start(&self, profile: &ChargingProfile) -> bool {
+        profile.charging_profile_purpose == ChargingProfilePurpose::TxProfile
+            && self.within_limits(profile)
+    }
+
+    pub(super) fn attach_profile(&mut self, index: usize, profile: Option<ChargingProfile>) {
+        if let Transaction::Starting { profile: slot, .. } = &mut self.transactions[index] {
+            *slot = profile;
+        }
+    }
+
+    pub(super) fn install_transaction_profile(
+        &mut self,
+        out: &mut Vec<Output>,
+        now: u64,
+        index: usize,
+        transaction_id: i32,
+        mut profile: ChargingProfile,
+    ) {
+        profile.transaction_id = Some(transaction_id);
+        let accepted_with_the_remote_start = usize::MAX;
+        self.install(
+            out,
+            now,
+            index as u32 + 1,
+            profile,
+            accepted_with_the_remote_start,
+        );
+    }
+
+    fn install(
+        &mut self,
+        out: &mut Vec<Output>,
+        now: u64,
+        connector: u32,
+        profile: ChargingProfile,
+        max: usize,
+    ) -> bool {
         let kind = EventKind::ChargingProfileSet {
             connector,
             charging_profile_id: profile.charging_profile_id,
         };
         if !self.charging_profiles.install(connector, profile, max) {
-            return ChargingProfileStatus::Rejected;
+            return false;
         }
         self.emit(out, now, kind);
-        ChargingProfileStatus::Accepted
+        true
+    }
+
+    fn within_limits(&self, profile: &ChargingProfile) -> bool {
+        profile.stack_level <= self.limit(CHARGE_PROFILE_MAX_STACK_LEVEL)
+            && profile.charging_schedule.charging_schedule_period.len()
+                <= self.limit(CHARGING_SCHEDULE_MAX_PERIODS) as usize
+    }
+
+    fn limit(&self, key: &str) -> u32 {
+        self.configuration.number(key).unwrap_or(0)
     }
 
     pub(super) fn clear_charging_profile(
@@ -70,3 +120,7 @@ impl ChargePoint {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "smart_charging.test.rs"]
+mod tests;

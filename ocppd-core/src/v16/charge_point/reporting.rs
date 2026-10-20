@@ -171,6 +171,9 @@ impl ChargePoint {
             Transaction::Active { .. } if connector.sample(now).power_w > 0.0 => {
                 ChargePointStatus::Charging
             }
+            Transaction::Active { .. } if connector.offered_w() == Some(0.0) => {
+                ChargePointStatus::SuspendedEvse
+            }
             Transaction::Active { .. } => ChargePointStatus::SuspendedEv,
             Transaction::Finished => ChargePointStatus::Finishing,
         }

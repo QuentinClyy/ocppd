@@ -1,6 +1,8 @@
 use super::ChargePoint;
 use super::schedule;
 use super::transaction::Transaction;
+use crate::api::event::EventKind;
+use crate::api::io::Output;
 use crate::v16::messages::datatypes::charging_profile::{
     ChargingProfilePurpose, ChargingRateUnit, ChargingSchedule, ChargingSchedulePeriod,
 };
@@ -32,6 +34,29 @@ impl ChargePoint {
             }
         }
         limit
+    }
+
+    pub(super) fn apply_limits(&mut self, out: &mut Vec<Output>, now: u64) {
+        let mut next_change: Option<u64> = None;
+        for index in 0..self.transactions.len() {
+            let connector = index as u32 + 1;
+            if self.transaction_start(connector).is_none() {
+                continue;
+            }
+            let limit_w = self.composite_limit_w(connector, now);
+            let charging = &mut self.station.connectors[index];
+            if charging
+                .offered_w()
+                .is_some_and(|offered| offered != limit_w)
+            {
+                charging.limit_to(now, limit_w);
+                let kind = EventKind::ChargingLimitChanged { connector, limit_w };
+                self.emit(out, now, kind);
+            }
+            let change = self.next_limit_change(connector, now);
+            next_change = [next_change, change].into_iter().flatten().min();
+        }
+        self.limit_change_at = next_change;
     }
 
     pub(super) fn next_limit_change(&self, connector: u32, at: u64) -> Option<u64> {

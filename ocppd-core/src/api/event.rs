@@ -99,6 +99,10 @@ pub enum EventKind {
         connector: u32,
         charging_profile_id: i32,
     },
+    ChargingLimitChanged {
+        connector: u32,
+        limit_w: f64,
+    },
     ChargingProfilesCleared {
         count: usize,
     },

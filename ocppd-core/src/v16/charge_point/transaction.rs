@@ -5,6 +5,7 @@ use crate::v16::messages::core::transaction::{
     AuthorizeResponse, Reason, StartTransactionRequest, StartTransactionResponse,
     StopTransactionRequest,
 };
+use crate::v16::messages::datatypes::charging_profile::ChargingProfile;
 use crate::v16::messages::datatypes::id_tag::{AuthorizationStatus, IdTagInfo, IdToken};
 use crate::wire::date_time::DateTime;
 use crate::wire::outbox::Call;
@@ -18,6 +19,7 @@ pub enum Transaction {
     },
     Starting {
         id_tag: IdToken,
+        profile: Option<ChargingProfile>,
     },
     Active {
         transaction_id: Option<i32>,
@@ -49,10 +51,19 @@ impl ChargePoint {
                     self.transactions[index] = Transaction::Idle;
                 }
             }
-            ("StartTransaction", Transaction::Starting { id_tag }) => {
+            ("StartTransaction", Transaction::Starting { id_tag, profile }) => {
                 if let Some(response) =
                     self.decode::<StartTransactionResponse>(out, now, "StartTransaction", payload)
                 {
+                    if let Some(profile) = profile {
+                        self.install_transaction_profile(
+                            out,
+                            now,
+                            index,
+                            response.transaction_id,
+                            profile,
+                        );
+                    }
                     self.started(out, now, index, id_tag, response);
                 } else {
                     self.transactions[index] = Transaction::Idle;
@@ -166,7 +177,12 @@ impl ChargePoint {
         self.outbox
             .push("StartTransaction", connector, json!(request));
         match self.is_connected() {
-            true => self.transactions[index] = Transaction::Starting { id_tag },
+            true => {
+                self.transactions[index] = Transaction::Starting {
+                    id_tag,
+                    profile: None,
+                }
+            }
             false => self.begin_charging(now, index, None, id_tag),
         }
     }
@@ -210,7 +226,7 @@ impl ChargePoint {
             last_sample: now,
             last_register_wh: self.station.connectors[index].register_wh,
         };
-        let limit_w = self.station.limit_w();
+        let limit_w = self.composite_limit_w(index as u32 + 1, now);
         self.station.connectors[index].start_charging(now, limit_w);
     }
 

@@ -39,6 +39,14 @@ impl Connector {
         }
     }
 
+    pub fn limit_to(&mut self, now: u64, limit_w: f64) {
+        if let Some(plugged) = self.plugged.as_mut()
+            && let Some(charging) = plugged.charging.as_mut()
+        {
+            *charging = charge::reanchor(charging, &plugged.ev, now, limit_w);
+        }
+    }
+
     pub fn stop_charging(&mut self, now: u64) {
         let at_now = self.sample(now);
         if let Some(plugged) = self.plugged.as_mut() {

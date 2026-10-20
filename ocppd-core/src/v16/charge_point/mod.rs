@@ -55,6 +55,7 @@ pub struct ChargePoint {
     local_list: LocalList,
     cache: IdTags,
     charging_profiles: ChargingProfiles,
+    limit_change_at: Option<u64>,
     boot_request: BootNotificationRequest,
     registration: Registration,
 }
@@ -87,6 +88,7 @@ impl ChargePoint {
             local_list: LocalList::default(),
             cache: IdTags::default(),
             charging_profiles: ChargingProfiles::default(),
+            limit_change_at: None,
             boot_request,
             registration: Registration::Offline,
         })
@@ -103,6 +105,7 @@ impl ChargePoint {
             self.transaction_deadline(),
             self.held_deadline(),
             self.reservation_deadline(),
+            self.limit_change_at,
         ]
         .into_iter()
         .flatten()
@@ -126,6 +129,7 @@ impl ChargePoint {
             Input::Frame(text) => self.receive(&mut out, now, &text),
             Input::Intent(intent) => self.intent(&mut out, now, intent),
         }
+        self.apply_limits(&mut out, now);
         if self.is_accepted() {
             self.report_statuses(&mut out, now);
         }

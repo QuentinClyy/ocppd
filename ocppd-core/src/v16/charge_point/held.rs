@@ -4,6 +4,7 @@ use super::transaction::Transaction;
 use crate::api::event::EventKind;
 use crate::api::io::Output;
 use crate::v16::messages::core::transaction::{AuthorizeRequest, AuthorizeResponse};
+use crate::v16::messages::datatypes::charging_profile::ChargingProfile;
 use crate::v16::messages::datatypes::id_tag::{AuthorizationStatus, IdToken};
 use serde_json::{Value, json};
 
@@ -11,6 +12,7 @@ pub struct Held {
     id_tag: IdToken,
     connector: Option<usize>,
     expires: Option<u64>,
+    profile: Option<ChargingProfile>,
 }
 
 impl ChargePoint {
@@ -33,14 +35,22 @@ impl ChargePoint {
             id_tag,
             connector,
             expires: None,
+            profile: None,
         });
     }
 
-    pub(super) fn hold_authorized(&mut self, now: u64, id_tag: IdToken, connector: Option<usize>) {
+    pub(super) fn hold_authorized(
+        &mut self,
+        now: u64,
+        id_tag: IdToken,
+        connector: Option<usize>,
+        profile: Option<ChargingProfile>,
+    ) {
         self.held = Some(Held {
             id_tag,
             connector,
             expires: Some(now + self.connection_time_out()),
+            profile,
         });
     }
 
@@ -72,7 +82,7 @@ impl ChargePoint {
         };
         self.emit(out, now, kind);
         if status == AuthorizationStatus::Accepted {
-            self.hold_authorized(now, id_tag, connector);
+            self.hold_authorized(now, id_tag, connector, None);
             self.start_held(out, now);
         }
     }
@@ -102,6 +112,7 @@ impl ChargePoint {
         };
         if let Some(held) = self.held.take() {
             self.start_transaction(out, now, index, held.id_tag);
+            self.attach_profile(index, held.profile);
         }
     }
 

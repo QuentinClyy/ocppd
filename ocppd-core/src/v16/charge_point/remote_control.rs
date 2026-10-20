@@ -38,12 +38,20 @@ impl ChargePoint {
         let (Some(connector), None, None) = (target, &self.held, self.resetting) else {
             return GenericStatus::Rejected;
         };
+        if !request
+            .charging_profile
+            .as_ref()
+            .is_none_or(|profile| self.fits_remote_start(profile))
+        {
+            return GenericStatus::Rejected;
+        }
         let id_tag = request.id_tag.as_str().to_owned();
         match connector {
             Some(index) if plugged(index) => {
-                self.start_transaction(out, now, index, request.id_tag)
+                self.start_transaction(out, now, index, request.id_tag);
+                self.attach_profile(index, request.charging_profile);
             }
-            _ => self.hold_authorized(now, request.id_tag, connector),
+            _ => self.hold_authorized(now, request.id_tag, connector, request.charging_profile),
         }
         let kind = EventKind::RemoteStart {
             connector: connector.map(|index| index as u32 + 1),
