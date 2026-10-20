@@ -5,37 +5,33 @@ use crate::charge::Sample;
 use crate::date_time::DateTime;
 use crate::station::Station;
 
-pub fn meter_value(now: u64, sample: &Sample, station: &Station) -> MeterValue {
-    let current_a = sample.power_w / (station.voltage_v * f64::from(station.phases));
+pub fn meter_value(
+    now: u64,
+    sample: &Sample,
+    station: &Station,
+    measurands: &[Measurand],
+) -> MeterValue {
     MeterValue {
         timestamp: DateTime { unix_ms: now },
-        sampled_value: vec![
-            sampled(
-                format!("{:.0}", sample.register_wh),
-                Measurand::EnergyActiveImportRegister,
-                UnitOfMeasure::Wh,
-            ),
-            sampled(
-                format!("{:.0}", sample.power_w),
-                Measurand::PowerActiveImport,
-                UnitOfMeasure::W,
-            ),
-            sampled(
-                format!("{current_a:.1}"),
-                Measurand::CurrentImport,
-                UnitOfMeasure::A,
-            ),
-            sampled(
-                format!("{:.1}", station.voltage_v),
-                Measurand::Voltage,
-                UnitOfMeasure::V,
-            ),
-        ],
+        sampled_value: measurands
+            .iter()
+            .filter_map(|&measurand| sampled(measurand, sample, station))
+            .collect(),
     }
 }
 
-fn sampled(value: String, measurand: Measurand, unit: UnitOfMeasure) -> SampledValue {
-    SampledValue {
+fn sampled(measurand: Measurand, sample: &Sample, station: &Station) -> Option<SampledValue> {
+    let current_a = sample.power_w / (station.voltage_v * f64::from(station.phases));
+    let (value, unit) = match measurand {
+        Measurand::EnergyActiveImportRegister => {
+            (format!("{:.0}", sample.register_wh), UnitOfMeasure::Wh)
+        }
+        Measurand::PowerActiveImport => (format!("{:.0}", sample.power_w), UnitOfMeasure::W),
+        Measurand::CurrentImport => (format!("{current_a:.1}"), UnitOfMeasure::A),
+        Measurand::Voltage => (format!("{:.1}", station.voltage_v), UnitOfMeasure::V),
+        _ => return None,
+    };
+    Some(SampledValue {
         value,
         context: Some(ReadingContext::SamplePeriodic),
         format: None,
@@ -43,7 +39,7 @@ fn sampled(value: String, measurand: Measurand, unit: UnitOfMeasure) -> SampledV
         phase: None,
         location: Some(Location::Outlet),
         unit: Some(unit),
-    }
+    })
 }
 
 #[cfg(test)]

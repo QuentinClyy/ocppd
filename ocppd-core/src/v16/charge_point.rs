@@ -1,3 +1,4 @@
+use super::configuration::{Configuration, HEARTBEAT_INTERVAL};
 use super::messages::boot::{
     BootNotificationRequest, BootNotificationResponse, HeartbeatRequest, RegistrationStatus,
 };
@@ -16,13 +17,8 @@ const RETRY_MS: u64 = 60_000;
 enum State {
     Offline,
     Booting,
-    Waiting {
-        retry_at: u64,
-    },
-    Accepted {
-        next_heartbeat: u64,
-        interval_ms: u64,
-    },
+    Waiting { retry_at: u64 },
+    Accepted { last_heartbeat: u64 },
 }
 
 pub struct ChargePoint {
@@ -30,6 +26,7 @@ pub struct ChargePoint {
     pub(super) outbox: Outbox,
     pub(super) transactions: Vec<Transaction>,
     pub(super) reported: Vec<Option<ChargePointStatus>>,
+    pub(super) configuration: Configuration,
     boot_request: BootNotificationRequest,
     state: State,
 }
@@ -53,6 +50,7 @@ impl ChargePoint {
             outbox: Outbox::new(),
             transactions: vec![Transaction::Idle; connectors],
             reported: vec![None; connectors],
+            configuration: Configuration::new(connectors)?,
             boot_request,
             state: State::Offline,
         })
@@ -65,7 +63,10 @@ impl ChargePoint {
     pub fn next_deadline(&self) -> Option<u64> {
         let state_deadline = match self.state {
             State::Waiting { retry_at } => Some(retry_at),
-            State::Accepted { next_heartbeat, .. } => Some(next_heartbeat),
+            State::Accepted { last_heartbeat } => self
+                .configuration
+                .interval_ms(HEARTBEAT_INTERVAL)
+                .map(|interval| last_heartbeat + interval),
             State::Offline | State::Booting => None,
         };
         [
@@ -123,16 +124,15 @@ impl ChargePoint {
             self.emit(out, now, EventKind::CallTimedOut { action });
             self.call_failed(now, &call);
         }
-        match self.state {
-            State::Waiting { retry_at } if now >= retry_at => self.boot(),
-            State::Accepted {
-                next_heartbeat,
-                interval_ms,
-            } if now >= next_heartbeat => {
+        let heartbeat_interval = self.configuration.interval_ms(HEARTBEAT_INTERVAL);
+        match (&self.state, heartbeat_interval) {
+            (State::Waiting { retry_at }, _) if now >= *retry_at => self.boot(),
+            (State::Accepted { last_heartbeat }, Some(interval))
+                if now >= last_heartbeat + interval =>
+            {
                 self.outbox.push("Heartbeat", 0, json!(HeartbeatRequest {}));
                 self.state = State::Accepted {
-                    next_heartbeat: now + interval_ms,
-                    interval_ms,
+                    last_heartbeat: now,
                 };
             }
             _ => {}
@@ -152,12 +152,11 @@ impl ChargePoint {
             }
         };
         match frame {
-            Frame::Call { id, action, .. } => out.push(Output::Send(Frame::CallError {
+            Frame::Call {
                 id,
-                code: "NotImplemented".into(),
-                description: format!("{action} is not implemented"),
-                details: json!({}),
-            })),
+                action,
+                payload,
+            } => self.csms_call(out, now, id, &action, payload),
             Frame::CallResult { id, payload } => match self.outbox.resolve(&id) {
                 Some(call) => self.call_succeeded(out, now, &call, payload),
                 None => self.emit(out, now, EventKind::UnknownResponse { id }),
@@ -212,14 +211,15 @@ impl ChargePoint {
         };
         self.state = match status {
             RegistrationStatus::Accepted => State::Accepted {
-                next_heartbeat: now + interval_ms,
-                interval_ms,
+                last_heartbeat: now,
             },
             RegistrationStatus::Pending | RegistrationStatus::Rejected => State::Waiting {
                 retry_at: now + interval_ms,
             },
         };
         if status == RegistrationStatus::Accepted {
+            let seconds = (interval_ms / 1000) as u32;
+            self.configuration.set_seconds(HEARTBEAT_INTERVAL, seconds);
             self.status_notification(0, ChargePointStatus::Available);
             self.reported.fill(None);
         }

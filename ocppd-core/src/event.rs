@@ -82,4 +82,8 @@ pub enum EventKind {
         power_w: f64,
         soc: f64,
     },
+    ConfigurationChanged {
+        key: String,
+        value: String,
+    },
 }

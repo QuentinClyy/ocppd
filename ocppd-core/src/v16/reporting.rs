@@ -1,33 +1,40 @@
 use super::charge_point::ChargePoint;
+use super::configuration::METER_VALUE_SAMPLE_INTERVAL;
 use super::messages::meter_value::MeterValuesRequest;
 use super::messages::status::ChargePointStatus;
 use super::meter_values::meter_value;
-use super::transaction::{METER_VALUE_SAMPLE_INTERVAL_MS, Transaction};
+use super::transaction::Transaction;
 use crate::event::{EventKind, Output};
 use serde_json::json;
 
 impl ChargePoint {
     pub(super) fn sample_meters(&mut self, out: &mut Vec<Output>, now: u64) {
+        let Some(interval) = self.configuration.interval_ms(METER_VALUE_SAMPLE_INTERVAL) else {
+            return;
+        };
+        let measurands = self.configuration.measurands();
         for index in 0..self.transactions.len() {
             let Transaction::Active {
                 transaction_id,
                 id_tag,
-                next_sample,
+                last_sample,
             } = self.transactions[index].clone()
             else {
                 continue;
             };
-            if now < next_sample {
+            if now < last_sample + interval {
                 continue;
             }
             let sample = self.station.connectors[index].sample(now);
-            let request = MeterValuesRequest {
-                connector_id: index as u32 + 1,
-                transaction_id: Some(transaction_id),
-                meter_value: vec![meter_value(now, &sample, &self.station)],
-            };
-            self.outbox
-                .push("MeterValues", index as u32 + 1, json!(request));
+            if !measurands.is_empty() {
+                let request = MeterValuesRequest {
+                    connector_id: index as u32 + 1,
+                    transaction_id: Some(transaction_id),
+                    meter_value: vec![meter_value(now, &sample, &self.station, &measurands)],
+                };
+                self.outbox
+                    .push("MeterValues", index as u32 + 1, json!(request));
+            }
             let kind = EventKind::MeterSample {
                 connector: index as u32 + 1,
                 register_wh: sample.register_wh,
@@ -38,16 +45,19 @@ impl ChargePoint {
             self.transactions[index] = Transaction::Active {
                 transaction_id,
                 id_tag,
-                next_sample: now + METER_VALUE_SAMPLE_INTERVAL_MS,
+                last_sample: now,
             };
         }
     }
 
     pub(super) fn transaction_deadline(&self) -> Option<u64> {
+        let sample_interval = self.configuration.interval_ms(METER_VALUE_SAMPLE_INTERVAL);
         let mut deadlines = Vec::new();
         for (index, transaction) in self.transactions.iter().enumerate() {
-            if let Transaction::Active { next_sample, .. } = transaction {
-                deadlines.push(*next_sample);
+            if let (Transaction::Active { last_sample, .. }, Some(interval)) =
+                (transaction, sample_interval)
+            {
+                deadlines.push(last_sample + interval);
             }
             if self.reported[index] == Some(ChargePointStatus::Charging) {
                 deadlines.extend(self.station.connectors[index].finish_time());

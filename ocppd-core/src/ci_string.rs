@@ -23,6 +23,10 @@ impl<const N: usize> CiString<N> {
     pub fn new(value: &str) -> Result<Self, TooLong> {
         Self::try_from(value.to_owned())
     }
+
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
 }
 
 impl<const N: usize> TryFrom<String> for CiString<N> {

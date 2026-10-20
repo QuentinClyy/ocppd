@@ -94,6 +94,25 @@ impl Csms {
         }
     }
 
+    pub fn call(&mut self, now: u64, action: &str, payload: Value) -> Frame {
+        let text = json!([2, "csms-1", action, payload]).to_string();
+        self.input(now, Input::Frame(text));
+        let reply = self.replies.pop().expect("no reply to the CSMS call");
+        assert!(self.replies.is_empty(), "more than one reply");
+        reply
+    }
+
+    pub fn configure(&mut self, now: u64, key: &str, value: &str) -> Value {
+        match self.call(
+            now,
+            "ChangeConfiguration",
+            json!({"key": key, "value": value}),
+        ) {
+            Frame::CallResult { payload, .. } => payload["status"].clone(),
+            other => panic!("expected a result, got {other:?}"),
+        }
+    }
+
     pub fn intent(&mut self, now: u64, intent: Intent) {
         self.input(now, Input::Intent(intent));
     }

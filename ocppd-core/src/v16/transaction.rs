@@ -11,8 +11,6 @@ use crate::intent::{EvSpec, Intent};
 use crate::outbox::Call;
 use serde_json::{Value, json};
 
-pub(super) const METER_VALUE_SAMPLE_INTERVAL_MS: u64 = 60_000;
-
 #[derive(Debug, Clone, PartialEq)]
 pub enum Transaction {
     Idle,
@@ -25,7 +23,7 @@ pub enum Transaction {
     Active {
         transaction_id: i32,
         id_tag: IdToken,
-        next_sample: u64,
+        last_sample: u64,
     },
     Stopping,
     Finished,
@@ -182,7 +180,7 @@ impl ChargePoint {
         self.transactions[index] = Transaction::Active {
             transaction_id,
             id_tag,
-            next_sample: now + METER_VALUE_SAMPLE_INTERVAL_MS,
+            last_sample: now,
         };
         if response.id_tag_info.status != AuthorizationStatus::Accepted {
             return self.stop(out, now, index, Reason::DeAuthorized);
