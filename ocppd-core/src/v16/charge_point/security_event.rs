@@ -9,6 +9,8 @@ use serde_json::json;
 pub const STARTUP_OF_THE_DEVICE: &str = "StartupOfTheDevice";
 pub const RESET_OR_REBOOT: &str = "ResetOrReboot";
 pub const FIRMWARE_UPDATED: &str = "FirmwareUpdated";
+pub const INVALID_FIRMWARE_SIGNATURE: &str = "InvalidFirmwareSignature";
+pub const INVALID_FIRMWARE_SIGNING_CERTIFICATE: &str = "InvalidFirmwareSigningCertificate";
 pub const RECONFIGURATION_OF_SECURITY_PARAMETERS: &str = "ReconfigurationOfSecurityParameters";
 
 impl ChargePoint {

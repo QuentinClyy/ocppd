@@ -89,6 +89,7 @@ impl ChargePoint {
         let seconds = (interval_ms / 1000) as u32;
         self.configuration.set_seconds(HEARTBEAT_INTERVAL, seconds);
         self.resend_statuses = true;
+        self.installed_after_reboot(out, now);
     }
 
     pub(super) fn registration_tick(&mut self, now: u64) {

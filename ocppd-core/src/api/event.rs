@@ -3,8 +3,9 @@ use crate::v16::messages::core::remote_control::ResetType;
 use crate::v16::messages::core::status::ChargePointStatus;
 use crate::v16::messages::core::transaction::Reason;
 use crate::v16::messages::datatypes::id_tag::AuthorizationStatus;
-use crate::v16::messages::firmware::{DiagnosticsStatus, FirmwareStatus};
+use crate::v16::messages::firmware::DiagnosticsStatus;
 use crate::v16::messages::security::log::UploadLogStatus;
+use crate::v16::messages::security::signed_firmware::SignedFirmwareStatus;
 use serde::Serialize;
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -111,7 +112,9 @@ pub enum EventKind {
         event_type: String,
     },
     FirmwareStatus {
-        status: FirmwareStatus,
+        status: SignedFirmwareStatus,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        request_id: Option<i32>,
     },
     DiagnosticsStatus {
         status: DiagnosticsStatus,

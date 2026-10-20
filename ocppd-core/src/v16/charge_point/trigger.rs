@@ -1,9 +1,7 @@
 use super::ChargePoint;
 use super::transaction::Transaction;
 use crate::v16::messages::datatypes::meter_value::ReadingContext;
-use crate::v16::messages::firmware::{
-    DiagnosticsStatusNotificationRequest, FirmwareStatusNotificationRequest,
-};
+use crate::v16::messages::firmware::DiagnosticsStatusNotificationRequest;
 use crate::v16::messages::remote_trigger::{
     ExtendedMessageTrigger, ExtendedTriggerMessageRequest, MessageTrigger, TriggerMessageRequest,
     TriggerMessageStatus,
@@ -49,13 +47,7 @@ impl ChargePoint {
                 self.outbox
                     .push("DiagnosticsStatusNotification", 0, json!(request));
             }
-            MessageTrigger::FirmwareStatusNotification => {
-                let request = FirmwareStatusNotificationRequest {
-                    status: self.current_firmware_status(),
-                };
-                self.outbox
-                    .push("FirmwareStatusNotification", 0, json!(request));
-            }
+            MessageTrigger::FirmwareStatusNotification => self.report_firmware_status(),
         }
         TriggerMessageStatus::Accepted
     }
@@ -74,8 +66,11 @@ impl ChargePoint {
                 self.report_log_status();
                 return TriggerMessageStatus::Accepted;
             }
-            ExtendedMessageTrigger::FirmwareStatusNotification
-            | ExtendedMessageTrigger::SignChargePointCertificate => {
+            ExtendedMessageTrigger::FirmwareStatusNotification => {
+                self.report_signed_firmware_status();
+                return TriggerMessageStatus::Accepted;
+            }
+            ExtendedMessageTrigger::SignChargePointCertificate => {
                 return TriggerMessageStatus::NotImplemented;
             }
         };
