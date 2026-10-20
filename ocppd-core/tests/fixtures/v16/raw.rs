@@ -2,6 +2,7 @@ use crate::event::Event;
 use crate::event::EventKind;
 use crate::event::{Input, Output};
 use crate::frame::Frame;
+use crate::station::Connector;
 use crate::station::Station;
 use crate::v16::charge_point::ChargePoint;
 use serde_json::{Value, json};
@@ -13,7 +14,10 @@ pub fn station() -> Station {
         model: "sim".into(),
         serial_number: "SN-1".into(),
         firmware_version: "0.1.0".into(),
-        connectors: 1,
+        voltage_v: 230.0,
+        max_current_a: 32.0,
+        phases: 3,
+        connectors: vec![Connector::default()],
     }
 }
 

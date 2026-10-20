@@ -1,7 +1,7 @@
 mod shell;
 
 use ocppd_core::event::Event;
-use ocppd_core::station::Station;
+use ocppd_core::station::{Connector, Station};
 use ocppd_core::v16::charge_point::ChargePoint;
 use serde::Deserialize;
 use std::process::ExitCode;
@@ -68,7 +68,10 @@ fn spawn(csms: &str, prefix: &str, count: u32, events: &UnboundedSender<Event>) 
             model: "sim".into(),
             serial_number: id,
             firmware_version: env!("CARGO_PKG_VERSION").into(),
-            connectors: 1,
+            voltage_v: 230.0,
+            max_current_a: 32.0,
+            phases: 3,
+            connectors: vec![Connector::default()],
         };
         match ChargePoint::new(station) {
             Ok(charge_point) => {
