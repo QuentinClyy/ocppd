@@ -35,6 +35,7 @@ This starts station `CP1`, which connects to `<csms>/CP1` using the
 | Command | Effect |
 |---|---|
 | `{"command":"spawn","prefix":"CP","count":2}` | start stations `CP1` and `CP2` |
+| `{"command":"spawn","prefix":"CP","count":100,"jitter":false}` | start an aligned fleet: every station heartbeats and reconnects at the same instant (load storms) |
 | `{"command":"plug_in","station":"CP1","connector":1}` | plug an EV into connector 1 |
 | `{"command":"authorize","station":"CP1","id_tag":"TAG1"}` | present a card; starts a transaction once accepted and plugged in (an optional `"connector":1` picks the connector) |
 | `{"command":"stop","station":"CP1","connector":1}` | stop the transaction locally |

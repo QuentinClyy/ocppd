@@ -16,6 +16,12 @@ use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
 struct Spawn {
     prefix: String,
     count: u32,
+    #[serde(default = "jitter_by_default")]
+    jitter: bool,
+}
+
+fn jitter_by_default() -> bool {
+    true
 }
 
 #[derive(Deserialize)]
@@ -117,6 +123,7 @@ fn spawn(csms: &str, command: &Spawn, events: &UnboundedSender<Event>, stations:
             voltage_v: 230.0,
             max_current_a: 32.0,
             phases: 3,
+            jitter: command.jitter,
             connectors: vec![Connector::default()],
         };
         match ChargePoint::new(station) {

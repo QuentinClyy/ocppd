@@ -17,6 +17,7 @@ pub fn station() -> Station {
         voltage_v: 230.0,
         max_current_a: 32.0,
         phases: 3,
+        jitter: false,
         connectors: vec![Connector::default()],
     }
 }

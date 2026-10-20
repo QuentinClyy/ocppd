@@ -2,6 +2,7 @@ use super::ChargePoint;
 use super::configuration::HEARTBEAT_INTERVAL;
 use crate::api::event::EventKind;
 use crate::api::io::Output;
+use crate::station::jitter::fraction;
 use crate::v16::messages::core::boot::{
     BootNotificationResponse, HeartbeatRequest, RegistrationStatus,
 };
@@ -51,8 +52,13 @@ impl ChargePoint {
             };
             return;
         }
+        let phase = match self.station.jitter {
+            true => fraction(&self.station.id, 0),
+            false => 0.0,
+        };
+        let phase_ms = (phase * interval_ms as f64) as u64;
         self.registration = Registration::Accepted {
-            last_heartbeat: now,
+            last_heartbeat: now.saturating_sub(phase_ms),
         };
         let seconds = (interval_ms / 1000) as u32;
         self.configuration.set_seconds(HEARTBEAT_INTERVAL, seconds);

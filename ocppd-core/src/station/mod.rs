@@ -1,5 +1,6 @@
 pub mod charge;
 pub mod connector;
+pub mod jitter;
 
 use connector::Connector;
 
@@ -12,6 +13,7 @@ pub struct Station {
     pub voltage_v: f64,
     pub max_current_a: f64,
     pub phases: u32,
+    pub jitter: bool,
     pub connectors: Vec<Connector>,
 }
 

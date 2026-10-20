@@ -6,6 +6,7 @@ use crate::fixtures::v16::raw::{
 use crate::station::Station;
 use crate::v16::charge_point::ChargePoint;
 use serde_json::json;
+use std::collections::BTreeSet;
 
 fn booted_and_reported(now: u64) -> (ChargePoint, Vec<Output>) {
     let mut charge_point = charge_point();
@@ -24,6 +25,26 @@ fn idle() -> ChargePoint {
     let (mut charge_point, outputs) = booted_and_reported(1_000);
     drained(&mut charge_point, 1_000, outputs);
     charge_point
+}
+
+fn first_heartbeat(id: &str, jitter: bool) -> u64 {
+    let station = Station {
+        id: id.into(),
+        jitter,
+        ..station()
+    };
+    let mut charge_point = ChargePoint::new(station).unwrap();
+    let (boot_id, _, _) = only_call(&charge_point.handle(0, Input::Connected));
+    let accepted = boot_response("Accepted", 300);
+    let outputs = charge_point.handle(1_000_000, result(&boot_id, accepted));
+    drained(&mut charge_point, 1_000_000, outputs);
+    charge_point.next_deadline().unwrap()
+}
+
+fn fleet(jitter: bool) -> BTreeSet<u64> {
+    (1..=20)
+        .map(|n| first_heartbeat(&format!("CP{n}"), jitter))
+        .collect()
 }
 
 #[test]
@@ -66,6 +87,25 @@ fn given_sent_heartbeat_when_answered_then_next_one_an_interval_later() {
     assert_eq!(charge_point.next_deadline(), Some(first + 300_000));
 }
 
+#[test]
+fn given_fleet_with_jitter_when_booted_together_then_first_heartbeats_spread_over_the_interval() {
+    let spread = fleet(true);
+
+    assert!(spread.len() > 15, "{spread:?}");
+    assert!(
+        spread
+            .iter()
+            .all(|&at| (1_000_000..=1_300_000).contains(&at))
+    );
+}
+
+#[test]
+fn given_fleet_without_jitter_when_booted_together_then_first_heartbeats_aligned() {
+    let aligned = fleet(false);
+
+    assert_eq!(aligned, BTreeSet::from([1_300_000]));
+}
+
 fn answered_boot(status: &str) -> (ChargePoint, String, Vec<Output>) {
     let mut charge_point = charge_point();
     let (first_id, _, _) = only_call(&charge_point.handle(0, Input::Connected));
@@ -100,6 +140,17 @@ fn given_sent_boot_when_rejected_or_pending_then_nothing_sent_and_retry_after_th
 
         assert!(calls(&outputs).is_empty(), "{status}");
         assert_eq!(deadline, Some(61_000), "{status}");
+    }
+}
+
+#[test]
+fn given_rejected_or_pending_boot_when_just_before_the_interval_then_nothing_sent() {
+    for status in ["Rejected", "Pending"] {
+        let (mut charge_point, _, _) = answered_boot(status);
+
+        let outputs = charge_point.handle(60_999, Input::Tick);
+
+        assert!(calls(&outputs).is_empty(), "{status}");
     }
 }
 

@@ -2,6 +2,7 @@ use futures_util::{SinkExt, StreamExt};
 use ocppd_core::api::event::Event;
 use ocppd_core::api::intent::Intent;
 use ocppd_core::api::io::{Input, Output};
+use ocppd_core::station::jitter::fraction;
 use ocppd_core::v16::charge_point::ChargePoint;
 use ocppd_core::wire::frame;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
@@ -27,7 +28,7 @@ pub async fn run(
 ) {
     let id = charge_point.station().id.clone();
     let mut intents = Some(receiver);
-    loop {
+    for attempt in 0_u64.. {
         match connect(&url).await {
             Ok(socket) => {
                 let reason = serve(&mut charge_point, socket, &events, &mut intents).await;
@@ -40,7 +41,11 @@ pub async fn run(
             }
             Err(err) => eprintln!("{id}: connect to {url} failed: {err}"),
         }
-        sleep(RECONNECT_DELAY).await;
+        let spread = match charge_point.station().jitter {
+            true => 0.5 + fraction(&id, attempt),
+            false => 1.0,
+        };
+        sleep(RECONNECT_DELAY.mul_f64(spread)).await;
     }
 }
 
