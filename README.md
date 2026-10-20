@@ -19,6 +19,13 @@ cargo test
 
 ## Run
 
+Commands go in on stdin, one JSON object per line. Events come out on stdout,
+one JSON object per line. Diagnostics go to stderr.
+
 ```
-cargo run --release
+echo '{"command":"spawn","prefix":"CP","count":1}' |
+  cargo run --release -- --csms ws://localhost:8180/steve/websocket/CentralSystemService
 ```
+
+This starts station `CP1`, which connects to `<csms>/CP1` using the
+`ocpp1.6` subprotocol.
