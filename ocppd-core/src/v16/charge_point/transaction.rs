@@ -74,7 +74,7 @@ impl ChargePoint {
     }
 
     pub(super) fn connection_lost(&mut self) {
-        self.reported.fill(None);
+        self.resend_statuses = true;
         if self.held_deadline().is_none() {
             self.held = None;
         }

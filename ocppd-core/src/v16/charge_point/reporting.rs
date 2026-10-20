@@ -82,14 +82,18 @@ impl ChargePoint {
                 0 => ChargePointStatus::Available,
                 _ => self.status(connector_id - 1, now),
             };
-            if self.reported[connector_id] == Some(status) {
+            let changed = self.reported[connector_id] != Some(status);
+            if !changed && !self.resend_statuses {
                 continue;
             }
             self.reported[connector_id] = Some(status);
             let connector = connector_id as u32;
             self.status_notification(connector, status);
-            self.emit(out, now, EventKind::StatusChanged { connector, status });
+            if changed {
+                self.emit(out, now, EventKind::StatusChanged { connector, status });
+            }
         }
+        self.resend_statuses = false;
     }
 
     pub(super) fn unavailable(&self, index: usize) -> bool {

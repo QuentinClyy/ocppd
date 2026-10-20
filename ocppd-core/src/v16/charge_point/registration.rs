@@ -18,6 +18,10 @@ pub enum Registration {
 }
 
 impl ChargePoint {
+    pub(super) fn is_connected(&self) -> bool {
+        !matches!(self.registration, Registration::Offline)
+    }
+
     pub(super) fn is_accepted(&self) -> bool {
         matches!(self.registration, Registration::Accepted { .. })
     }
@@ -62,7 +66,7 @@ impl ChargePoint {
         };
         let seconds = (interval_ms / 1000) as u32;
         self.configuration.set_seconds(HEARTBEAT_INTERVAL, seconds);
-        self.reported.fill(None);
+        self.resend_statuses = true;
     }
 
     pub(super) fn registration_tick(&mut self, now: u64) {

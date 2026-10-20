@@ -30,6 +30,7 @@ pub struct ChargePoint {
     outbox: Outbox,
     transactions: Vec<Transaction>,
     reported: Vec<Option<ChargePointStatus>>,
+    resend_statuses: bool,
     inoperative: Vec<bool>,
     resetting: bool,
     held: Option<Held>,
@@ -57,6 +58,7 @@ impl ChargePoint {
             outbox: Outbox::new(),
             transactions: vec![Transaction::Idle; connectors],
             reported: vec![None; connectors + 1],
+            resend_statuses: false,
             inoperative: vec![false; connectors + 1],
             resetting: false,
             held: None,
@@ -71,15 +73,14 @@ impl ChargePoint {
     }
 
     pub fn next_deadline(&self) -> Option<u64> {
-        [
-            self.registration_deadline(),
-            self.outbox.deadline(),
-            self.transaction_deadline(),
-            self.held_deadline(),
-        ]
-        .into_iter()
-        .flatten()
-        .min()
+        let registered = [self.transaction_deadline(), self.held_deadline()]
+            .into_iter()
+            .filter(|_| self.is_accepted());
+        [self.registration_deadline(), self.outbox.deadline()]
+            .into_iter()
+            .chain(registered)
+            .flatten()
+            .min()
     }
 
     pub fn handle(&mut self, now: u64, input: Input) -> Vec<Output> {
@@ -105,8 +106,10 @@ impl ChargePoint {
         if self.is_accepted() {
             self.report_statuses(&mut out, now);
         }
-        if let Some(frame) = self.outbox.next_frame(now) {
-            out.push(Output::Send(frame));
+        if self.is_connected() {
+            if let Some(frame) = self.outbox.next_frame(now) {
+                out.push(Output::Send(frame));
+            }
         }
         if self.resetting && self.outbox.is_idle() {
             self.rebooted();

@@ -8,17 +8,32 @@ use ocppd_core::wire::frame;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tokio::net::TcpStream;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
-use tokio::time::sleep;
+use tokio::time::{Instant, sleep, sleep_until};
 use tokio_tungstenite::tungstenite::client::IntoClientRequest;
 use tokio_tungstenite::tungstenite::http::HeaderValue;
 use tokio_tungstenite::tungstenite::{self, Message};
 use tokio_tungstenite::{MaybeTlsStream, WebSocketStream, connect_async};
 
 const RECONNECT_DELAY: Duration = Duration::from_secs(5);
+const MAX_RECONNECT_DELAY: Duration = Duration::from_secs(300);
 
 type Socket = WebSocketStream<MaybeTlsStream<TcpStream>>;
 
 type Intents = Option<UnboundedReceiver<Intent>>;
+
+struct Link {
+    id: String,
+    socket: Option<Socket>,
+    failures: u32,
+    reconnect_at: Instant,
+    jitter: bool,
+}
+
+enum Wake {
+    Input(Input),
+    Reconnect,
+    Lost(String),
+}
 
 pub async fn run(
     mut charge_point: ChargePoint,
@@ -26,26 +41,59 @@ pub async fn run(
     events: UnboundedSender<Event>,
     receiver: UnboundedReceiver<Intent>,
 ) {
-    let id = charge_point.station().id.clone();
+    let mut link = Link {
+        id: charge_point.station().id.clone(),
+        socket: None,
+        failures: 0,
+        reconnect_at: Instant::now(),
+        jitter: charge_point.station().jitter,
+    };
     let mut intents = Some(receiver);
-    for attempt in 0_u64.. {
-        match connect(&url).await {
-            Ok(socket) => {
-                let reason = serve(&mut charge_point, socket, &events, &mut intents).await;
-                eprintln!("{id}: disconnected: {reason}");
-                for output in charge_point.handle(now_ms(), Input::Disconnected) {
-                    if let Output::Emit(event) = output {
-                        emit(&events, event);
-                    }
+    loop {
+        let mut input = match next_wake(&mut link, charge_point.next_deadline(), &mut intents).await
+        {
+            Wake::Input(input) => input,
+            Wake::Lost(reason) => link.lose(&reason),
+            Wake::Reconnect => match connect(&url).await {
+                Ok(socket) => {
+                    link.socket = Some(socket);
+                    link.failures = 0;
+                    Input::Connected
                 }
-            }
-            Err(err) => eprintln!("{id}: connect to {url} failed: {err}"),
-        }
-        let spread = match charge_point.station().jitter {
-            true => 0.5 + fraction(&id, attempt),
-            false => 1.0,
+                Err(err) => {
+                    eprintln!("{}: connect to {url} failed: {err}", link.id);
+                    link.schedule_reconnect();
+                    continue;
+                }
+            },
         };
-        sleep(RECONNECT_DELAY.mul_f64(spread)).await;
+        while let Some(reason) = execute(&mut charge_point, input, &mut link.socket, &events).await
+        {
+            input = link.lose(&reason);
+        }
+    }
+}
+
+impl Link {
+    fn lose(&mut self, reason: &str) -> Input {
+        eprintln!("{}: disconnected: {reason}", self.id);
+        self.socket = None;
+        self.schedule_reconnect();
+        Input::Disconnected
+    }
+
+    fn schedule_reconnect(&mut self) {
+        self.failures += 1;
+        self.reconnect_at = Instant::now() + backoff(&self.id, self.failures, self.jitter);
+    }
+}
+
+fn backoff(id: &str, failures: u32, jitter: bool) -> Duration {
+    let doublings = failures.saturating_sub(1).min(8);
+    let delay = (RECONNECT_DELAY * (1 << doublings)).min(MAX_RECONNECT_DELAY);
+    match jitter {
+        true => delay.mul_f64(0.5 + fraction(id, u64::from(failures))),
+        false => delay,
     }
 }
 
@@ -59,63 +107,64 @@ async fn connect(url: &str) -> Result<Socket, tungstenite::Error> {
     Ok(socket)
 }
 
-async fn serve(
+async fn execute(
     charge_point: &mut ChargePoint,
-    mut socket: Socket,
+    input: Input,
+    socket: &mut Option<Socket>,
     events: &UnboundedSender<Event>,
-    intents: &mut Intents,
-) -> String {
-    let id = charge_point.station().id.clone();
-    let mut input = Input::Connected;
-    loop {
-        for output in charge_point.handle(now_ms(), input) {
-            match output {
-                Output::Send(frame) => {
-                    let text = frame::serialize(&frame);
-                    if let Err(err) = socket.send(Message::text(text)).await {
-                        return err.to_string();
-                    }
-                }
-                Output::Emit(event) => emit(events, event),
-                Output::Close => {
-                    return match socket.close(None).await {
-                        Ok(()) => "closed for reset".into(),
-                        Err(err) => format!("closed for reset: {err}"),
-                    };
+) -> Option<String> {
+    for output in charge_point.handle(now_ms(), input) {
+        match (output, socket.as_mut()) {
+            (Output::Emit(event), _) => emit(events, event),
+            (Output::Send(frame), Some(open)) => {
+                let text = frame::serialize(&frame);
+                if let Err(err) = open.send(Message::text(text)).await {
+                    return Some(err.to_string());
                 }
             }
+            (Output::Send(frame), None) => eprintln!("frame dropped while offline: {frame:?}"),
+            (Output::Close, Some(open)) => {
+                return Some(match open.close(None).await {
+                    Ok(()) => "closed for reset".into(),
+                    Err(err) => format!("closed for reset: {err}"),
+                });
+            }
+            (Output::Close, None) => {}
         }
-        input = match next_input(&id, &mut socket, charge_point.next_deadline(), intents).await {
-            Ok(input) => input,
-            Err(reason) => return reason,
-        };
     }
+    None
 }
 
-async fn next_input(
-    id: &str,
-    socket: &mut Socket,
-    deadline: Option<u64>,
-    intents: &mut Intents,
-) -> Result<Input, String> {
+async fn next_wake(link: &mut Link, deadline: Option<u64>, intents: &mut Intents) -> Wake {
     let wait = Duration::from_millis(deadline.unwrap_or(0).saturating_sub(now_ms()));
     let timer = sleep(wait);
     tokio::pin!(timer);
+    let offline = link.socket.is_none();
+    let reconnect = sleep_until(link.reconnect_at);
+    tokio::pin!(reconnect);
     loop {
         tokio::select! {
-            message = socket.next() => match message {
-                Some(Ok(Message::Text(text))) => return Ok(Input::Frame(text.to_string())),
-                Some(Ok(Message::Binary(_))) => eprintln!("{id}: ignored binary message"),
-                Some(Ok(Message::Close(_))) | None => return Err("closed by CSMS".into()),
+            message = next_message(&mut link.socket) => match message {
+                Some(Ok(Message::Text(text))) => return Wake::Input(Input::Frame(text.to_string())),
+                Some(Ok(Message::Binary(_))) => eprintln!("{}: ignored binary message", link.id),
+                Some(Ok(Message::Close(_))) | None => return Wake::Lost("closed by CSMS".into()),
                 Some(Ok(_)) => {}
-                Some(Err(err)) => return Err(err.to_string()),
+                Some(Err(err)) => return Wake::Lost(err.to_string()),
             },
-            _ = &mut timer, if deadline.is_some() => return Ok(Input::Tick),
+            _ = &mut timer, if deadline.is_some() => return Wake::Input(Input::Tick),
+            _ = &mut reconnect, if offline => return Wake::Reconnect,
             intent = next_intent(intents) => match intent {
-                Some(intent) => return Ok(Input::Intent(intent)),
+                Some(intent) => return Wake::Input(Input::Intent(intent)),
                 None => *intents = None,
             },
         }
+    }
+}
+
+async fn next_message(socket: &mut Option<Socket>) -> Option<Result<Message, tungstenite::Error>> {
+    match socket {
+        Some(open) => open.next().await,
+        None => std::future::pending().await,
     }
 }
 
@@ -137,3 +186,7 @@ fn now_ms() -> u64 {
         .duration_since(UNIX_EPOCH)
         .map_or(0, |since| since.as_millis() as u64)
 }
+
+#[cfg(test)]
+#[path = "shell.test.rs"]
+mod tests;
