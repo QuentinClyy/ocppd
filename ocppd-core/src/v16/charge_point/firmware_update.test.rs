@@ -65,6 +65,20 @@ fn given_downloading_firmware_when_the_download_ends_then_downloaded_and_install
 }
 
 #[test]
+fn given_installing_firmware_when_the_install_ends_then_installed_reported_and_reboots() {
+    let mut csms = updating(NEW_FIRMWARE, RETRIEVE);
+    tick(&mut csms, MINUTE);
+    tick(&mut csms, MINUTE + 10_000);
+
+    tick(&mut csms, MINUTE + 20_000);
+
+    assert_eq!(statuses(&csms).last(), Some(&json!("Installed")));
+    assert!(csms.closed, "the station reboots after installing");
+    let reported = csms.sent("SecurityEventNotification");
+    assert_eq!(reported[0]["type"], "FirmwareUpdated");
+}
+
+#[test]
 fn given_installed_firmware_when_reconnected_then_boots_with_the_new_version() {
     let mut csms = updating(NEW_FIRMWARE, RETRIEVE);
     for now in [MINUTE, MINUTE + 10_000, MINUTE + 20_000] {

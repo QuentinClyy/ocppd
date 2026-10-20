@@ -1,7 +1,10 @@
 use super::ChargePoint;
-use super::configuration::{LOCAL_AUTH_LIST_MAX_LENGTH, SEND_LOCAL_LIST_MAX_LENGTH};
+use super::configuration::{
+    AUTHORIZATION_KEY, LOCAL_AUTH_LIST_MAX_LENGTH, SECURITY_PROFILE, SEND_LOCAL_LIST_MAX_LENGTH,
+};
 use super::id_tags::IdTags;
 use super::local_list::Limits;
+use super::security_event::RECONFIGURATION_OF_SECURITY_PARAMETERS;
 use crate::api::event::EventKind;
 use crate::api::io::Output;
 use crate::v16::messages::core::configuration::{
@@ -25,7 +28,10 @@ use crate::v16::messages::local_auth::{
     GetLocalListVersionRequest, GetLocalListVersionResponse, SendLocalListRequest,
     SendLocalListResponse, UpdateStatus,
 };
-use crate::v16::messages::remote_trigger::{TriggerMessageRequest, TriggerMessageResponse};
+use crate::v16::messages::remote_trigger::{
+    ExtendedTriggerMessageRequest, ExtendedTriggerMessageResponse, TriggerMessageRequest,
+    TriggerMessageResponse,
+};
 use crate::v16::messages::reservation::{
     CancelReservationRequest, CancelReservationResponse, ReserveNowRequest, ReserveNowResponse,
 };
@@ -142,6 +148,13 @@ impl ChargePoint {
             "GetDiagnostics" => answer(payload, |request: GetDiagnosticsRequest| {
                 self.get_diagnostics(out, now, request)
             }),
+            "ExtendedTriggerMessage" => {
+                answer(payload, |request: ExtendedTriggerMessageRequest| {
+                    ExtendedTriggerMessageResponse {
+                        status: self.extended_trigger(now, request),
+                    }
+                })
+            }
             "DataTransfer" => answer(payload, |_: DataTransferRequest| DataTransferResponse {
                 status: DataTransferStatus::UnknownVendorId,
                 data: None,
@@ -179,12 +192,20 @@ impl ChargePoint {
         request: &ChangeConfigurationRequest,
     ) -> ChangeConfigurationResponse {
         let status = self.configuration.change(request);
-        if status == ConfigurationStatus::Accepted {
+        if status != ConfigurationStatus::Accepted {
+            return ChangeConfigurationResponse { status };
+        }
+        let key = request.key.as_str();
+        let secret = key.eq_ignore_ascii_case(AUTHORIZATION_KEY);
+        if !secret {
             let kind = EventKind::ConfigurationChanged {
-                key: request.key.as_str().to_owned(),
+                key: key.to_owned(),
                 value: request.value.as_str().to_owned(),
             };
             self.emit(out, now, kind);
+        }
+        if secret || key.eq_ignore_ascii_case(SECURITY_PROFILE) {
+            self.security_event(out, now, RECONFIGURATION_OF_SECURITY_PARAMETERS);
         }
         ChangeConfigurationResponse { status }
     }

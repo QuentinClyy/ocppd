@@ -17,6 +17,7 @@ mod reporting;
 mod reservation;
 mod retry;
 mod schedule;
+mod security_event;
 mod smart_charging;
 mod transaction;
 mod trigger;
@@ -40,6 +41,7 @@ use id_tags::IdTags;
 use local_list::LocalList;
 use registration::Registration;
 use reservation::Reservation;
+use security_event::STARTUP_OF_THE_DEVICE;
 use serde::de::DeserializeOwned;
 use serde_json::{Value, json};
 use transaction::Transaction;
@@ -61,6 +63,7 @@ pub struct ChargePoint {
     limit_change_at: Option<u64>,
     firmware: Option<FirmwareUpdate>,
     uploading_until: Option<u64>,
+    startup_reported: bool,
     boot_request: BootNotificationRequest,
     registration: Registration,
 }
@@ -96,6 +99,7 @@ impl ChargePoint {
             limit_change_at: None,
             firmware: None,
             uploading_until: None,
+            startup_reported: false,
             boot_request,
             registration: Registration::Offline,
         })
@@ -127,6 +131,10 @@ impl ChargePoint {
             Input::Connected => {
                 self.emit(&mut out, now, EventKind::Connected);
                 self.connected(now);
+                if !self.startup_reported {
+                    self.startup_reported = true;
+                    self.security_event(&mut out, now, STARTUP_OF_THE_DEVICE);
+                }
             }
             Input::Disconnected => {
                 self.disconnected();

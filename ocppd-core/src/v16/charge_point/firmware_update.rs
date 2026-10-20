@@ -1,4 +1,5 @@
 use super::ChargePoint;
+use super::security_event::FIRMWARE_UPDATED;
 use super::transaction::Transaction;
 use crate::api::event::EventKind;
 use crate::api::io::Output;
@@ -119,6 +120,7 @@ impl ChargePoint {
         self.boot_request.firmware_version = Some(boot_version);
         self.station.firmware_version = version;
         self.firmware_status(out, now, FirmwareStatus::Installed);
+        self.security_event(out, now, FIRMWARE_UPDATED);
         self.resetting = Some(ResetType::Soft);
     }
 

@@ -5,7 +5,8 @@ use crate::v16::messages::firmware::{
     DiagnosticsStatusNotificationRequest, FirmwareStatusNotificationRequest,
 };
 use crate::v16::messages::remote_trigger::{
-    MessageTrigger, TriggerMessageRequest, TriggerMessageStatus,
+    ExtendedMessageTrigger, ExtendedTriggerMessageRequest, MessageTrigger, TriggerMessageRequest,
+    TriggerMessageStatus,
 };
 use serde_json::json;
 
@@ -57,6 +58,29 @@ impl ChargePoint {
             }
         }
         TriggerMessageStatus::Accepted
+    }
+
+    pub(super) fn extended_trigger(
+        &mut self,
+        now: u64,
+        request: ExtendedTriggerMessageRequest,
+    ) -> TriggerMessageStatus {
+        let requested_message = match request.requested_message {
+            ExtendedMessageTrigger::BootNotification => MessageTrigger::BootNotification,
+            ExtendedMessageTrigger::Heartbeat => MessageTrigger::Heartbeat,
+            ExtendedMessageTrigger::MeterValues => MessageTrigger::MeterValues,
+            ExtendedMessageTrigger::StatusNotification => MessageTrigger::StatusNotification,
+            ExtendedMessageTrigger::FirmwareStatusNotification
+            | ExtendedMessageTrigger::LogStatusNotification
+            | ExtendedMessageTrigger::SignChargePointCertificate => {
+                return TriggerMessageStatus::NotImplemented;
+            }
+        };
+        let request = TriggerMessageRequest {
+            requested_message,
+            connector_id: request.connector_id,
+        };
+        self.trigger(now, request)
     }
 
     fn trigger_status(&mut self, connector: u32) {

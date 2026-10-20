@@ -1,6 +1,7 @@
 use crate::api::intent::EvSpec;
 use crate::api::io::{Input, Output};
 use crate::fixtures::v16::fake_csms::{Csms, MINUTE, register};
+use crate::fixtures::v16::security::result;
 use crate::wire::frame::Frame;
 use serde_json::{Value, json};
 
@@ -158,6 +159,30 @@ fn given_no_main_meter_when_meter_values_of_connector_0_triggered_then_rejected(
     let main_meter = json!({"requestedMessage": "MeterValues", "connectorId": 0});
 
     let status = trigger(&mut csms, 0, main_meter);
+
+    assert_eq!(status, "Rejected");
+}
+
+fn extended(csms: &mut Csms, request: Value) -> Value {
+    result(csms.call(0, "ExtendedTriggerMessage", request))["status"].clone()
+}
+
+#[test]
+fn given_booted_charge_point_when_heartbeat_extended_triggered_then_accepted_and_sent() {
+    let mut csms = Csms::booted();
+
+    let status = extended(&mut csms, json!({"requestedMessage": "Heartbeat"}));
+
+    assert_eq!(status, "Accepted");
+    assert_eq!(csms.sent("Heartbeat").len(), 1);
+}
+
+#[test]
+fn given_one_connector_when_status_of_connector_5_extended_triggered_then_rejected() {
+    let mut csms = Csms::booted();
+    let unknown = json!({"requestedMessage": "StatusNotification", "connectorId": 5});
+
+    let status = extended(&mut csms, unknown);
 
     assert_eq!(status, "Rejected");
 }

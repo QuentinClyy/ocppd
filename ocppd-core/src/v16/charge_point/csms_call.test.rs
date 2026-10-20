@@ -1,6 +1,8 @@
 use crate::api::event::EventKind;
 use crate::api::io::{Input, Output};
-use crate::fixtures::v16::raw::{accepted_charge_point, charge_point, kinds, result};
+use crate::fixtures::v16::raw::{
+    accepted_charge_point, boot_response, charge_point, kinds, only_call, result,
+};
 use crate::wire::frame::Frame;
 use serde_json::json;
 
@@ -15,6 +17,18 @@ fn given_pending_boot_when_answer_with_an_unknown_id_arrives_then_reported_as_un
         kinds(&outputs),
         vec![EventKind::UnknownResponse { id: "nope".into() }]
     );
+}
+
+#[test]
+fn given_unknown_response_ignored_when_the_real_answer_arrives_then_the_pending_boot_still_resolves()
+ {
+    let mut charge_point = charge_point();
+    let (id, _, _) = only_call(&charge_point.handle(0, Input::Connected));
+    charge_point.handle(1_000, result("nope", json!({})));
+
+    let outputs = charge_point.handle(1_000, result(&id, boot_response("Accepted", 300)));
+
+    assert_eq!(only_call(&outputs).1, "SecurityEventNotification");
 }
 
 #[test]

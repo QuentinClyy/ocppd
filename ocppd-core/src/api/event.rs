@@ -100,6 +100,10 @@ pub enum EventKind {
         connector: u32,
         charging_profile_id: i32,
     },
+    SecurityEvent {
+        #[serde(rename = "type")]
+        event_type: String,
+    },
     FirmwareStatus {
         status: FirmwareStatus,
     },

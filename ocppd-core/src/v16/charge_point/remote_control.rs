@@ -1,5 +1,6 @@
 use super::ChargePoint;
 use super::registration::Registration;
+use super::security_event::RESET_OR_REBOOT;
 use super::transaction::Transaction;
 use crate::api::event::EventKind;
 use crate::api::io::Output;
@@ -117,6 +118,7 @@ impl ChargePoint {
                 reset_type: request.kind,
             },
         );
+        self.security_event(out, now, RESET_OR_REBOOT);
         self.held = None;
         self.resetting = Some(request.kind);
         GenericStatus::Accepted
@@ -132,6 +134,7 @@ impl ChargePoint {
 
     pub(super) fn rebooted(&mut self) {
         self.resetting = None;
+        self.startup_reported = false;
         self.registration = Registration::Offline;
         self.outbox.keep_transaction_messages();
         self.connection_lost();

@@ -7,6 +7,7 @@ use crate::wire::ci_string::{CiString, TooLong};
 use serde_json::Value;
 
 pub const AUTHORIZATION_CACHE_ENABLED: &str = "AuthorizationCacheEnabled";
+pub const AUTHORIZATION_KEY: &str = "AuthorizationKey";
 pub const CHARGE_PROFILE_MAX_STACK_LEVEL: &str = "ChargeProfileMaxStackLevel";
 pub const CHARGING_SCHEDULE_MAX_PERIODS: &str = "ChargingScheduleMaxPeriods";
 pub const CONNECTION_TIME_OUT: &str = "ConnectionTimeOut";
@@ -18,6 +19,7 @@ pub const LOCAL_PRE_AUTHORIZE: &str = "LocalPreAuthorize";
 pub const MAX_CHARGING_PROFILES_INSTALLED: &str = "MaxChargingProfilesInstalled";
 pub const METER_VALUE_SAMPLE_INTERVAL: &str = "MeterValueSampleInterval";
 pub const METER_VALUES_SAMPLED_DATA: &str = "MeterValuesSampledData";
+pub const SECURITY_PROFILE: &str = "SecurityProfile";
 pub const SEND_LOCAL_LIST_MAX_LENGTH: &str = "SendLocalListMaxLength";
 pub const TRANSACTION_MESSAGE_ATTEMPTS: &str = "TransactionMessageAttempts";
 pub const TRANSACTION_MESSAGE_RETRY_INTERVAL: &str = "TransactionMessageRetryInterval";
@@ -51,12 +53,15 @@ enum Access {
     Boolean,
     Measurands,
     CurrentValueOnly,
+    SecurityProfile,
+    WriteOnly,
 }
 
 impl Configuration {
     pub fn new(connectors: usize) -> Result<Self, TooLong> {
         let table = [
             (AUTHORIZATION_CACHE_ENABLED, "true", Access::Boolean),
+            (AUTHORIZATION_KEY, "", Access::WriteOnly),
             (
                 "AuthorizeRemoteTxRequests",
                 "false",
@@ -94,6 +99,7 @@ impl Configuration {
             ),
             ("ReserveConnectorZeroSupported", "false", Access::ReadOnly),
             ("ResetRetries", "0", Access::Integer),
+            (SECURITY_PROFILE, "0", Access::SecurityProfile),
             (SEND_LOCAL_LIST_MAX_LENGTH, "100", Access::ReadOnly),
             (
                 "StopTransactionOnEVSideDisconnect",
@@ -166,6 +172,13 @@ impl Configuration {
             Access::Boolean => value == "true" || value == "false",
             Access::Measurands => measurands(value).is_some(),
             Access::CurrentValueOnly => value == key.value.as_str(),
+            Access::SecurityProfile => {
+                let current: u32 = key.value.as_str().parse().unwrap_or(0);
+                value
+                    .parse::<u32>()
+                    .is_ok_and(|profile| (current..=3).contains(&profile))
+            }
+            Access::WriteOnly => (16..=40).contains(&value.chars().count()),
         };
         if !valid {
             return ConfigurationStatus::Rejected;
@@ -219,7 +232,7 @@ impl Key {
         KeyValue {
             key: self.name.clone(),
             readonly: self.access == Access::ReadOnly,
-            value: Some(self.value.clone()),
+            value: (self.access != Access::WriteOnly).then(|| self.value.clone()),
         }
     }
 }

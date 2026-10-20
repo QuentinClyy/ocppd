@@ -6,6 +6,8 @@ use crate::fixtures::v16::raw::{
 };
 use crate::station::Station;
 use crate::v16::charge_point::ChargePoint;
+use crate::v16::messages::core::boot::RegistrationStatus;
+use crate::v16::messages::core::status::ChargePointStatus;
 use serde_json::json;
 use std::collections::BTreeSet;
 
@@ -121,6 +123,29 @@ fn boot_sent() -> (ChargePoint, String) {
 }
 
 #[test]
+fn given_new_charge_point_when_connected_then_boot_notification_and_startup_event() {
+    let mut charge_point = charge_point();
+
+    let outputs = charge_point.handle(0, Input::Connected);
+
+    let (_, action, payload) = only_call(&outputs);
+    assert_eq!(action, "BootNotification");
+    assert_eq!(
+        payload,
+        json!({
+            "chargePointVendor": "ocppd",
+            "chargePointModel": "sim",
+            "chargePointSerialNumber": "SN-1",
+            "firmwareVersion": "0.1.0"
+        })
+    );
+    let startup = EventKind::SecurityEvent {
+        event_type: "StartupOfTheDevice".into(),
+    };
+    assert_eq!(kinds(&outputs), vec![EventKind::Connected, startup]);
+}
+
+#[test]
 fn given_vendor_name_over_20_characters_when_charge_point_created_then_refused() {
     let station = Station {
         vendor: "a vendor name over twenty".into(),
@@ -130,6 +155,60 @@ fn given_vendor_name_over_20_characters_when_charge_point_created_then_refused()
     let error = ChargePoint::new(station).err().unwrap();
 
     assert_eq!(error.max, 20);
+}
+
+#[test]
+fn given_sent_boot_when_accepted_then_every_connector_available_and_startup_event_sent_first() {
+    let (_, outputs) = booted_and_reported(1_000);
+
+    assert_eq!(
+        kinds(&outputs),
+        vec![
+            EventKind::BootStatus {
+                status: RegistrationStatus::Accepted
+            },
+            EventKind::StatusChanged {
+                connector: 0,
+                status: ChargePointStatus::Available
+            },
+            EventKind::StatusChanged {
+                connector: 1,
+                status: ChargePointStatus::Available
+            }
+        ]
+    );
+    let (_, action, payload) = only_call(&outputs);
+    assert_eq!(action, "SecurityEventNotification");
+    assert_eq!(payload["type"], "StartupOfTheDevice");
+}
+
+#[test]
+fn given_accepted_boot_when_startup_event_answered_then_status_of_connector_0_sent() {
+    let (mut charge_point, outputs) = booted_and_reported(1_000);
+    let (startup_id, _, _) = only_call(&outputs);
+
+    let outputs = charge_point.handle(1_000, result(&startup_id, json!({})));
+
+    let (_, action, payload) = only_call(&outputs);
+    assert_eq!(action, "StatusNotification");
+    assert_eq!(
+        payload,
+        json!({"connectorId": 0, "errorCode": "NoError", "status": "Available"})
+    );
+}
+
+#[test]
+fn given_status_of_connector_0_sent_when_answered_then_status_of_connector_1_sent_one_at_a_time() {
+    let (mut charge_point, outputs) = booted_and_reported(1_000);
+    let (startup_id, _, _) = only_call(&outputs);
+    let outputs = charge_point.handle(1_000, result(&startup_id, json!({})));
+    let (first_id, _, _) = only_call(&outputs);
+
+    let outputs = charge_point.handle(1_000, result(&first_id, json!({})));
+
+    let (second_id, _, payload) = only_call(&outputs);
+    assert_eq!(payload["connectorId"], 1);
+    assert!(calls(&charge_point.handle(1_000, result(&second_id, json!({})))).is_empty());
 }
 
 #[test]

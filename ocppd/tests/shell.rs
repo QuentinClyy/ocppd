@@ -119,6 +119,8 @@ async fn start(spawn: &str, heartbeat_interval: u32) -> Run {
         "interval": heartbeat_interval
     });
     run.reply(&id, accepted).await;
+    let id = run.call("SecurityEventNotification").await;
+    run.reply(&id, json!({})).await;
     for _ in 0..2 {
         let id = run.call("StatusNotification").await;
         run.reply(&id, json!({})).await;
