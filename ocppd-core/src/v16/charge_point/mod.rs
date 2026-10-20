@@ -9,6 +9,7 @@ mod held;
 mod id_tags;
 mod local_authorization;
 mod local_list;
+mod log_upload;
 mod meter_values;
 mod offline_start;
 mod registration;
@@ -39,6 +40,7 @@ use firmware_update::FirmwareUpdate;
 use held::Held;
 use id_tags::IdTags;
 use local_list::LocalList;
+use log_upload::LogUpload;
 use registration::Registration;
 use reservation::Reservation;
 use security_event::STARTUP_OF_THE_DEVICE;
@@ -63,6 +65,7 @@ pub struct ChargePoint {
     limit_change_at: Option<u64>,
     firmware: Option<FirmwareUpdate>,
     uploading_until: Option<u64>,
+    log_upload: Option<LogUpload>,
     startup_reported: bool,
     boot_request: BootNotificationRequest,
     registration: Registration,
@@ -99,6 +102,7 @@ impl ChargePoint {
             limit_change_at: None,
             firmware: None,
             uploading_until: None,
+            log_upload: None,
             startup_reported: false,
             boot_request,
             registration: Registration::Offline,
@@ -119,6 +123,7 @@ impl ChargePoint {
             self.limit_change_at,
             self.firmware_deadline(),
             self.uploading_until,
+            self.log_upload_deadline(),
         ]
         .into_iter()
         .flatten()
@@ -152,6 +157,7 @@ impl ChargePoint {
         }
         self.advance_firmware(&mut out, now);
         self.advance_diagnostics(&mut out, now);
+        self.advance_log_upload(&mut out, now);
         if self.reset_due(now) {
             self.rebooted();
             out.push(Output::Close);

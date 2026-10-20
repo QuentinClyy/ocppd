@@ -9,7 +9,7 @@ use crate::v16::messages::firmware::{
 use crate::wire::ci_string::CiString;
 use serde_json::json;
 
-const UPLOAD_MS: u64 = 10_000;
+pub const UPLOAD_MS: u64 = 10_000;
 
 impl ChargePoint {
     pub(super) fn get_diagnostics(

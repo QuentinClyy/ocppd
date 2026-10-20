@@ -70,8 +70,11 @@ impl ChargePoint {
             ExtendedMessageTrigger::Heartbeat => MessageTrigger::Heartbeat,
             ExtendedMessageTrigger::MeterValues => MessageTrigger::MeterValues,
             ExtendedMessageTrigger::StatusNotification => MessageTrigger::StatusNotification,
+            ExtendedMessageTrigger::LogStatusNotification => {
+                self.report_log_status();
+                return TriggerMessageStatus::Accepted;
+            }
             ExtendedMessageTrigger::FirmwareStatusNotification
-            | ExtendedMessageTrigger::LogStatusNotification
             | ExtendedMessageTrigger::SignChargePointCertificate => {
                 return TriggerMessageStatus::NotImplemented;
             }

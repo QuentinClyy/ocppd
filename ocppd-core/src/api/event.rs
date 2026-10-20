@@ -4,6 +4,7 @@ use crate::v16::messages::core::status::ChargePointStatus;
 use crate::v16::messages::core::transaction::Reason;
 use crate::v16::messages::datatypes::id_tag::AuthorizationStatus;
 use crate::v16::messages::firmware::{DiagnosticsStatus, FirmwareStatus};
+use crate::v16::messages::security::log::UploadLogStatus;
 use serde::Serialize;
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -99,6 +100,11 @@ pub enum EventKind {
     ChargingProfileSet {
         connector: u32,
         charging_profile_id: i32,
+    },
+    LogStatus {
+        status: UploadLogStatus,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        request_id: Option<i32>,
     },
     SecurityEvent {
         #[serde(rename = "type")]

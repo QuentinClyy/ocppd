@@ -35,6 +35,7 @@ use crate::v16::messages::remote_trigger::{
 use crate::v16::messages::reservation::{
     CancelReservationRequest, CancelReservationResponse, ReserveNowRequest, ReserveNowResponse,
 };
+use crate::v16::messages::security::log::GetLogRequest;
 use crate::v16::messages::smart_charging::{
     ClearChargingProfileRequest, ClearChargingProfileResponse, GetCompositeScheduleRequest,
     SetChargingProfileRequest, SetChargingProfileResponse,
@@ -155,6 +156,9 @@ impl ChargePoint {
                     }
                 })
             }
+            "GetLog" => answer(payload, |request: GetLogRequest| {
+                self.get_log(out, now, request)
+            }),
             "DataTransfer" => answer(payload, |_: DataTransferRequest| DataTransferResponse {
                 status: DataTransferStatus::UnknownVendorId,
                 data: None,
