@@ -5,7 +5,7 @@ use crate::v16::messages::core::transaction::{
     AuthorizeResponse, Reason, StartTransactionRequest, StartTransactionResponse,
     StopTransactionRequest,
 };
-use crate::v16::messages::datatypes::id_tag::{AuthorizationStatus, IdToken};
+use crate::v16::messages::datatypes::id_tag::{AuthorizationStatus, IdTagInfo, IdToken};
 use crate::wire::date_time::DateTime;
 use crate::wire::outbox::Call;
 use serde_json::{Value, json};
@@ -43,7 +43,7 @@ impl ChargePoint {
                 if let Some(response) =
                     self.decode::<AuthorizeResponse>(out, now, "Authorize", payload)
                 {
-                    self.authorized(out, now, index, id_tag, response.id_tag_info.status);
+                    self.authorized(out, now, index, id_tag, response.id_tag_info);
                 } else {
                     self.transactions[index] = Transaction::Idle;
                 }
@@ -110,9 +110,10 @@ impl ChargePoint {
         now: u64,
         index: usize,
         id_tag: IdToken,
-        status: AuthorizationStatus,
+        info: IdTagInfo,
     ) {
         let connector = index as u32 + 1;
+        let status = info.status;
         let kind = EventKind::Authorization {
             connector: Some(connector),
             id_tag: String::from(id_tag.clone()),
@@ -124,16 +125,27 @@ impl ChargePoint {
             self.transactions[index] = Transaction::Idle;
             return;
         }
-        self.start_transaction(now, index, id_tag);
+        if self.reserved_for_other(index, &id_tag, info.parent_id_tag.as_ref()) {
+            self.transactions[index] = Transaction::Idle;
+            return self.reject(out, now, Some(connector), "reserved");
+        }
+        self.start_transaction(out, now, index, id_tag);
     }
 
-    pub(super) fn start_transaction(&mut self, now: u64, index: usize, id_tag: IdToken) {
+    pub(super) fn start_transaction(
+        &mut self,
+        out: &mut Vec<Output>,
+        now: u64,
+        index: usize,
+        id_tag: IdToken,
+    ) {
         let connector = index as u32 + 1;
+        let reservation_id = self.use_reservation(out, now, index);
         let request = StartTransactionRequest {
             connector_id: connector,
             id_tag: id_tag.clone(),
             meter_start: self.station.connectors[index].register_wh.round() as i32,
-            reservation_id: None,
+            reservation_id,
             timestamp: DateTime { unix_ms: now },
         };
         self.outbox

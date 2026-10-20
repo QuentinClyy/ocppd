@@ -90,6 +90,17 @@ pub enum EventKind {
     CallAbandoned {
         action: String,
     },
+    Reserved {
+        connector: u32,
+        reservation_id: i32,
+        id_tag: String,
+        expires: u64,
+    },
+    ReservationEnded {
+        connector: u32,
+        reservation_id: i32,
+        reason: ReservationEnd,
+    },
     RemoteStart {
         #[serde(skip_serializing_if = "Option::is_none")]
         connector: Option<u32>,
@@ -97,4 +108,12 @@ pub enum EventKind {
         #[serde(skip_serializing_if = "Option::is_none")]
         expires: Option<u64>,
     },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ReservationEnd {
+    Used,
+    Expired,
+    Cancelled,
 }

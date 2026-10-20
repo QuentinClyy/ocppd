@@ -6,6 +6,7 @@ mod meter_values;
 mod registration;
 mod remote_control;
 mod reporting;
+mod reservation;
 mod retry;
 mod transaction;
 mod trigger;
@@ -25,6 +26,7 @@ use crate::wire::outbox::{Call, Outbox, Sent};
 use configuration::Configuration;
 use held::Held;
 use registration::Registration;
+use reservation::Reservation;
 use serde::de::DeserializeOwned;
 use serde_json::{Value, json};
 use transaction::Transaction;
@@ -38,6 +40,7 @@ pub struct ChargePoint {
     inoperative: Vec<bool>,
     resetting: Option<ResetType>,
     held: Option<Held>,
+    reservations: Vec<Option<Reservation>>,
     configuration: Configuration,
     boot_request: BootNotificationRequest,
     registration: Registration,
@@ -66,6 +69,7 @@ impl ChargePoint {
             inoperative: vec![false; connectors + 1],
             resetting: None,
             held: None,
+            reservations: vec![None; connectors],
             configuration: Configuration::new(connectors)?,
             boot_request,
             registration: Registration::Offline,
@@ -82,6 +86,7 @@ impl ChargePoint {
             self.outbox.deadline(self.is_accepted()),
             self.transaction_deadline(),
             self.held_deadline(),
+            self.reservation_deadline(),
         ]
         .into_iter()
         .flatten()
@@ -132,6 +137,7 @@ impl ChargePoint {
         self.registration_tick(now);
         self.sample_meters(out, now);
         self.expire_held(out, now);
+        self.expire_reservations(out, now);
     }
 
     fn receive(&mut self, out: &mut Vec<Output>, now: u64, text: &str) {

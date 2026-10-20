@@ -51,16 +51,17 @@ impl ChargePoint {
         self.emit(out, now, kind);
         if status == AuthorizationStatus::Accepted {
             self.hold_authorized(now, held.id_tag, held.connector);
-            self.start_held(now);
+            self.start_held(out, now);
         }
     }
 
-    pub(super) fn start_held(&mut self, now: u64) {
+    pub(super) fn start_held(&mut self, out: &mut Vec<Output>, now: u64) {
         let Some(Held {
+            id_tag,
             connector,
             expires: Some(_),
             ..
-        }) = self.held
+        }) = &self.held
         else {
             return;
         };
@@ -68,16 +69,17 @@ impl ChargePoint {
             self.station.connectors[index].plugged.is_some()
                 && self.transactions[index] == Transaction::Idle
                 && !self.unavailable(index)
+                && !self.reserved_for_other(index, id_tag, None)
         };
         let index = match connector {
-            Some(index) => Some(index).filter(|&index| ready(index)),
+            Some(index) => Some(*index).filter(|&index| ready(index)),
             None => (0..self.transactions.len()).find(|&index| ready(index)),
         };
         let Some(index) = index else {
             return;
         };
         if let Some(held) = self.held.take() {
-            self.start_transaction(now, index, held.id_tag);
+            self.start_transaction(out, now, index, held.id_tag);
         }
     }
 

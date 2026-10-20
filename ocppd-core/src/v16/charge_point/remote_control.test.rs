@@ -169,6 +169,17 @@ fn scheduled_inoperative_station() -> Csms {
 }
 
 #[test]
+fn given_booted_charge_point_when_connector_made_inoperative_then_accepted_and_unavailable() {
+    let mut csms = Csms::booted();
+    let inoperative = json!({"connectorId": 1, "type": "Inoperative"});
+
+    let reply = csms.call(0, "ChangeAvailability", inoperative);
+
+    assert_eq!(status(reply), "Accepted");
+    assert_eq!(csms.statuses(), vec![ChargePointStatus::Unavailable]);
+}
+
+#[test]
 fn given_inoperative_connector_with_plugged_ev_when_id_tag_presented_then_refused_as_unavailable() {
     let mut csms = inoperative_connector();
     plug_in(&mut csms);
@@ -191,6 +202,18 @@ fn given_inoperative_connector_when_remote_start_then_rejected() {
     let reply = csms.call(0, "RemoteStartTransaction", remote);
 
     assert_eq!(status(reply), "Rejected");
+}
+
+#[test]
+fn given_inoperative_connector_with_plugged_ev_when_made_operative_then_accepted_and_preparing() {
+    let mut csms = inoperative_connector();
+    plug_in(&mut csms);
+    let operative = json!({"connectorId": 1, "type": "Operative"});
+
+    let reply = csms.call(0, "ChangeAvailability", operative);
+
+    assert_eq!(status(reply), "Accepted");
+    assert_eq!(csms.statuses().last(), Some(&ChargePointStatus::Preparing));
 }
 
 #[test]

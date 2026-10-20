@@ -71,6 +71,7 @@ impl Configuration {
                 &connectors.to_string(),
                 Access::ReadOnly,
             ),
+            ("ReserveConnectorZeroSupported", "false", Access::ReadOnly),
             ("ResetRetries", "0", Access::Integer),
             (
                 "StopTransactionOnEVSideDisconnect",
@@ -86,7 +87,7 @@ impl Configuration {
             ("StopTxnSampledData", "", Access::CurrentValueOnly),
             (
                 "SupportedFeatureProfiles",
-                "Core,RemoteTrigger",
+                "Core,RemoteTrigger,Reservation",
                 Access::ReadOnly,
             ),
             (TRANSACTION_MESSAGE_ATTEMPTS, "3", Access::Integer),

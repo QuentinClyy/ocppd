@@ -29,7 +29,7 @@ impl ChargePoint {
             return self.reject(out, now, Some(index as u32 + 1), "already plugged in");
         }
         connector.plug_in(ev.ev(), ev.soc);
-        self.start_held(now);
+        self.start_held(out, now);
     }
 
     fn authorize(&mut self, out: &mut Vec<Output>, now: u64, connector: Option<u32>, id_tag: &str) {

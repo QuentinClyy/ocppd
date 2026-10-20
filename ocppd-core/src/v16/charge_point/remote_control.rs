@@ -18,7 +18,9 @@ impl ChargePoint {
         request: RemoteStartTransactionRequest,
     ) -> GenericStatus {
         let usable = |index: usize| {
-            self.transactions[index] == Transaction::Idle && !self.unavailable(index)
+            self.transactions[index] == Transaction::Idle
+                && !self.unavailable(index)
+                && !self.reserved_for_other(index, &request.id_tag, None)
         };
         let plugged = |index: usize| self.station.connectors[index].plugged.is_some();
         let target = match request.connector_id {
@@ -38,7 +40,9 @@ impl ChargePoint {
         };
         let id_tag = request.id_tag.as_str().to_owned();
         match connector {
-            Some(index) if plugged(index) => self.start_transaction(now, index, request.id_tag),
+            Some(index) if plugged(index) => {
+                self.start_transaction(out, now, index, request.id_tag)
+            }
             _ => self.hold_authorized(now, request.id_tag, connector),
         }
         let kind = EventKind::RemoteStart {

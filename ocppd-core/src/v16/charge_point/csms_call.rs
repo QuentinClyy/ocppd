@@ -16,6 +16,9 @@ use crate::v16::messages::core::remote_control::{
 };
 use crate::v16::messages::datatypes::generic_status::GenericStatus;
 use crate::v16::messages::remote_trigger::{TriggerMessageRequest, TriggerMessageResponse};
+use crate::v16::messages::reservation::{
+    CancelReservationRequest, CancelReservationResponse, ReserveNowRequest, ReserveNowResponse,
+};
 use crate::wire::frame::Frame;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
@@ -82,6 +85,14 @@ impl ChargePoint {
             "TriggerMessage" => answer(payload, |request: TriggerMessageRequest| {
                 TriggerMessageResponse {
                     status: self.trigger(now, request),
+                }
+            }),
+            "ReserveNow" => answer(payload, |request: ReserveNowRequest| ReserveNowResponse {
+                status: self.reserve_now(out, now, request),
+            }),
+            "CancelReservation" => answer(payload, |request: CancelReservationRequest| {
+                CancelReservationResponse {
+                    status: self.cancel_reservation(out, now, request),
                 }
             }),
             "DataTransfer" => answer(payload, |_: DataTransferRequest| DataTransferResponse {

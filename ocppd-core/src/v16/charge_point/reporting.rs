@@ -138,7 +138,7 @@ impl ChargePoint {
         self.inoperative[0] || self.inoperative[index + 1]
     }
 
-    fn status(&self, index: usize, now: u64) -> ChargePointStatus {
+    pub(super) fn status(&self, index: usize, now: u64) -> ChargePointStatus {
         let connector = &self.station.connectors[index];
         let in_transaction = matches!(
             self.transactions[index],
@@ -152,6 +152,13 @@ impl ChargePoint {
         }
         if connector.plugged.is_none() && self.held_for(index) {
             return ChargePointStatus::Preparing;
+        }
+        let deciding = matches!(
+            self.transactions[index],
+            Transaction::Idle | Transaction::Authorizing { .. }
+        );
+        if self.is_reserved(index) && deciding {
+            return ChargePointStatus::Reserved;
         }
         if connector.plugged.is_none() {
             return ChargePointStatus::Available;
