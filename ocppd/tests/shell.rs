@@ -4,7 +4,7 @@ use std::process::Stdio;
 use std::time::Duration;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader, Lines};
 use tokio::net::{TcpListener, TcpStream};
-use tokio::process::{Child, ChildStdout, Command};
+use tokio::process::{Child, ChildStdin, ChildStdout, Command};
 use tokio::time::timeout;
 use tokio_tungstenite::WebSocketStream;
 use tokio_tungstenite::tungstenite::Message;
@@ -15,12 +15,14 @@ type Socket = WebSocketStream<TcpStream>;
 
 struct Run {
     _child: Child,
+    stdin: ChildStdin,
     stdout: Lines<BufReader<ChildStdout>>,
     socket: Socket,
     authorization: Option<String>,
 }
 
 const SPAWN: &str = r#"{"command":"spawn","prefix":"CP","count":1}"#;
+const AUTHORIZE: &str = r#"{"command":"authorize","station":"CP1","connector":1,"id_tag":"TAG1"}"#;
 
 #[tokio::test]
 async fn given_csms_listening_when_station_spawned_then_connects_without_basic_auth() {
@@ -41,10 +43,36 @@ async fn given_booted_station_when_stdout_read_then_connected_and_boot_status_re
     assert_eq!(events[1]["status"], "Accepted");
 }
 
+#[tokio::test]
+async fn given_authorized_tag_when_start_transaction_accepted_then_transaction_started_on_stdout() {
+    let mut run = plugged().await;
+    run.command(AUTHORIZE).await;
+    let id = run.call("Authorize").await;
+    run.reply(&id, json!({"idTagInfo": {"status": "Accepted"}}))
+        .await;
+    let id = run.call("StartTransaction").await;
+
+    let started = json!({"idTagInfo": {"status": "Accepted"}, "transactionId": 7});
+    run.reply(&id, started).await;
+
+    let event = run.event("transaction_started").await;
+    assert_eq!(event["transaction_id"], 7);
+    assert_eq!(event["connector"], 1);
+}
+
 async fn bounded<T>(future: impl Future<Output = T>) -> T {
     timeout(Duration::from_secs(10), future)
         .await
         .expect("scenario timed out")
+}
+
+async fn plugged() -> Run {
+    let mut run = start(SPAWN, 3600).await;
+    run.command(r#"{"command":"plug_in","station":"CP1","connector":1}"#)
+        .await;
+    let id = run.call("StatusNotification").await;
+    run.reply(&id, json!({})).await;
+    run
 }
 
 async fn start(spawn: &str, heartbeat_interval: u32) -> Run {
@@ -78,6 +106,7 @@ async fn start(spawn: &str, heartbeat_interval: u32) -> Run {
         .unwrap();
     let mut run = Run {
         _child: child,
+        stdin,
         stdout,
         socket,
         authorization,
@@ -98,6 +127,11 @@ async fn start(spawn: &str, heartbeat_interval: u32) -> Run {
 }
 
 impl Run {
+    async fn command(&mut self, line: &str) {
+        self.stdin.write_all(line.as_bytes()).await.unwrap();
+        self.stdin.write_all(b"\n").await.unwrap();
+    }
+
     async fn next_call(&mut self) -> Value {
         let message = bounded(self.socket.next()).await.unwrap().unwrap();
         let frame: Value = serde_json::from_str(message.to_text().unwrap()).unwrap();

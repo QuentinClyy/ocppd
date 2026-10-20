@@ -1,10 +1,11 @@
 use futures_util::{SinkExt, StreamExt};
 use ocppd_core::event::{Event, Input, Output};
 use ocppd_core::frame;
+use ocppd_core::intent::Intent;
 use ocppd_core::v16::charge_point::ChargePoint;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tokio::net::TcpStream;
-use tokio::sync::mpsc::UnboundedSender;
+use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 use tokio::time::sleep;
 use tokio_tungstenite::tungstenite::client::IntoClientRequest;
 use tokio_tungstenite::tungstenite::http::HeaderValue;
@@ -15,12 +16,20 @@ const RECONNECT_DELAY: Duration = Duration::from_secs(5);
 
 type Socket = WebSocketStream<MaybeTlsStream<TcpStream>>;
 
-pub async fn run(mut charge_point: ChargePoint, url: String, events: UnboundedSender<Event>) {
+type Intents = Option<UnboundedReceiver<Intent>>;
+
+pub async fn run(
+    mut charge_point: ChargePoint,
+    url: String,
+    events: UnboundedSender<Event>,
+    receiver: UnboundedReceiver<Intent>,
+) {
     let id = charge_point.station().id.clone();
+    let mut intents = Some(receiver);
     loop {
         match connect(&url).await {
             Ok(socket) => {
-                let reason = serve(&id, &mut charge_point, socket, &events).await;
+                let reason = serve(&mut charge_point, socket, &events, &mut intents).await;
                 eprintln!("{id}: disconnected: {reason}");
                 for output in charge_point.handle(now_ms(), Input::Disconnected) {
                     if let Output::Emit(event) = output {
@@ -45,11 +54,12 @@ async fn connect(url: &str) -> Result<Socket, tungstenite::Error> {
 }
 
 async fn serve(
-    id: &str,
     charge_point: &mut ChargePoint,
     mut socket: Socket,
     events: &UnboundedSender<Event>,
+    intents: &mut Intents,
 ) -> String {
+    let id = charge_point.station().id.clone();
     let mut input = Input::Connected;
     loop {
         for output in charge_point.handle(now_ms(), input) {
@@ -63,14 +73,19 @@ async fn serve(
                 Output::Emit(event) => emit(events, event),
             }
         }
-        input = match next_input(id, &mut socket, charge_point.next_deadline()).await {
+        input = match next_input(&id, &mut socket, charge_point.next_deadline(), intents).await {
             Ok(input) => input,
             Err(reason) => return reason,
         };
     }
 }
 
-async fn next_input(id: &str, socket: &mut Socket, deadline: Option<u64>) -> Result<Input, String> {
+async fn next_input(
+    id: &str,
+    socket: &mut Socket,
+    deadline: Option<u64>,
+    intents: &mut Intents,
+) -> Result<Input, String> {
     let wait = Duration::from_millis(deadline.unwrap_or(0).saturating_sub(now_ms()));
     let timer = sleep(wait);
     tokio::pin!(timer);
@@ -84,7 +99,18 @@ async fn next_input(id: &str, socket: &mut Socket, deadline: Option<u64>) -> Res
                 Some(Err(err)) => return Err(err.to_string()),
             },
             _ = &mut timer, if deadline.is_some() => return Ok(Input::Tick),
+            intent = next_intent(intents) => match intent {
+                Some(intent) => return Ok(Input::Intent(intent)),
+                None => *intents = None,
+            },
         }
+    }
+}
+
+async fn next_intent(intents: &mut Intents) -> Option<Intent> {
+    match intents {
+        Some(receiver) => receiver.recv().await,
+        None => std::future::pending().await,
     }
 }
 

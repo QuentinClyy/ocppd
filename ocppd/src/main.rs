@@ -1,18 +1,35 @@
 mod shell;
 
 use ocppd_core::event::Event;
+use ocppd_core::intent::Intent;
 use ocppd_core::station::{Connector, Station};
 use ocppd_core::v16::charge_point::ChargePoint;
 use serde::Deserialize;
+use serde_json::Value;
+use std::collections::HashMap;
 use std::process::ExitCode;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
 
 #[derive(Deserialize)]
-#[serde(tag = "command", rename_all = "snake_case")]
-enum Command {
-    Spawn { prefix: String, count: u32 },
+struct Spawn {
+    prefix: String,
+    count: u32,
 }
+
+#[derive(Deserialize)]
+struct Routed {
+    station: String,
+    #[serde(flatten)]
+    intent: Intent,
+}
+
+enum Command {
+    Spawn(Spawn),
+    Routed(Routed),
+}
+
+type Stations = HashMap<String, UnboundedSender<Intent>>;
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> ExitCode {
@@ -41,6 +58,7 @@ fn csms_url() -> Option<String> {
 }
 
 async fn read_commands(csms: &str, events: UnboundedSender<Event>) {
+    let mut stations = Stations::new();
     let mut lines = BufReader::new(tokio::io::stdin()).lines();
     loop {
         let line = match lines.next_line().await {
@@ -51,22 +69,46 @@ async fn read_commands(csms: &str, events: UnboundedSender<Event>) {
                 return;
             }
         };
-        match serde_json::from_str(&line) {
-            Ok(Command::Spawn { prefix, count }) => spawn(csms, &prefix, count, &events),
+        match parse(&line) {
+            Ok(Command::Spawn(command)) => spawn(csms, &command, &events, &mut stations),
+            Ok(Command::Routed(command)) => route(command, &stations),
             Err(err) => eprintln!("bad command: {err}"),
         }
     }
 }
 
-fn spawn(csms: &str, prefix: &str, count: u32, events: &UnboundedSender<Event>) {
-    for n in 1..=count {
-        let id = format!("{prefix}{n}");
+fn parse(line: &str) -> Result<Command, serde_json::Error> {
+    let value: Value = serde_json::from_str(line)?;
+    if value["command"] == "spawn" {
+        serde_json::from_value(value).map(Command::Spawn)
+    } else {
+        serde_json::from_value(value).map(Command::Routed)
+    }
+}
+
+fn route(command: Routed, stations: &Stations) {
+    let Some(intents) = stations.get(&command.station) else {
+        eprintln!("unknown station {}", command.station);
+        return;
+    };
+    if intents.send(command.intent).is_err() {
+        eprintln!("station {} stopped", command.station);
+    }
+}
+
+fn spawn(csms: &str, command: &Spawn, events: &UnboundedSender<Event>, stations: &mut Stations) {
+    for n in 1..=command.count {
+        let id = format!("{}{n}", command.prefix);
+        if stations.contains_key(&id) {
+            eprintln!("station {id} already exists");
+            continue;
+        }
         let url = format!("{csms}/{id}");
         let station = Station {
             id: id.clone(),
             vendor: "ocppd".into(),
             model: "sim".into(),
-            serial_number: id,
+            serial_number: id.clone(),
             firmware_version: env!("CARGO_PKG_VERSION").into(),
             voltage_v: 230.0,
             max_current_a: 32.0,
@@ -75,9 +117,11 @@ fn spawn(csms: &str, prefix: &str, count: u32, events: &UnboundedSender<Event>) 
         };
         match ChargePoint::new(station) {
             Ok(charge_point) => {
-                tokio::spawn(shell::run(charge_point, url, events.clone()));
+                let (intents, receiver) = unbounded_channel();
+                stations.insert(id, intents);
+                tokio::spawn(shell::run(charge_point, url, events.clone(), receiver));
             }
-            Err(err) => eprintln!("cannot spawn station: {err}"),
+            Err(err) => eprintln!("cannot spawn station {id}: {err}"),
         }
     }
 }
