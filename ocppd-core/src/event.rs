@@ -2,6 +2,7 @@ use crate::frame::Frame;
 use crate::intent::Intent;
 use crate::v16::messages::boot::RegistrationStatus;
 use crate::v16::messages::id_tag::AuthorizationStatus;
+use crate::v16::messages::remote_control::ResetType;
 use crate::v16::messages::status::ChargePointStatus;
 use crate::v16::messages::transaction::Reason;
 use serde::Serialize;
@@ -19,6 +20,7 @@ pub enum Input {
 pub enum Output {
     Send(Frame),
     Emit(Event),
+    Close,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -85,5 +87,12 @@ pub enum EventKind {
     ConfigurationChanged {
         key: String,
         value: String,
+    },
+    AvailabilityChanged {
+        connector: u32,
+        operative: bool,
+    },
+    Reset {
+        reset_type: ResetType,
     },
 }

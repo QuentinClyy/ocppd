@@ -26,6 +26,8 @@ pub struct ChargePoint {
     pub(super) outbox: Outbox,
     pub(super) transactions: Vec<Transaction>,
     pub(super) reported: Vec<Option<ChargePointStatus>>,
+    pub(super) inoperative: Vec<bool>,
+    pub(super) resetting: bool,
     pub(super) configuration: Configuration,
     boot_request: BootNotificationRequest,
     state: State,
@@ -49,7 +51,9 @@ impl ChargePoint {
             station,
             outbox: Outbox::new(),
             transactions: vec![Transaction::Idle; connectors],
-            reported: vec![None; connectors],
+            reported: vec![None; connectors + 1],
+            inoperative: vec![false; connectors + 1],
+            resetting: false,
             configuration: Configuration::new(connectors)?,
             boot_request,
             state: State::Offline,
@@ -104,6 +108,10 @@ impl ChargePoint {
         }
         if let Some(frame) = self.outbox.next_frame(now) {
             out.push(Output::Send(frame));
+        }
+        if self.resetting && self.outbox.is_idle() {
+            self.rebooted();
+            out.push(Output::Close);
         }
         out
     }
@@ -220,7 +228,6 @@ impl ChargePoint {
         if status == RegistrationStatus::Accepted {
             let seconds = (interval_ms / 1000) as u32;
             self.configuration.set_seconds(HEARTBEAT_INTERVAL, seconds);
-            self.status_notification(0, ChargePointStatus::Available);
             self.reported.fill(None);
         }
     }

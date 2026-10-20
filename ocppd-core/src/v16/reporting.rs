@@ -67,7 +67,7 @@ impl ChargePoint {
             {
                 deadlines.push(last_sample + interval);
             }
-            if self.reported[index] == Some(ChargePointStatus::Charging) {
+            if self.reported[index + 1] == Some(ChargePointStatus::Charging) {
                 deadlines.extend(self.station.connectors[index].finish_time());
             }
         }
@@ -75,20 +75,38 @@ impl ChargePoint {
     }
 
     pub(super) fn report_statuses(&mut self, out: &mut Vec<Output>, now: u64) {
-        for index in 0..self.transactions.len() {
-            let status = self.status(index, now);
-            if self.reported[index] == Some(status) {
+        for connector_id in 0..self.reported.len() {
+            let status = match connector_id {
+                0 if self.inoperative[0] => ChargePointStatus::Unavailable,
+                0 => ChargePointStatus::Available,
+                _ => self.status(connector_id - 1, now),
+            };
+            if self.reported[connector_id] == Some(status) {
                 continue;
             }
-            self.reported[index] = Some(status);
-            let connector = index as u32 + 1;
+            self.reported[connector_id] = Some(status);
+            let connector = connector_id as u32;
             self.status_notification(connector, status);
             self.emit(out, now, EventKind::StatusChanged { connector, status });
         }
     }
 
+    pub(super) fn unavailable(&self, index: usize) -> bool {
+        self.inoperative[0] || self.inoperative[index + 1]
+    }
+
     fn status(&self, index: usize, now: u64) -> ChargePointStatus {
         let connector = &self.station.connectors[index];
+        let in_transaction = matches!(
+            self.transactions[index],
+            Transaction::Authorizing { .. }
+                | Transaction::Starting { .. }
+                | Transaction::Active { .. }
+                | Transaction::Stopping
+        );
+        if self.unavailable(index) && !in_transaction {
+            return ChargePointStatus::Unavailable;
+        }
         if connector.plugged.is_none() {
             return ChargePointStatus::Available;
         }

@@ -3,6 +3,16 @@ use super::messages::configuration::{
     ChangeConfigurationRequest, ChangeConfigurationResponse, ConfigurationStatus,
     GetConfigurationRequest,
 };
+use super::messages::data_transfer::{
+    DataTransferRequest, DataTransferResponse, DataTransferStatus,
+};
+use super::messages::generic_status::GenericStatus;
+use super::messages::remote_control::{
+    ChangeAvailabilityRequest, ChangeAvailabilityResponse, ClearCacheRequest, ClearCacheResponse,
+    RemoteStartTransactionRequest, RemoteStartTransactionResponse, RemoteStopTransactionRequest,
+    RemoteStopTransactionResponse, ResetRequest, ResetResponse, UnlockConnectorRequest,
+    UnlockConnectorResponse,
+};
 use crate::event::{EventKind, Output};
 use crate::frame::Frame;
 use serde::Serialize;
@@ -38,6 +48,38 @@ impl ChargePoint {
             }),
             "ChangeConfiguration" => answer(payload, |request: ChangeConfigurationRequest| {
                 self.change_configuration(out, now, &request)
+            }),
+            "RemoteStartTransaction" => {
+                answer(payload, |request: RemoteStartTransactionRequest| {
+                    RemoteStartTransactionResponse {
+                        status: self.remote_start(now, request),
+                    }
+                })
+            }
+            "RemoteStopTransaction" => answer(payload, |request: RemoteStopTransactionRequest| {
+                RemoteStopTransactionResponse {
+                    status: self.remote_stop(out, now, request),
+                }
+            }),
+            "UnlockConnector" => answer(payload, |request: UnlockConnectorRequest| {
+                UnlockConnectorResponse {
+                    status: self.unlock(out, now, request),
+                }
+            }),
+            "Reset" => answer(payload, |request: ResetRequest| ResetResponse {
+                status: self.reset(out, now, request),
+            }),
+            "ChangeAvailability" => answer(payload, |request: ChangeAvailabilityRequest| {
+                ChangeAvailabilityResponse {
+                    status: self.change_availability(out, now, request),
+                }
+            }),
+            "ClearCache" => answer(payload, |_: ClearCacheRequest| ClearCacheResponse {
+                status: GenericStatus::Accepted,
+            }),
+            "DataTransfer" => answer(payload, |_: DataTransferRequest| DataTransferResponse {
+                status: DataTransferStatus::UnknownVendorId,
+                data: None,
             }),
             _ => Err((
                 ErrorCode::NotImplemented,

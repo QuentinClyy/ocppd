@@ -71,6 +71,12 @@ async fn serve(
                     }
                 }
                 Output::Emit(event) => emit(events, event),
+                Output::Close => {
+                    return match socket.close(None).await {
+                        Ok(()) => "closed for reset".into(),
+                        Err(err) => format!("closed for reset: {err}"),
+                    };
+                }
             }
         }
         input = match next_input(&id, &mut socket, charge_point.next_deadline(), intents).await {

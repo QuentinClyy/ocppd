@@ -29,6 +29,7 @@ pub struct Csms {
     pub sent: Vec<(String, Value)>,
     pub events: Vec<EventKind>,
     replies: Vec<Frame>,
+    pub closed: bool,
     pub answered_by_test: Vec<&'static str>,
 }
 
@@ -55,6 +56,7 @@ impl Csms {
             sent: Vec::new(),
             events: Vec::new(),
             replies: Vec::new(),
+            closed: false,
             answered_by_test: Vec::new(),
         };
         csms.input(0, Input::Connected);
@@ -84,6 +86,7 @@ impl Csms {
                     self.pending = Some((id, action, payload));
                 }
                 Output::Send(reply) => self.replies.push(reply),
+                Output::Close => self.closed = true,
                 Output::Emit(event) => self.events.push(v16_kind(event)),
             }
         }
@@ -115,6 +118,13 @@ impl Csms {
 
     pub fn intent(&mut self, now: u64, intent: Intent) {
         self.input(now, Input::Intent(intent));
+    }
+
+    pub fn expect(&self, action: &str) -> Value {
+        match &self.pending {
+            Some((_, pending, payload)) if pending == action => payload.clone(),
+            other => panic!("expected {action}, pending {other:?}"),
+        }
     }
 
     pub fn answer(&mut self, now: u64, payload: Value) {

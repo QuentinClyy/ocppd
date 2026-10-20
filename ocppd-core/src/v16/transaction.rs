@@ -33,11 +33,7 @@ pub enum Transaction {
 impl ChargePoint {
     pub(super) fn intent(&mut self, out: &mut Vec<Output>, now: u64, intent: Intent) {
         let connector = intent.connector();
-        let Some(index) = connector
-            .checked_sub(1)
-            .map(|index| index as usize)
-            .filter(|&index| index < self.transactions.len())
-        else {
+        let Some(index) = self.index_of(connector) else {
             return self.reject(out, now, connector, "unknown connector");
         };
         match intent {
@@ -120,6 +116,9 @@ impl ChargePoint {
         if self.transactions[index] != Transaction::Idle {
             return self.reject(out, now, connector, "transaction in progress");
         }
+        if self.unavailable(index) {
+            return self.reject(out, now, connector, "unavailable");
+        }
         let id_tag = match CiString::new(id_tag) {
             Ok(id_tag) => id_tag,
             Err(err) => return self.reject(out, now, connector, &err.to_string()),
@@ -151,6 +150,11 @@ impl ChargePoint {
             self.transactions[index] = Transaction::Idle;
             return;
         }
+        self.start_transaction(now, index, id_tag);
+    }
+
+    pub(super) fn start_transaction(&mut self, now: u64, index: usize, id_tag: IdToken) {
+        let connector = index as u32 + 1;
         let request = StartTransactionRequest {
             connector_id: connector,
             id_tag: id_tag.clone(),
@@ -213,7 +217,7 @@ impl ChargePoint {
         self.station.connectors[index].unplug(now);
     }
 
-    fn stop(&mut self, out: &mut Vec<Output>, now: u64, index: usize, reason: Reason) {
+    pub(super) fn stop(&mut self, out: &mut Vec<Output>, now: u64, index: usize, reason: Reason) {
         let Transaction::Active {
             transaction_id,
             id_tag,

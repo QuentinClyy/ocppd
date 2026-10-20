@@ -73,6 +73,10 @@ impl Outbox {
         self.pending.take().map(|pending| pending.call)
     }
 
+    pub fn is_idle(&self) -> bool {
+        self.pending.is_none() && self.queue.is_empty()
+    }
+
     pub fn deadline(&self) -> Option<u64> {
         self.pending.as_ref().map(|pending| pending.deadline)
     }
