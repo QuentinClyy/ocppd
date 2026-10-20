@@ -8,7 +8,9 @@ use serde_json::Value;
 
 pub const CONNECTION_TIME_OUT: &str = "ConnectionTimeOut";
 pub const HEARTBEAT_INTERVAL: &str = "HeartbeatInterval";
+pub const LOCAL_AUTH_LIST_ENABLED: &str = "LocalAuthListEnabled";
 pub const LOCAL_AUTH_LIST_MAX_LENGTH: &str = "LocalAuthListMaxLength";
+pub const LOCAL_PRE_AUTHORIZE: &str = "LocalPreAuthorize";
 pub const METER_VALUE_SAMPLE_INTERVAL: &str = "MeterValueSampleInterval";
 pub const METER_VALUES_SAMPLED_DATA: &str = "MeterValuesSampledData";
 pub const SEND_LOCAL_LIST_MAX_LENGTH: &str = "SendLocalListMaxLength";
@@ -41,6 +43,7 @@ struct Key {
 enum Access {
     ReadOnly,
     Integer,
+    Boolean,
     Measurands,
     CurrentValueOnly,
 }
@@ -58,9 +61,10 @@ impl Configuration {
             ("ConnectorPhaseRotation", "1.RST", Access::CurrentValueOnly),
             ("GetConfigurationMaxKeys", "50", Access::ReadOnly),
             (HEARTBEAT_INTERVAL, "86400", Access::Integer),
+            (LOCAL_AUTH_LIST_ENABLED, "true", Access::Boolean),
             (LOCAL_AUTH_LIST_MAX_LENGTH, "100", Access::ReadOnly),
             ("LocalAuthorizeOffline", "false", Access::CurrentValueOnly),
-            ("LocalPreAuthorize", "false", Access::CurrentValueOnly),
+            (LOCAL_PRE_AUTHORIZE, "false", Access::Boolean),
             ("MeterValuesAlignedData", "", Access::CurrentValueOnly),
             (
                 METER_VALUES_SAMPLED_DATA,
@@ -145,6 +149,7 @@ impl Configuration {
         let valid = match key.access {
             Access::ReadOnly => false,
             Access::Integer => value.parse::<u32>().is_ok(),
+            Access::Boolean => value == "true" || value == "false",
             Access::Measurands => measurands(value).is_some(),
             Access::CurrentValueOnly => value == key.value.as_str(),
         };
@@ -167,6 +172,11 @@ impl Configuration {
     pub fn interval_ms(&self, name: &str) -> Option<u64> {
         let seconds: u64 = self.find(name)?.value.as_str().parse().ok()?;
         Some(seconds * 1000).filter(|&ms| ms > 0)
+    }
+
+    pub fn flag(&self, name: &str) -> bool {
+        self.find(name)
+            .is_some_and(|key| key.value.as_str() == "true")
     }
 
     pub fn number(&self, name: &str) -> Option<u32> {

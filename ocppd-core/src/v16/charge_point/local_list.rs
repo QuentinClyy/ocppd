@@ -1,4 +1,6 @@
-use crate::v16::messages::datatypes::id_tag::{IdTagInfo, IdToken};
+use super::ChargePoint;
+use super::configuration::{LOCAL_AUTH_LIST_ENABLED, LOCAL_PRE_AUTHORIZE};
+use crate::v16::messages::datatypes::id_tag::{AuthorizationStatus, IdTagInfo, IdToken};
 use crate::v16::messages::local_auth::{SendLocalListRequest, UpdateStatus, UpdateType};
 
 #[derive(Default)]
@@ -15,6 +17,13 @@ pub struct Limits {
 impl LocalList {
     pub fn version(&self) -> i32 {
         self.version
+    }
+
+    pub fn find(&self, id_tag: &IdToken) -> Option<&IdTagInfo> {
+        self.entries
+            .iter()
+            .find(|(listed, _)| listed.matches(id_tag))
+            .map(|(_, info)| info)
     }
 
     pub fn len(&self) -> usize {
@@ -49,6 +58,17 @@ impl LocalList {
         self.entries = entries;
         self.version = request.list_version;
         UpdateStatus::Accepted
+    }
+}
+
+impl ChargePoint {
+    pub(super) fn pre_authorized(&self, id_tag: &IdToken, now: u64) -> Option<IdTagInfo> {
+        let enabled = self.configuration.flag(LOCAL_AUTH_LIST_ENABLED)
+            && self.configuration.flag(LOCAL_PRE_AUTHORIZE);
+        let info = self.local_list.find(id_tag).filter(|_| enabled)?;
+        let valid = info.status == AuthorizationStatus::Accepted
+            && info.expiry_date.is_none_or(|expiry| expiry.unix_ms > now);
+        valid.then(|| info.clone())
     }
 }
 

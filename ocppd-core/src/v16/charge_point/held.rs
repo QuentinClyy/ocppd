@@ -14,7 +14,17 @@ pub struct Held {
 }
 
 impl ChargePoint {
-    pub(super) fn hold_for_authorization(&mut self, id_tag: IdToken, connector: Option<usize>) {
+    pub(super) fn hold_for_authorization(
+        &mut self,
+        out: &mut Vec<Output>,
+        now: u64,
+        id_tag: IdToken,
+        connector: Option<usize>,
+    ) {
+        if self.pre_authorized(&id_tag, now).is_some() {
+            let accepted = AuthorizationStatus::Accepted;
+            return self.held_decided(out, now, id_tag, connector, accepted);
+        }
         let request = AuthorizeRequest {
             id_tag: id_tag.clone(),
         };
@@ -43,14 +53,25 @@ impl ChargePoint {
             return;
         };
         let status = response.id_tag_info.status;
+        self.held_decided(out, now, held.id_tag, held.connector, status);
+    }
+
+    fn held_decided(
+        &mut self,
+        out: &mut Vec<Output>,
+        now: u64,
+        id_tag: IdToken,
+        connector: Option<usize>,
+        status: AuthorizationStatus,
+    ) {
         let kind = EventKind::Authorization {
-            connector: held.connector.map(|index| index as u32 + 1),
-            id_tag: held.id_tag.as_str().to_owned(),
+            connector: connector.map(|index| index as u32 + 1),
+            id_tag: id_tag.as_str().to_owned(),
             status,
         };
         self.emit(out, now, kind);
         if status == AuthorizationStatus::Accepted {
-            self.hold_authorized(now, held.id_tag, held.connector);
+            self.hold_authorized(now, id_tag, connector);
             self.start_held(out, now);
         }
     }

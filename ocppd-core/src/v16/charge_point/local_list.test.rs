@@ -1,5 +1,6 @@
 use crate::api::event::EventKind;
-use crate::fixtures::v16::fake_csms::Csms;
+use crate::api::intent::{EvSpec, Intent};
+use crate::fixtures::v16::fake_csms::{Csms, authorize};
 use crate::wire::frame::Frame;
 use serde_json::{Value, json};
 
@@ -36,6 +37,25 @@ fn entries(csms: &Csms) -> Option<usize> {
         EventKind::LocalListUpdated { entries, .. } => Some(*entries),
         _ => None,
     })
+}
+
+fn pre_authorizing(list: Value) -> Csms {
+    let mut csms = Csms::booted();
+    assert_eq!(csms.configure(0, "LocalPreAuthorize", "true"), "Accepted");
+    send(&mut csms, 1, "Full", list);
+    csms
+}
+
+fn plug_in(csms: &mut Csms) {
+    let ev = EvSpec::default();
+    csms.intent(0, Intent::PlugIn { connector: 1, ev });
+}
+
+fn swipe_after_plug_in(csms: &mut Csms) -> String {
+    plug_in(csms);
+    csms.intent(0, authorize("tag1"));
+    let (action, _) = csms.sent.last().expect("nothing sent");
+    action.clone()
 }
 
 fn listed_v3() -> Csms {
@@ -169,4 +189,81 @@ fn given_booted_charge_point_when_100_entries_sent_then_accepted() {
     let status = send(&mut csms, 2, "Full", tags(100));
 
     assert_eq!(status, "Accepted");
+}
+
+#[test]
+fn given_listed_id_tag_and_local_pre_authorize_when_presented_after_plug_in_then_started_without_authorize()
+ {
+    let mut csms = pre_authorizing(json!([accepted("TAG1")]));
+
+    let sent = swipe_after_plug_in(&mut csms);
+
+    assert_eq!(sent, "StartTransaction");
+    assert!(csms.sent("Authorize").is_empty());
+}
+
+#[test]
+fn given_listed_id_tag_presented_before_plug_in_when_ev_plugged_then_started_without_authorize() {
+    let mut csms = pre_authorizing(json!([accepted("TAG1")]));
+    csms.intent(0, authorize("TAG1"));
+
+    plug_in(&mut csms);
+
+    assert_eq!(csms.expect("StartTransaction")["idTag"], "TAG1");
+    assert!(csms.sent("Authorize").is_empty());
+}
+
+#[test]
+fn given_listed_id_tag_without_local_pre_authorize_when_presented_then_csms_asked() {
+    let mut csms = Csms::booted();
+    send(&mut csms, 1, "Full", json!([accepted("TAG1")]));
+
+    let sent = swipe_after_plug_in(&mut csms);
+
+    assert_eq!(sent, "Authorize");
+}
+
+#[test]
+fn given_listed_id_tag_and_disabled_list_when_presented_then_csms_asked() {
+    let mut csms = pre_authorizing(json!([accepted("TAG1")]));
+    assert_eq!(
+        csms.configure(0, "LocalAuthListEnabled", "false"),
+        "Accepted"
+    );
+
+    let sent = swipe_after_plug_in(&mut csms);
+
+    assert_eq!(sent, "Authorize");
+}
+
+#[test]
+fn given_id_tag_listed_as_blocked_when_presented_then_csms_asked() {
+    let blocked = json!([{"idTag": "TAG1", "idTagInfo": {"status": "Blocked"}}]);
+    let mut csms = pre_authorizing(blocked);
+
+    let sent = swipe_after_plug_in(&mut csms);
+
+    assert_eq!(sent, "Authorize");
+}
+
+#[test]
+fn given_id_tag_listed_with_a_past_expiry_when_presented_then_csms_asked() {
+    let expired = json!([{"idTag": "TAG1", "idTagInfo": {
+        "status": "Accepted",
+        "expiryDate": "1970-01-01T00:00:00Z",
+    }}]);
+    let mut csms = pre_authorizing(expired);
+
+    let sent = swipe_after_plug_in(&mut csms);
+
+    assert_eq!(sent, "Authorize");
+}
+
+#[test]
+fn given_booted_charge_point_when_boolean_key_set_to_yes_then_rejected() {
+    let mut csms = Csms::booted();
+
+    let status = csms.configure(0, "LocalPreAuthorize", "yes");
+
+    assert_eq!(status, "Rejected");
 }

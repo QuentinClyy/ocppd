@@ -104,7 +104,7 @@ impl ChargePoint {
         }
     }
 
-    fn authorized(
+    pub(super) fn authorized(
         &mut self,
         out: &mut Vec<Output>,
         now: u64,

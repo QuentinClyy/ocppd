@@ -58,7 +58,7 @@ impl ChargePoint {
                     [] if self.held.is_some() => {
                         return self.reject(out, now, None, "authorization pending");
                     }
-                    [] => return self.hold_for_authorization(id_tag, None),
+                    [] => return self.hold_for_authorization(out, now, id_tag, None),
                     _ => return self.reject(out, now, None, "ambiguous connector"),
                 }
             }
@@ -75,7 +75,10 @@ impl ChargePoint {
             return self.reject(out, now, connector, "authorization pending");
         }
         if !plugged {
-            return self.hold_for_authorization(id_tag, Some(index));
+            return self.hold_for_authorization(out, now, id_tag, Some(index));
+        }
+        if let Some(info) = self.pre_authorized(&id_tag, now) {
+            return self.authorized(out, now, index, id_tag, info);
         }
         let request = AuthorizeRequest {
             id_tag: id_tag.clone(),
