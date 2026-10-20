@@ -11,12 +11,14 @@ pub fn station() -> Station {
         id: "CP1".into(),
         vendor: "ocppd".into(),
         model: "sim".into(),
+        serial_number: "SN-1".into(),
+        firmware_version: "0.1.0".into(),
         connectors: 1,
     }
 }
 
 pub fn charge_point() -> ChargePoint {
-    ChargePoint::new(station())
+    ChargePoint::new(station()).unwrap()
 }
 
 pub fn calls(outputs: &[Output]) -> Vec<(String, String, Value)> {

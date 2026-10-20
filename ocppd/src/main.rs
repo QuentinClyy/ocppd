@@ -2,6 +2,7 @@ mod shell;
 
 use ocppd_core::event::Event;
 use ocppd_core::station::Station;
+use ocppd_core::v16::charge_point::ChargePoint;
 use serde::Deserialize;
 use std::process::ExitCode;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
@@ -62,12 +63,19 @@ fn spawn(csms: &str, prefix: &str, count: u32, events: &UnboundedSender<Event>) 
         let id = format!("{prefix}{n}");
         let url = format!("{csms}/{id}");
         let station = Station {
-            id,
+            id: id.clone(),
             vendor: "ocppd".into(),
             model: "sim".into(),
+            serial_number: id,
+            firmware_version: env!("CARGO_PKG_VERSION").into(),
             connectors: 1,
         };
-        tokio::spawn(shell::run(station, url, events.clone()));
+        match ChargePoint::new(station) {
+            Ok(charge_point) => {
+                tokio::spawn(shell::run(charge_point, url, events.clone()));
+            }
+            Err(err) => eprintln!("cannot spawn station: {err}"),
+        }
     }
 }
 

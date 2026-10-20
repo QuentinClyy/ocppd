@@ -1,5 +1,5 @@
 use crate::frame::Frame;
-use crate::v16::types::RegistrationStatus;
+use crate::v16::messages::boot::RegistrationStatus;
 use serde::Serialize;
 
 #[derive(Debug, Clone, PartialEq)]

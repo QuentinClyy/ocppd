@@ -1,7 +1,8 @@
-use super::types::{
-    BootNotificationRequest, BootNotificationResponse, ChargePointErrorCode, ChargePointStatus,
-    RegistrationStatus, StatusNotificationRequest,
+use super::messages::boot::{
+    BootNotificationRequest, BootNotificationResponse, HeartbeatRequest, RegistrationStatus,
 };
+use super::messages::status::{ChargePointErrorCode, ChargePointStatus, StatusNotificationRequest};
+use crate::ci_string::{CiString, TooLong};
 use crate::event::{Event, EventKind, Input, Output};
 use crate::frame::{self, Frame};
 use crate::outbox::Outbox;
@@ -24,17 +25,34 @@ enum State {
 
 pub struct ChargePoint {
     station: Station,
+    boot_request: BootNotificationRequest,
     state: State,
     outbox: Outbox,
 }
 
 impl ChargePoint {
-    pub fn new(station: Station) -> Self {
-        ChargePoint {
+    pub fn new(station: Station) -> Result<Self, TooLong> {
+        let boot_request = BootNotificationRequest {
+            charge_point_vendor: CiString::new(&station.vendor)?,
+            charge_point_model: CiString::new(&station.model)?,
+            charge_point_serial_number: Some(CiString::new(&station.serial_number)?),
+            charge_box_serial_number: None,
+            firmware_version: Some(CiString::new(&station.firmware_version)?),
+            iccid: None,
+            imsi: None,
+            meter_type: None,
+            meter_serial_number: None,
+        };
+        Ok(ChargePoint {
             station,
+            boot_request,
             state: State::Offline,
             outbox: Outbox::new(),
-        }
+        })
+    }
+
+    pub fn station(&self) -> &Station {
+        &self.station
     }
 
     pub fn next_deadline(&self) -> Option<u64> {
@@ -72,11 +90,8 @@ impl ChargePoint {
 
     fn boot(&mut self) {
         self.state = State::Booting;
-        let request = BootNotificationRequest {
-            charge_point_vendor: self.station.vendor.clone(),
-            charge_point_model: self.station.model.clone(),
-        };
-        self.outbox.push("BootNotification", json!(request));
+        self.outbox
+            .push("BootNotification", json!(self.boot_request));
     }
 
     fn tick(&mut self, out: &mut Vec<Output>, now: u64) {
@@ -96,7 +111,7 @@ impl ChargePoint {
                 next_heartbeat,
                 interval_ms,
             } if now >= next_heartbeat => {
-                self.outbox.push("Heartbeat", json!({}));
+                self.outbox.push("Heartbeat", json!(HeartbeatRequest {}));
                 self.state = State::Accepted {
                     next_heartbeat: now + interval_ms,
                     interval_ms,
@@ -182,7 +197,7 @@ impl ChargePoint {
         );
         let interval_ms = match response.interval {
             0 => RETRY_MS,
-            seconds => seconds * 1000,
+            seconds => u64::from(seconds) * 1000,
         };
         match response.status {
             RegistrationStatus::Accepted => {
@@ -194,7 +209,11 @@ impl ChargePoint {
                     let request = StatusNotificationRequest {
                         connector_id,
                         error_code: ChargePointErrorCode::NoError,
+                        info: None,
                         status: ChargePointStatus::Available,
+                        timestamp: None,
+                        vendor_id: None,
+                        vendor_error_code: None,
                     };
                     self.outbox.push("StatusNotification", json!(request));
                 }

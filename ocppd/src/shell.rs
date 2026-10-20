@@ -1,7 +1,6 @@
 use futures_util::{SinkExt, StreamExt};
 use ocppd_core::event::{Event, Input, Output};
 use ocppd_core::frame;
-use ocppd_core::station::Station;
 use ocppd_core::v16::charge_point::ChargePoint;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tokio::net::TcpStream;
@@ -16,9 +15,8 @@ const RECONNECT_DELAY: Duration = Duration::from_secs(5);
 
 type Socket = WebSocketStream<MaybeTlsStream<TcpStream>>;
 
-pub async fn run(station: Station, url: String, events: UnboundedSender<Event>) {
-    let id = station.id.clone();
-    let mut charge_point = ChargePoint::new(station);
+pub async fn run(mut charge_point: ChargePoint, url: String, events: UnboundedSender<Event>) {
+    let id = charge_point.station().id.clone();
     loop {
         match connect(&url).await {
             Ok(socket) => {

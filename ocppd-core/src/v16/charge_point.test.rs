@@ -1,8 +1,9 @@
 use crate::event::{EventKind, Input, Output};
 use crate::fixtures::v16::raw::{
-    accepted_charge_point, boot_response, calls, charge_point, kinds, only_call, result,
+    accepted_charge_point, boot_response, calls, charge_point, kinds, only_call, result, station,
 };
 use crate::frame::Frame;
+use crate::station::Station;
 use crate::v16::charge_point::ChargePoint;
 use serde_json::json;
 
@@ -76,6 +77,18 @@ fn boot_sent() -> (ChargePoint, String) {
     let mut charge_point = charge_point();
     let (id, _, _) = only_call(&charge_point.handle(0, Input::Connected));
     (charge_point, id)
+}
+
+#[test]
+fn given_vendor_name_over_20_characters_when_charge_point_created_then_refused() {
+    let station = Station {
+        vendor: "a vendor name over twenty".into(),
+        ..station()
+    };
+
+    let error = ChargePoint::new(station).err().unwrap();
+
+    assert_eq!(error.max, 20);
 }
 
 #[test]
