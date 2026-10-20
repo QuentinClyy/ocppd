@@ -9,6 +9,7 @@ use serde_json::Value;
 pub const CONNECTION_TIME_OUT: &str = "ConnectionTimeOut";
 pub const HEARTBEAT_INTERVAL: &str = "HeartbeatInterval";
 pub const LOCAL_AUTH_LIST_ENABLED: &str = "LocalAuthListEnabled";
+pub const LOCAL_AUTHORIZE_OFFLINE: &str = "LocalAuthorizeOffline";
 pub const LOCAL_AUTH_LIST_MAX_LENGTH: &str = "LocalAuthListMaxLength";
 pub const LOCAL_PRE_AUTHORIZE: &str = "LocalPreAuthorize";
 pub const METER_VALUE_SAMPLE_INTERVAL: &str = "MeterValueSampleInterval";
@@ -63,7 +64,7 @@ impl Configuration {
             (HEARTBEAT_INTERVAL, "86400", Access::Integer),
             (LOCAL_AUTH_LIST_ENABLED, "true", Access::Boolean),
             (LOCAL_AUTH_LIST_MAX_LENGTH, "100", Access::ReadOnly),
-            ("LocalAuthorizeOffline", "false", Access::CurrentValueOnly),
+            (LOCAL_AUTHORIZE_OFFLINE, "false", Access::Boolean),
             (LOCAL_PRE_AUTHORIZE, "false", Access::Boolean),
             ("MeterValuesAlignedData", "", Access::CurrentValueOnly),
             (

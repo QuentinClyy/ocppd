@@ -72,7 +72,7 @@ impl ChargePoint {
                 transaction_id,
                 last_register_wh,
                 ..
-            } => (Some(transaction_id), last_register_wh),
+            } => (transaction_id, last_register_wh),
             _ => (None, self.station.connectors[index].sample(now).register_wh),
         };
         let reading = self.reading(index, now, last_register_wh, ReadingContext::Trigger);

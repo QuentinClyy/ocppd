@@ -40,6 +40,13 @@ impl ChargePoint {
         if self.resetting.is_some() {
             return self.reject(out, now, connector, "resetting");
         }
+        if !self.is_accepted() && self.locally_authorized(&id_tag, now).is_none() {
+            let reason = match self.is_connected() {
+                true => "not registered",
+                false => "offline",
+            };
+            return self.reject(out, now, connector, reason);
+        }
         let index = match connector {
             Some(connector) => match self.index_of(connector) {
                 Some(index) => index,
@@ -77,7 +84,7 @@ impl ChargePoint {
         if !plugged {
             return self.hold_for_authorization(out, now, id_tag, Some(index));
         }
-        if let Some(info) = self.pre_authorized(&id_tag, now) {
+        if let Some(info) = self.locally_authorized(&id_tag, now) {
             return self.authorized(out, now, index, id_tag, info);
         }
         let request = AuthorizeRequest {
@@ -99,12 +106,11 @@ impl ChargePoint {
         if self.station.connectors[index].plugged.is_none() {
             return self.reject(out, now, Some(index as u32 + 1), "nothing plugged in");
         }
-        match self.transactions[index] {
-            Transaction::Active { .. } => self.stop(out, now, index, Reason::EvDisconnected),
-            Transaction::Finished => self.transactions[index] = Transaction::Idle,
-            _ => {}
-        }
+        self.stop(out, now, index, Reason::EvDisconnected);
         self.station.connectors[index].unplug(now);
+        if self.transactions[index] == Transaction::Finished {
+            self.transactions[index] = Transaction::Idle;
+        }
     }
 }
 

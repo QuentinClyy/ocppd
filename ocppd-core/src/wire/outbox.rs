@@ -107,6 +107,16 @@ impl Outbox {
         self.queue.push_front(Queued { sent, not_before });
     }
 
+    pub fn queued_payloads(
+        &mut self,
+        connector_id: u32,
+    ) -> impl Iterator<Item = (&str, &mut Value)> {
+        self.queue
+            .iter_mut()
+            .filter(move |queued| queued.sent.call.connector_id == connector_id)
+            .map(|queued| (queued.sent.call.action.as_str(), &mut queued.sent.payload))
+    }
+
     pub fn is_drained(&self, now: u64) -> bool {
         self.pending.is_none() && self.queue.iter().all(|queued| queued.not_before > now)
     }

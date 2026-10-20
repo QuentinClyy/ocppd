@@ -20,12 +20,11 @@ pub enum Transaction {
         id_tag: IdToken,
     },
     Active {
-        transaction_id: i32,
+        transaction_id: Option<i32>,
         id_tag: IdToken,
         last_sample: u64,
         last_register_wh: f64,
     },
-    Stopping,
     Finished,
 }
 
@@ -57,14 +56,29 @@ impl ChargePoint {
                     self.transactions[index] = Transaction::Idle;
                 }
             }
+            (
+                "StartTransaction",
+                Transaction::Active {
+                    transaction_id: None,
+                    ..
+                },
+            ) => {
+                if let Some(response) =
+                    self.decode::<StartTransactionResponse>(out, now, "StartTransaction", payload)
+                {
+                    self.started_offline(out, now, index, response);
+                }
+            }
             ("StartTransaction", _) => {
                 if let Some(response) =
                     self.decode::<StartTransactionResponse>(out, now, "StartTransaction", payload)
                 {
-                    self.stop_orphan(now, index, response.transaction_id);
+                    let id = response.transaction_id;
+                    if !self.fill_transaction_id(index, id) {
+                        self.stop_orphan(now, index, id);
+                    }
                 }
             }
-            ("StopTransaction", Transaction::Stopping) => self.transaction_ended(index),
             _ => {}
         }
     }
@@ -87,7 +101,6 @@ impl ChargePoint {
             Transaction::Authorizing { .. } | Transaction::Starting { .. } => {
                 self.transactions[index] = Transaction::Idle;
             }
-            Transaction::Stopping => self.transaction_ended(index),
             _ => {}
         }
     }
@@ -150,7 +163,10 @@ impl ChargePoint {
         };
         self.outbox
             .push("StartTransaction", connector, json!(request));
-        self.transactions[index] = Transaction::Starting { id_tag };
+        match self.is_connected() {
+            true => self.transactions[index] = Transaction::Starting { id_tag },
+            false => self.begin_charging(now, index, None, id_tag),
+        }
     }
 
     fn started(
@@ -168,18 +184,28 @@ impl ChargePoint {
             transaction_id,
         };
         self.emit(out, now, kind);
+        self.begin_charging(now, index, Some(transaction_id), id_tag);
+        if response.id_tag_info.status != AuthorizationStatus::Accepted {
+            return self.stop(out, now, index, Reason::DeAuthorized);
+        }
+        if self.station.connectors[index].plugged.is_none() {
+            self.stop(out, now, index, Reason::EvDisconnected);
+        }
+    }
+
+    fn begin_charging(
+        &mut self,
+        now: u64,
+        index: usize,
+        transaction_id: Option<i32>,
+        id_tag: IdToken,
+    ) {
         self.transactions[index] = Transaction::Active {
             transaction_id,
             id_tag,
             last_sample: now,
             last_register_wh: self.station.connectors[index].register_wh,
         };
-        if response.id_tag_info.status != AuthorizationStatus::Accepted {
-            return self.stop(out, now, index, Reason::DeAuthorized);
-        }
-        if self.station.connectors[index].plugged.is_none() {
-            return self.stop(out, now, index, Reason::EvDisconnected);
-        }
         let limit_w = self.station.limit_w();
         self.station.connectors[index].start_charging(now, limit_w);
     }
@@ -199,19 +225,23 @@ impl ChargePoint {
             id_tag: Some(id_tag),
             meter_stop: connector.register_wh.round() as i32,
             timestamp: DateTime { unix_ms: now },
-            transaction_id,
+            transaction_id: transaction_id.unwrap_or_default(),
             reason: Some(reason),
             transaction_data: None,
         };
+        let mut payload = json!(request);
+        if let (None, Some(fields)) = (transaction_id, payload.as_object_mut()) {
+            fields.remove("transactionId");
+        }
         self.outbox
-            .push("StopTransaction", index as u32 + 1, json!(request));
+            .push("StopTransaction", index as u32 + 1, payload);
         let kind = EventKind::TransactionStopped {
             connector: index as u32 + 1,
             transaction_id,
             reason,
         };
         self.emit(out, now, kind);
-        self.transactions[index] = Transaction::Stopping;
+        self.transaction_ended(index);
     }
 
     fn transaction_ended(&mut self, index: usize) {

@@ -1,5 +1,5 @@
 use super::ChargePoint;
-use super::configuration::{LOCAL_AUTH_LIST_ENABLED, LOCAL_PRE_AUTHORIZE};
+use super::configuration::{LOCAL_AUTH_LIST_ENABLED, LOCAL_AUTHORIZE_OFFLINE, LOCAL_PRE_AUTHORIZE};
 use crate::v16::messages::datatypes::id_tag::{AuthorizationStatus, IdTagInfo, IdToken};
 use crate::v16::messages::local_auth::{SendLocalListRequest, UpdateStatus, UpdateType};
 
@@ -62,9 +62,13 @@ impl LocalList {
 }
 
 impl ChargePoint {
-    pub(super) fn pre_authorized(&self, id_tag: &IdToken, now: u64) -> Option<IdTagInfo> {
-        let enabled = self.configuration.flag(LOCAL_AUTH_LIST_ENABLED)
-            && self.configuration.flag(LOCAL_PRE_AUTHORIZE);
+    pub(super) fn locally_authorized(&self, id_tag: &IdToken, now: u64) -> Option<IdTagInfo> {
+        let when = match self.is_connected() {
+            true => LOCAL_PRE_AUTHORIZE,
+            false => LOCAL_AUTHORIZE_OFFLINE,
+        };
+        let enabled =
+            self.configuration.flag(LOCAL_AUTH_LIST_ENABLED) && self.configuration.flag(when);
         let info = self.local_list.find(id_tag).filter(|_| enabled)?;
         let valid = info.status == AuthorizationStatus::Accepted
             && info.expiry_date.is_none_or(|expiry| expiry.unix_ms > now);

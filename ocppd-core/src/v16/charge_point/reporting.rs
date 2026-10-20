@@ -44,7 +44,7 @@ impl ChargePoint {
         };
         let reading = self.reading(index, at, last_register_wh, ReadingContext::SamplePeriodic);
         let sample = reading.sample;
-        self.push_meter_values(index, at, Some(transaction_id), &reading, measurands);
+        self.push_meter_values(index, at, transaction_id, &reading, measurands);
         let kind = EventKind::MeterSample {
             connector: index as u32 + 1,
             register_wh: sample.register_wh,
@@ -145,7 +145,6 @@ impl ChargePoint {
             Transaction::Authorizing { .. }
                 | Transaction::Starting { .. }
                 | Transaction::Active { .. }
-                | Transaction::Stopping
         );
         if self.unavailable(index) && !in_transaction {
             return ChargePointStatus::Unavailable;
@@ -171,7 +170,7 @@ impl ChargePoint {
                 ChargePointStatus::Charging
             }
             Transaction::Active { .. } => ChargePointStatus::SuspendedEv,
-            Transaction::Stopping | Transaction::Finished => ChargePointStatus::Finishing,
+            Transaction::Finished => ChargePointStatus::Finishing,
         }
     }
 }

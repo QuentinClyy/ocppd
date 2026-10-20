@@ -21,7 +21,7 @@ impl ChargePoint {
         id_tag: IdToken,
         connector: Option<usize>,
     ) {
-        if self.pre_authorized(&id_tag, now).is_some() {
+        if self.locally_authorized(&id_tag, now).is_some() {
             let accepted = AuthorizationStatus::Accepted;
             return self.held_decided(out, now, id_tag, connector, accepted);
         }

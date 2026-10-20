@@ -62,7 +62,7 @@ impl ChargePoint {
     ) -> GenericStatus {
         let running = self.transactions.iter().position(|transaction| {
             matches!(transaction, Transaction::Active { transaction_id, .. }
-                if *transaction_id == request.transaction_id)
+                if *transaction_id == Some(request.transaction_id))
         });
         let Some(index) = running else {
             return GenericStatus::Rejected;

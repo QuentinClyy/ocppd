@@ -59,7 +59,8 @@ pub enum EventKind {
     },
     TransactionStopped {
         connector: u32,
-        transaction_id: i32,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        transaction_id: Option<i32>,
         reason: Reason,
     },
     MeterSample {

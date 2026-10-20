@@ -4,6 +4,7 @@ mod driver;
 mod held;
 mod local_list;
 mod meter_values;
+mod offline_start;
 mod registration;
 mod remote_control;
 mod reporting;
@@ -13,7 +14,6 @@ mod transaction;
 mod trigger;
 
 use crate::api::event::{Event, EventKind};
-use crate::api::intent::Intent;
 use crate::api::io::{Input, Output};
 use crate::station::Station;
 use crate::v16::messages::core::boot::BootNotificationRequest;
@@ -112,9 +112,6 @@ impl ChargePoint {
             }
             Input::Tick => self.tick(&mut out, now),
             Input::Frame(text) => self.receive(&mut out, now, &text),
-            Input::Intent(Intent::Authorize { connector, .. }) if !self.is_accepted() => {
-                self.reject(&mut out, now, connector, "not registered")
-            }
             Input::Intent(intent) => self.intent(&mut out, now, intent),
         }
         if self.is_accepted() {
@@ -178,10 +175,7 @@ impl ChargePoint {
         match call.action.as_str() {
             "BootNotification" => self.booted(out, now, payload),
             "Authorize" if call.connector_id == 0 => self.held_reply(out, now, payload),
-            "StopTransaction" if call.connector_id == 0 => {}
-            "Authorize" | "StartTransaction" | "StopTransaction" => {
-                self.transaction_reply(out, now, call, payload)
-            }
+            "Authorize" | "StartTransaction" => self.transaction_reply(out, now, call, payload),
             _ => {}
         }
     }
@@ -194,8 +188,7 @@ impl ChargePoint {
         match call.action.as_str() {
             "BootNotification" => self.boot_failed(now),
             "Authorize" if call.connector_id == 0 => self.held = None,
-            "StopTransaction" if call.connector_id == 0 => {}
-            "Authorize" | "StartTransaction" | "StopTransaction" => self.transaction_failed(call),
+            "Authorize" | "StartTransaction" => self.transaction_failed(call),
             _ => {}
         }
     }
