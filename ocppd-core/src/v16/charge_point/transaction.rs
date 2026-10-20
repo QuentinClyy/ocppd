@@ -57,9 +57,28 @@ impl ChargePoint {
                     self.transactions[index] = Transaction::Idle;
                 }
             }
+            ("StartTransaction", _) => {
+                if let Some(response) =
+                    self.decode::<StartTransactionResponse>(out, now, "StartTransaction", payload)
+                {
+                    self.stop_orphan(now, index, response.transaction_id);
+                }
+            }
             ("StopTransaction", Transaction::Stopping) => self.transaction_ended(index),
             _ => {}
         }
+    }
+
+    fn stop_orphan(&mut self, now: u64, index: usize, transaction_id: i32) {
+        let request = StopTransactionRequest {
+            id_tag: None,
+            meter_stop: self.station.connectors[index].register_wh.round() as i32,
+            timestamp: DateTime { unix_ms: now },
+            transaction_id,
+            reason: Some(Reason::Other),
+            transaction_data: None,
+        };
+        self.outbox.push("StopTransaction", 0, json!(request));
     }
 
     pub(super) fn transaction_failed(&mut self, call: &Call) {

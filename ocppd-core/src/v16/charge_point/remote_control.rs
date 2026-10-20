@@ -1,4 +1,5 @@
 use super::ChargePoint;
+use super::registration::Registration;
 use super::transaction::Transaction;
 use crate::api::event::EventKind;
 use crate::api::io::Output;
@@ -32,7 +33,7 @@ impl ChargePoint {
                 ready.map(Some).or(any.then_some(None))
             }
         };
-        let (Some(connector), None) = (target, &self.held) else {
+        let (Some(connector), None, None) = (target, &self.held, self.resetting) else {
             return GenericStatus::Rejected;
         };
         let id_tag = request.id_tag.as_str().to_owned();
@@ -90,7 +91,12 @@ impl ChargePoint {
             ResetType::Hard => Reason::HardReset,
         };
         for index in 0..self.transactions.len() {
-            self.stop(out, now, index, reason);
+            match self.transactions[index] {
+                Transaction::Authorizing { .. } | Transaction::Starting { .. } => {
+                    self.transactions[index] = Transaction::Idle
+                }
+                _ => self.stop(out, now, index, reason),
+            }
         }
         self.emit(
             out,
@@ -100,12 +106,23 @@ impl ChargePoint {
             },
         );
         self.held = None;
-        self.resetting = true;
+        self.resetting = Some(request.kind);
         GenericStatus::Accepted
     }
 
+    pub(super) fn reset_due(&self, now: u64) -> bool {
+        match self.resetting {
+            Some(ResetType::Hard) => true,
+            Some(ResetType::Soft) => self.outbox.is_drained(now),
+            None => false,
+        }
+    }
+
     pub(super) fn rebooted(&mut self) {
-        self.resetting = false;
+        self.resetting = None;
+        self.registration = Registration::Offline;
+        self.outbox.keep_transaction_messages();
+        self.connection_lost();
         for transaction in &mut self.transactions {
             if *transaction == Transaction::Finished {
                 *transaction = Transaction::Idle;

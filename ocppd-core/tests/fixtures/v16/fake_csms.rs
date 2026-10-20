@@ -137,6 +137,12 @@ impl Csms {
         }
     }
 
+    pub fn fail(&mut self, now: u64) {
+        let (id, _, _) = self.pending.take().expect("no pending call");
+        let error = json!([4, id, "InternalError", "", {}]);
+        self.input(now, Input::Frame(error.to_string()));
+    }
+
     pub fn answer(&mut self, now: u64, payload: Value) {
         let (id, _, _) = self.pending.take().expect("no pending call");
         self.input(now, Input::Frame(json!([3, id, payload]).to_string()));

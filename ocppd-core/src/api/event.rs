@@ -82,6 +82,14 @@ pub enum EventKind {
     AuthorizationExpired {
         id_tag: String,
     },
+    CallRetried {
+        action: String,
+        attempt: u32,
+        retry_at: u64,
+    },
+    CallAbandoned {
+        action: String,
+    },
     RemoteStart {
         #[serde(skip_serializing_if = "Option::is_none")]
         connector: Option<u32>,

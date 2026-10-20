@@ -7,3 +7,5 @@ pub fn result(frame: Frame) -> Value {
         other => panic!("expected a result, got {other:?}"),
     }
 }
+
+pub const KEY: &str = "30313233343536373839616263646566";

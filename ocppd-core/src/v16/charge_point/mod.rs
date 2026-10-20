@@ -6,6 +6,7 @@ mod meter_values;
 mod registration;
 mod remote_control;
 mod reporting;
+mod retry;
 mod transaction;
 
 use crate::api::event::{Event, EventKind};
@@ -13,12 +14,13 @@ use crate::api::intent::Intent;
 use crate::api::io::{Input, Output};
 use crate::station::Station;
 use crate::v16::messages::core::boot::BootNotificationRequest;
+use crate::v16::messages::core::remote_control::ResetType;
 use crate::v16::messages::core::status::{
     ChargePointErrorCode, ChargePointStatus, StatusNotificationRequest,
 };
 use crate::wire::ci_string::{CiString, TooLong};
 use crate::wire::frame::{self, Frame};
-use crate::wire::outbox::{Call, Outbox};
+use crate::wire::outbox::{Call, Outbox, Sent};
 use configuration::Configuration;
 use held::Held;
 use registration::Registration;
@@ -33,7 +35,7 @@ pub struct ChargePoint {
     reported: Vec<Option<ChargePointStatus>>,
     resend_statuses: bool,
     inoperative: Vec<bool>,
-    resetting: bool,
+    resetting: Option<ResetType>,
     held: Option<Held>,
     configuration: Configuration,
     boot_request: BootNotificationRequest,
@@ -61,7 +63,7 @@ impl ChargePoint {
             reported: vec![None; connectors + 1],
             resend_statuses: false,
             inoperative: vec![false; connectors + 1],
-            resetting: false,
+            resetting: None,
             held: None,
             configuration: Configuration::new(connectors)?,
             boot_request,
@@ -76,7 +78,7 @@ impl ChargePoint {
     pub fn next_deadline(&self) -> Option<u64> {
         [
             self.registration_deadline(),
-            self.outbox.deadline(),
+            self.outbox.deadline(self.is_accepted()),
             self.transaction_deadline(),
             self.held_deadline(),
         ]
@@ -90,10 +92,10 @@ impl ChargePoint {
         match input {
             Input::Connected => {
                 self.emit(&mut out, now, EventKind::Connected);
-                self.boot();
+                self.connected(now);
             }
             Input::Disconnected => {
-                self.registration = Registration::Offline;
+                self.disconnected();
                 self.outbox.keep_transaction_messages();
                 self.connection_lost();
                 self.emit(&mut out, now, EventKind::Disconnected);
@@ -108,23 +110,23 @@ impl ChargePoint {
         if self.is_accepted() {
             self.report_statuses(&mut out, now);
         }
+        if self.reset_due(now) {
+            self.rebooted();
+            out.push(Output::Close);
+        }
         if self.is_connected() {
             if let Some(frame) = self.outbox.next_frame(now, self.is_accepted()) {
                 out.push(Output::Send(frame));
             }
         }
-        if self.resetting && self.outbox.is_idle() {
-            self.rebooted();
-            out.push(Output::Close);
-        }
         out
     }
 
     fn tick(&mut self, out: &mut Vec<Output>, now: u64) {
-        if let Some(call) = self.outbox.expire(now) {
-            let action = call.action.clone();
+        if let Some(sent) = self.outbox.expire(now) {
+            let action = sent.call.action.clone();
             self.emit(out, now, EventKind::CallTimedOut { action });
-            self.call_failed(now, &call);
+            self.call_failed(out, now, sent);
         }
         self.registration_tick(now);
         self.sample_meters(out, now);
@@ -147,14 +149,14 @@ impl ChargePoint {
                 payload,
             } => self.csms_call(out, now, id, &action, payload),
             Frame::CallResult { id, payload } => match self.outbox.resolve(&id) {
-                Some(call) => self.call_succeeded(out, now, &call, payload),
+                Some(sent) => self.call_succeeded(out, now, &sent.call, payload),
                 None => self.emit(out, now, EventKind::UnknownResponse { id }),
             },
             Frame::CallError { id, code, .. } => match self.outbox.resolve(&id) {
-                Some(call) => {
-                    let action = call.action.clone();
+                Some(sent) => {
+                    let action = sent.call.action.clone();
                     self.emit(out, now, EventKind::CallFailed { action, code });
-                    self.call_failed(now, &call);
+                    self.call_failed(out, now, sent);
                 }
                 None => self.emit(out, now, EventKind::UnknownResponse { id }),
             },
@@ -165,6 +167,7 @@ impl ChargePoint {
         match call.action.as_str() {
             "BootNotification" => self.booted(out, now, payload),
             "Authorize" if call.connector_id == 0 => self.held_reply(out, now, payload),
+            "StopTransaction" if call.connector_id == 0 => {}
             "Authorize" | "StartTransaction" | "StopTransaction" => {
                 self.transaction_reply(out, now, call, payload)
             }
@@ -172,10 +175,15 @@ impl ChargePoint {
         }
     }
 
-    fn call_failed(&mut self, now: u64, call: &Call) {
+    fn call_failed(&mut self, out: &mut Vec<Output>, now: u64, sent: Sent) {
+        let Some(sent) = self.retry_transaction_message(out, now, sent) else {
+            return;
+        };
+        let call = &sent.call;
         match call.action.as_str() {
             "BootNotification" => self.boot_failed(now),
             "Authorize" if call.connector_id == 0 => self.held = None,
+            "StopTransaction" if call.connector_id == 0 => {}
             "Authorize" | "StartTransaction" | "StopTransaction" => self.transaction_failed(call),
             _ => {}
         }

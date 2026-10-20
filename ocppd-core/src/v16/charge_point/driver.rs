@@ -37,8 +37,8 @@ impl ChargePoint {
             Ok(id_tag) => id_tag,
             Err(err) => return self.reject(out, now, connector, &err.to_string()),
         };
-        if self.held.is_some() {
-            return self.reject(out, now, connector, "authorization pending");
+        if self.resetting.is_some() {
+            return self.reject(out, now, connector, "resetting");
         }
         let index = match connector {
             Some(connector) => match self.index_of(connector) {
@@ -55,6 +55,9 @@ impl ChargePoint {
                     .collect();
                 match waiting[..] {
                     [index] => index,
+                    [] if self.held.is_some() => {
+                        return self.reject(out, now, None, "authorization pending");
+                    }
                     [] => return self.hold_for_authorization(id_tag, None),
                     _ => return self.reject(out, now, None, "ambiguous connector"),
                 }
@@ -67,7 +70,11 @@ impl ChargePoint {
         if self.unavailable(index) {
             return self.reject(out, now, connector, "unavailable");
         }
-        if self.station.connectors[index].plugged.is_none() {
+        let plugged = self.station.connectors[index].plugged.is_some();
+        if self.held_for(index) || (!plugged && self.held.is_some()) {
+            return self.reject(out, now, connector, "authorization pending");
+        }
+        if !plugged {
             return self.hold_for_authorization(id_tag, Some(index));
         }
         let request = AuthorizeRequest {

@@ -12,6 +12,7 @@ const RETRY_MS: u64 = 60_000;
 
 pub enum Registration {
     Offline,
+    Disconnected,
     Booting,
     Waiting { retry_at: u64 },
     Accepted { last_heartbeat: u64 },
@@ -19,11 +20,32 @@ pub enum Registration {
 
 impl ChargePoint {
     pub(super) fn is_connected(&self) -> bool {
-        !matches!(self.registration, Registration::Offline)
+        !matches!(
+            self.registration,
+            Registration::Offline | Registration::Disconnected
+        )
     }
 
     pub(super) fn is_accepted(&self) -> bool {
         matches!(self.registration, Registration::Accepted { .. })
+    }
+
+    pub(super) fn connected(&mut self, now: u64) {
+        match self.registration {
+            Registration::Disconnected => {
+                self.registration = Registration::Accepted {
+                    last_heartbeat: now,
+                }
+            }
+            _ => self.boot(),
+        }
+    }
+
+    pub(super) fn disconnected(&mut self) {
+        self.registration = match self.registration {
+            Registration::Accepted { .. } => Registration::Disconnected,
+            _ => Registration::Offline,
+        };
     }
 
     pub(super) fn boot(&mut self) {
@@ -92,7 +114,7 @@ impl ChargePoint {
                 .configuration
                 .interval_ms(HEARTBEAT_INTERVAL)
                 .map(|interval| last_heartbeat + interval),
-            Registration::Offline | Registration::Booting => None,
+            Registration::Offline | Registration::Disconnected | Registration::Booting => None,
         }
     }
 }

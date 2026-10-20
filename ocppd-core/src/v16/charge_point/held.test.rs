@@ -99,6 +99,17 @@ fn given_authorization_without_connector_when_ev_plugged_on_2_then_started_on_2(
     assert_eq!(csms.expect("StartTransaction")["connectorId"], 2);
 }
 
+#[test]
+fn given_ev_plugged_on_2_when_tag_swiped_without_connector_and_accepted_then_started_on_2() {
+    let mut csms = Csms::booted_with(2);
+    csms.intent(0, plug_in(2));
+    csms.intent(0, swipe(None));
+
+    csms.answer(0, accepted());
+
+    assert_eq!(csms.expect("StartTransaction")["connectorId"], 2);
+}
+
 fn held_for_30_seconds() -> Csms {
     let mut csms = Csms::booted();
     csms.configure(0, "ConnectionTimeOut", "30");
@@ -207,4 +218,25 @@ fn given_nothing_plugged_when_remote_start_then_accepted_without_authorize_and_w
         expires: Some(MINUTE)
     }));
     assert_eq!(csms.statuses(), vec![ChargePointStatus::Preparing]);
+}
+
+#[test]
+fn given_waiting_remote_start_when_ev_plugged_then_started_for_its_tag() {
+    let mut csms = Csms::booted();
+    remote_start(&mut csms);
+
+    csms.intent(20_000, plug_in(1));
+
+    assert_eq!(csms.expect("StartTransaction")["idTag"], "R1");
+}
+
+#[test]
+fn given_remote_start_waiting_on_1_when_tag_swiped_on_2_then_authorize_sent() {
+    let mut csms = Csms::booted_with(2);
+    remote_start(&mut csms);
+    csms.intent(1_000, plug_in(2));
+
+    csms.intent(1_000, swipe(Some(2)));
+
+    assert_eq!(csms.expect("Authorize"), json!({"idTag": "TAG1"}));
 }

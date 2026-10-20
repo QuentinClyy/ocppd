@@ -1,5 +1,6 @@
 use crate::api::event::EventKind;
 use crate::api::io::{Input, Output};
+use crate::fixtures::v16::fake_csms::Csms;
 use crate::fixtures::v16::raw::{
     boot_response, calls, charge_point, kinds, only_call, result, station,
 };
@@ -231,4 +232,15 @@ fn given_sent_boot_when_answer_cannot_be_decoded_then_invalid_and_retried_later(
         [EventKind::InvalidPayload { .. }]
     ));
     assert_eq!(charge_point.next_deadline(), Some(61_000));
+}
+
+#[test]
+fn given_booted_charge_point_when_reconnected_then_statuses_resent_without_status_changes() {
+    let mut csms = Csms::booted();
+    csms.disconnect(1_000);
+
+    csms.reconnect(2_000);
+
+    assert_eq!(csms.sent("StatusNotification").len(), 2);
+    assert!(csms.statuses().is_empty());
 }

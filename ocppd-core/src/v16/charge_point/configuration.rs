@@ -10,6 +10,8 @@ pub const CONNECTION_TIME_OUT: &str = "ConnectionTimeOut";
 pub const HEARTBEAT_INTERVAL: &str = "HeartbeatInterval";
 pub const METER_VALUE_SAMPLE_INTERVAL: &str = "MeterValueSampleInterval";
 pub const METER_VALUES_SAMPLED_DATA: &str = "MeterValuesSampledData";
+pub const TRANSACTION_MESSAGE_ATTEMPTS: &str = "TransactionMessageAttempts";
+pub const TRANSACTION_MESSAGE_RETRY_INTERVAL: &str = "TransactionMessageRetryInterval";
 
 const DEFAULT_MEASURANDS: &str =
     "Energy.Active.Import.Register,Power.Active.Import,Current.Import,Voltage";
@@ -83,12 +85,8 @@ impl Configuration {
             ("StopTxnAlignedData", "", Access::CurrentValueOnly),
             ("StopTxnSampledData", "", Access::CurrentValueOnly),
             ("SupportedFeatureProfiles", "Core", Access::ReadOnly),
-            ("TransactionMessageAttempts", "3", Access::CurrentValueOnly),
-            (
-                "TransactionMessageRetryInterval",
-                "60",
-                Access::CurrentValueOnly,
-            ),
+            (TRANSACTION_MESSAGE_ATTEMPTS, "3", Access::Integer),
+            (TRANSACTION_MESSAGE_RETRY_INTERVAL, "60", Access::Integer),
             (
                 "UnlockConnectorOnEVSideDisconnect",
                 "true",
@@ -160,6 +158,10 @@ impl Configuration {
     pub fn interval_ms(&self, name: &str) -> Option<u64> {
         let seconds: u64 = self.find(name)?.value.as_str().parse().ok()?;
         Some(seconds * 1000).filter(|&ms| ms > 0)
+    }
+
+    pub fn number(&self, name: &str) -> Option<u32> {
+        self.find(name)?.value.as_str().parse().ok()
     }
 
     pub fn measurands(&self) -> Vec<Measurand> {
