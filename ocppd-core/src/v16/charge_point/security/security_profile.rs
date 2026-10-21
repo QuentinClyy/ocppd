@@ -1,5 +1,5 @@
-use super::ChargePoint;
-use super::configuration::{AUTHORIZATION_KEY, SECURITY_PROFILE, hex};
+use crate::v16::charge_point::ChargePoint;
+use crate::v16::charge_point::configuration::{AUTHORIZATION_KEY, SECURITY_PROFILE, hex};
 use crate::v16::messages::core::configuration::{ChangeConfigurationRequest, ConfigurationStatus};
 use crate::wire::ci_string::CiString;
 

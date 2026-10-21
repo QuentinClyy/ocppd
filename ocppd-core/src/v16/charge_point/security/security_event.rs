@@ -1,6 +1,6 @@
-use super::ChargePoint;
 use crate::api::event::EventKind;
 use crate::api::io::Output;
+use crate::v16::charge_point::ChargePoint;
 use crate::v16::messages::security::security_event::SecurityEventNotificationRequest;
 use crate::wire::ci_string::CiString;
 use crate::wire::date_time::DateTime;
@@ -14,7 +14,7 @@ pub const INVALID_FIRMWARE_SIGNING_CERTIFICATE: &str = "InvalidFirmwareSigningCe
 pub const RECONFIGURATION_OF_SECURITY_PARAMETERS: &str = "ReconfigurationOfSecurityParameters";
 
 impl ChargePoint {
-    pub(super) fn security_event(&mut self, out: &mut Vec<Output>, now: u64, kind: &'static str) {
+    pub(crate) fn security_event(&mut self, out: &mut Vec<Output>, now: u64, kind: &'static str) {
         let Ok(name) = CiString::new(kind) else {
             return;
         };

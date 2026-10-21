@@ -1,13 +1,13 @@
-use super::ChargePoint;
-use super::transaction::Transaction;
+use super::Transaction;
 use crate::api::intent::{EvSpec, Intent};
 use crate::api::io::Output;
+use crate::v16::charge_point::ChargePoint;
 use crate::v16::messages::core::transaction::{AuthorizeRequest, Reason};
 use crate::wire::ci_string::CiString;
 use serde_json::json;
 
 impl ChargePoint {
-    pub(super) fn intent(&mut self, out: &mut Vec<Output>, now: u64, intent: Intent) {
+    pub(crate) fn intent(&mut self, out: &mut Vec<Output>, now: u64, intent: Intent) {
         if let Intent::Authorize { connector, id_tag } = &intent {
             return self.authorize(out, now, *connector, id_tag);
         }

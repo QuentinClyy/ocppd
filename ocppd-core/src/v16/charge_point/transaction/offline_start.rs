@@ -1,13 +1,13 @@
-use super::ChargePoint;
-use super::transaction::Transaction;
+use super::Transaction;
 use crate::api::event::EventKind;
 use crate::api::io::Output;
+use crate::v16::charge_point::ChargePoint;
 use crate::v16::messages::core::transaction::{Reason, StartTransactionResponse};
 use crate::v16::messages::datatypes::id_tag::AuthorizationStatus;
 use serde_json::json;
 
 impl ChargePoint {
-    pub(super) fn started_offline(
+    pub(crate) fn started_offline(
         &mut self,
         out: &mut Vec<Output>,
         now: u64,
@@ -41,7 +41,7 @@ impl ChargePoint {
         }
     }
 
-    pub(super) fn fill_transaction_id(&mut self, index: usize, transaction_id: i32) -> bool {
+    pub(crate) fn fill_transaction_id(&mut self, index: usize, transaction_id: i32) -> bool {
         let mut stop_filled = false;
         for (action, payload) in self.outbox.queued_payloads(index as u32 + 1) {
             if action == "StartTransaction" {

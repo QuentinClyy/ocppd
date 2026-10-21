@@ -1,12 +1,12 @@
-use super::ChargePoint;
-use super::configuration::{
+use crate::v16::charge_point::ChargePoint;
+use crate::v16::charge_point::configuration::{
     AUTHORIZATION_CACHE_ENABLED, LOCAL_AUTH_LIST_ENABLED, LOCAL_AUTHORIZE_OFFLINE,
     LOCAL_PRE_AUTHORIZE,
 };
 use crate::v16::messages::datatypes::id_tag::{AuthorizationStatus, IdTagInfo, IdToken};
 
 impl ChargePoint {
-    pub(super) fn locally_authorized(&self, id_tag: &IdToken, now: u64) -> Option<IdTagInfo> {
+    pub(crate) fn locally_authorized(&self, id_tag: &IdToken, now: u64) -> Option<IdTagInfo> {
         let when = match self.is_connected() {
             true => LOCAL_PRE_AUTHORIZE,
             false => LOCAL_AUTHORIZE_OFFLINE,
@@ -28,7 +28,7 @@ impl ChargePoint {
         valid.then(|| info.clone())
     }
 
-    pub(super) fn remember(&mut self, id_tag: &IdToken, info: &IdTagInfo) {
+    pub(crate) fn remember(&mut self, id_tag: &IdToken, info: &IdTagInfo) {
         if self.configuration.flag(AUTHORIZATION_CACHE_ENABLED) {
             self.cache.set(id_tag, Some(info));
         }

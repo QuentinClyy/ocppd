@@ -1,8 +1,8 @@
-use super::ChargePoint;
-use super::configuration::CONNECTION_TIME_OUT;
-use super::transaction::Transaction;
+use super::Transaction;
 use crate::api::event::EventKind;
 use crate::api::io::Output;
+use crate::v16::charge_point::ChargePoint;
+use crate::v16::charge_point::configuration::CONNECTION_TIME_OUT;
 use crate::v16::messages::core::transaction::{AuthorizeRequest, AuthorizeResponse};
 use crate::v16::messages::datatypes::charging_profile::ChargingProfile;
 use crate::v16::messages::datatypes::id_tag::{AuthorizationStatus, IdToken};
@@ -16,7 +16,7 @@ pub struct Held {
 }
 
 impl ChargePoint {
-    pub(super) fn hold_for_authorization(
+    pub(crate) fn hold_for_authorization(
         &mut self,
         out: &mut Vec<Output>,
         now: u64,
@@ -39,7 +39,7 @@ impl ChargePoint {
         });
     }
 
-    pub(super) fn hold_authorized(
+    pub(crate) fn hold_authorized(
         &mut self,
         now: u64,
         id_tag: IdToken,
@@ -54,7 +54,7 @@ impl ChargePoint {
         });
     }
 
-    pub(super) fn held_reply(&mut self, out: &mut Vec<Output>, now: u64, payload: Value) {
+    pub(crate) fn held_reply(&mut self, out: &mut Vec<Output>, now: u64, payload: Value) {
         let Some(held) = self.held.take() else {
             return;
         };
@@ -87,7 +87,7 @@ impl ChargePoint {
         }
     }
 
-    pub(super) fn start_held(&mut self, out: &mut Vec<Output>, now: u64) {
+    pub(crate) fn start_held(&mut self, out: &mut Vec<Output>, now: u64) {
         let Some(Held {
             id_tag,
             connector,
@@ -116,7 +116,7 @@ impl ChargePoint {
         }
     }
 
-    pub(super) fn expire_held(&mut self, out: &mut Vec<Output>, now: u64) {
+    pub(crate) fn expire_held(&mut self, out: &mut Vec<Output>, now: u64) {
         let expired =
             matches!(self.held, Some(Held { expires: Some(expires), .. }) if now >= expires);
         if !expired {
@@ -128,11 +128,11 @@ impl ChargePoint {
         }
     }
 
-    pub(super) fn held_deadline(&self) -> Option<u64> {
+    pub(crate) fn held_deadline(&self) -> Option<u64> {
         self.held.as_ref()?.expires
     }
 
-    pub(super) fn held_for(&self, index: usize) -> bool {
+    pub(crate) fn held_for(&self, index: usize) -> bool {
         matches!(&self.held, Some(held) if held.connector == Some(index))
     }
 

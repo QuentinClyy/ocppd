@@ -1,7 +1,7 @@
-use super::ChargePoint;
 use super::firmware_update::reachable;
 use crate::api::event::EventKind;
 use crate::api::io::Output;
+use crate::v16::charge_point::ChargePoint;
 use crate::v16::messages::firmware::{
     DiagnosticsStatus, DiagnosticsStatusNotificationRequest, GetDiagnosticsRequest,
     GetDiagnosticsResponse,
@@ -12,7 +12,7 @@ use serde_json::json;
 pub const UPLOAD_MS: u64 = 10_000;
 
 impl ChargePoint {
-    pub(super) fn get_diagnostics(
+    pub(crate) fn get_diagnostics(
         &mut self,
         out: &mut Vec<Output>,
         now: u64,
@@ -34,14 +34,14 @@ impl ChargePoint {
         }
     }
 
-    pub(super) fn advance_diagnostics(&mut self, out: &mut Vec<Output>, now: u64) {
+    pub(crate) fn advance_diagnostics(&mut self, out: &mut Vec<Output>, now: u64) {
         if self.uploading_until.is_some_and(|until| now >= until) {
             self.uploading_until = None;
             self.diagnostics_status(out, now, DiagnosticsStatus::Uploaded);
         }
     }
 
-    pub(super) fn current_diagnostics_status(&self) -> DiagnosticsStatus {
+    pub(crate) fn current_diagnostics_status(&self) -> DiagnosticsStatus {
         match self.uploading_until {
             Some(_) => DiagnosticsStatus::Uploading,
             None => DiagnosticsStatus::Idle,

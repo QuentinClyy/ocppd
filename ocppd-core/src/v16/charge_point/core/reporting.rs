@@ -1,16 +1,16 @@
-use super::ChargePoint;
-use super::configuration::METER_VALUE_SAMPLE_INTERVAL;
 use super::meter_values::{Reading, meter_value};
-use super::transaction::Transaction;
 use crate::api::event::EventKind;
 use crate::api::io::Output;
+use crate::v16::charge_point::ChargePoint;
+use crate::v16::charge_point::configuration::METER_VALUE_SAMPLE_INTERVAL;
+use crate::v16::charge_point::transaction::Transaction;
 use crate::v16::messages::core::meter_values::MeterValuesRequest;
 use crate::v16::messages::core::status::ChargePointStatus;
 use crate::v16::messages::datatypes::meter_value::{Measurand, ReadingContext};
 use serde_json::json;
 
 impl ChargePoint {
-    pub(super) fn sample_meters(&mut self, out: &mut Vec<Output>, now: u64) {
+    pub(crate) fn sample_meters(&mut self, out: &mut Vec<Output>, now: u64) {
         let Some(interval) = self.configuration.interval_ms(METER_VALUE_SAMPLE_INTERVAL) else {
             return;
         };
@@ -62,7 +62,7 @@ impl ChargePoint {
         }
     }
 
-    pub(super) fn reading(
+    pub(crate) fn reading(
         &self,
         index: usize,
         at: u64,
@@ -79,7 +79,7 @@ impl ChargePoint {
         }
     }
 
-    pub(super) fn push_meter_values(
+    pub(crate) fn push_meter_values(
         &mut self,
         index: usize,
         at: u64,
@@ -99,7 +99,7 @@ impl ChargePoint {
             .push("MeterValues", index as u32 + 1, json!(request));
     }
 
-    pub(super) fn transaction_deadline(&self) -> Option<u64> {
+    pub(crate) fn transaction_deadline(&self) -> Option<u64> {
         let sample_interval = self.configuration.interval_ms(METER_VALUE_SAMPLE_INTERVAL);
         let mut deadlines = Vec::new();
         for (index, transaction) in self.transactions.iter().enumerate() {
@@ -115,7 +115,7 @@ impl ChargePoint {
         deadlines.into_iter().min()
     }
 
-    pub(super) fn report_statuses(&mut self, out: &mut Vec<Output>, now: u64) {
+    pub(crate) fn report_statuses(&mut self, out: &mut Vec<Output>, now: u64) {
         for connector_id in 0..self.reported.len() {
             let status = match connector_id {
                 0 if self.inoperative[0] => ChargePointStatus::Unavailable,
@@ -136,11 +136,11 @@ impl ChargePoint {
         self.resend_statuses = false;
     }
 
-    pub(super) fn unavailable(&self, index: usize) -> bool {
+    pub(crate) fn unavailable(&self, index: usize) -> bool {
         self.inoperative[0] || self.inoperative[index + 1]
     }
 
-    pub(super) fn status(&self, index: usize, now: u64) -> ChargePointStatus {
+    pub(crate) fn status(&self, index: usize, now: u64) -> ChargePointStatus {
         let connector = &self.station.connectors[index];
         let in_transaction = matches!(
             self.transactions[index],

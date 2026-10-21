@@ -2,9 +2,9 @@ use super::ChargePoint;
 use super::configuration::{
     AUTHORIZATION_KEY, LOCAL_AUTH_LIST_MAX_LENGTH, SECURITY_PROFILE, SEND_LOCAL_LIST_MAX_LENGTH,
 };
-use super::id_tags::IdTags;
-use super::local_list::Limits;
-use super::security_event::RECONFIGURATION_OF_SECURITY_PARAMETERS;
+use super::local_auth::id_tags::IdTags;
+use super::local_auth::local_list::Limits;
+use super::security::security_event::RECONFIGURATION_OF_SECURITY_PARAMETERS;
 use crate::api::event::EventKind;
 use crate::api::io::Output;
 use crate::v16::messages::core::configuration::{

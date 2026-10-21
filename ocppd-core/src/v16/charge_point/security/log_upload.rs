@@ -1,8 +1,8 @@
-use super::ChargePoint;
-use super::diagnostics::UPLOAD_MS;
-use super::firmware_update::reachable;
 use crate::api::event::EventKind;
 use crate::api::io::Output;
+use crate::v16::charge_point::ChargePoint;
+use crate::v16::charge_point::firmware::diagnostics::UPLOAD_MS;
+use crate::v16::charge_point::firmware::firmware_update::reachable;
 use crate::v16::messages::security::log::{
     GetLogRequest, GetLogResponse, LogStatus, LogStatusNotificationRequest, LogType,
     UploadLogStatus,
@@ -16,7 +16,7 @@ pub struct LogUpload {
 }
 
 impl ChargePoint {
-    pub(super) fn get_log(
+    pub(crate) fn get_log(
         &mut self,
         out: &mut Vec<Output>,
         now: u64,
@@ -51,7 +51,7 @@ impl ChargePoint {
         }
     }
 
-    pub(super) fn advance_log_upload(&mut self, out: &mut Vec<Output>, now: u64) {
+    pub(crate) fn advance_log_upload(&mut self, out: &mut Vec<Output>, now: u64) {
         let Some(upload) = &self.log_upload else {
             return;
         };
@@ -63,11 +63,11 @@ impl ChargePoint {
         self.log_status(out, now, UploadLogStatus::Uploaded, Some(request_id));
     }
 
-    pub(super) fn log_upload_deadline(&self) -> Option<u64> {
+    pub(crate) fn log_upload_deadline(&self) -> Option<u64> {
         self.log_upload.as_ref().map(|upload| upload.until)
     }
 
-    pub(super) fn report_log_status(&mut self) {
+    pub(crate) fn report_log_status(&mut self) {
         match &self.log_upload {
             Some(upload) => {
                 let request_id = Some(upload.request_id);

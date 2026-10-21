@@ -1,6 +1,11 @@
-use super::ChargePoint;
+pub(super) mod driver;
+pub(super) mod held;
+pub(super) mod offline_start;
+pub(super) mod retry;
+
 use crate::api::event::EventKind;
 use crate::api::io::Output;
+use crate::v16::charge_point::ChargePoint;
 use crate::v16::messages::core::transaction::{
     AuthorizeResponse, Reason, StartTransactionRequest, StartTransactionResponse,
     StopTransactionRequest,
@@ -32,7 +37,7 @@ pub enum Transaction {
 }
 
 impl ChargePoint {
-    pub(super) fn transaction_reply(
+    pub(crate) fn transaction_reply(
         &mut self,
         out: &mut Vec<Output>,
         now: u64,
@@ -108,7 +113,7 @@ impl ChargePoint {
         self.outbox.push("StopTransaction", 0, json!(request));
     }
 
-    pub(super) fn transaction_failed(&mut self, call: &Call) {
+    pub(crate) fn transaction_failed(&mut self, call: &Call) {
         let index = call.connector_id as usize - 1;
         match self.transactions[index] {
             Transaction::Authorizing { .. } | Transaction::Starting { .. } => {
@@ -118,7 +123,7 @@ impl ChargePoint {
         }
     }
 
-    pub(super) fn connection_lost(&mut self) {
+    pub(crate) fn connection_lost(&mut self) {
         self.resend_statuses = true;
         if self.held_deadline().is_none() {
             self.held = None;
@@ -130,7 +135,7 @@ impl ChargePoint {
         }
     }
 
-    pub(super) fn authorized(
+    pub(crate) fn authorized(
         &mut self,
         out: &mut Vec<Output>,
         now: u64,
@@ -158,7 +163,7 @@ impl ChargePoint {
         self.start_transaction(out, now, index, id_tag);
     }
 
-    pub(super) fn start_transaction(
+    pub(crate) fn start_transaction(
         &mut self,
         out: &mut Vec<Output>,
         now: u64,
@@ -230,7 +235,7 @@ impl ChargePoint {
         self.station.connectors[index].start_charging(now, limit_w);
     }
 
-    pub(super) fn stop(&mut self, out: &mut Vec<Output>, now: u64, index: usize, reason: Reason) {
+    pub(crate) fn stop(&mut self, out: &mut Vec<Output>, now: u64, index: usize, reason: Reason) {
         let Transaction::Active {
             transaction_id,
             id_tag,
@@ -276,5 +281,5 @@ impl ChargePoint {
 }
 
 #[cfg(test)]
-#[path = "transaction.test.rs"]
+#[path = "mod.test.rs"]
 mod tests;

@@ -1,8 +1,8 @@
-use super::ChargePoint;
-use super::configuration::HEARTBEAT_INTERVAL;
 use crate::api::event::EventKind;
 use crate::api::io::Output;
 use crate::station::jitter::fraction;
+use crate::v16::charge_point::ChargePoint;
+use crate::v16::charge_point::configuration::HEARTBEAT_INTERVAL;
 use crate::v16::messages::core::boot::{
     BootNotificationResponse, HeartbeatRequest, RegistrationStatus,
 };
@@ -19,18 +19,18 @@ pub enum Registration {
 }
 
 impl ChargePoint {
-    pub(super) fn is_connected(&self) -> bool {
+    pub(crate) fn is_connected(&self) -> bool {
         !matches!(
             self.registration,
             Registration::Offline | Registration::Disconnected
         )
     }
 
-    pub(super) fn is_accepted(&self) -> bool {
+    pub(crate) fn is_accepted(&self) -> bool {
         matches!(self.registration, Registration::Accepted { .. })
     }
 
-    pub(super) fn connected(&mut self, now: u64) {
+    pub(crate) fn connected(&mut self, now: u64) {
         match self.registration {
             Registration::Disconnected => {
                 self.registration = Registration::Accepted {
@@ -41,26 +41,26 @@ impl ChargePoint {
         }
     }
 
-    pub(super) fn disconnected(&mut self) {
+    pub(crate) fn disconnected(&mut self) {
         self.registration = match self.registration {
             Registration::Accepted { .. } => Registration::Disconnected,
             _ => Registration::Offline,
         };
     }
 
-    pub(super) fn boot(&mut self) {
+    pub(crate) fn boot(&mut self) {
         self.registration = Registration::Booting;
         self.outbox
             .push("BootNotification", 0, json!(self.boot_request));
     }
 
-    pub(super) fn boot_failed(&mut self, now: u64) {
+    pub(crate) fn boot_failed(&mut self, now: u64) {
         self.registration = Registration::Waiting {
             retry_at: now + RETRY_MS,
         };
     }
 
-    pub(super) fn booted(&mut self, out: &mut Vec<Output>, now: u64, payload: Value) {
+    pub(crate) fn booted(&mut self, out: &mut Vec<Output>, now: u64, payload: Value) {
         let Some(response) =
             self.decode::<BootNotificationResponse>(out, now, "BootNotification", payload)
         else {
@@ -92,7 +92,7 @@ impl ChargePoint {
         self.installed_after_reboot(out, now);
     }
 
-    pub(super) fn registration_tick(&mut self, now: u64) {
+    pub(crate) fn registration_tick(&mut self, now: u64) {
         let heartbeat_interval = self.configuration.interval_ms(HEARTBEAT_INTERVAL);
         match (&self.registration, heartbeat_interval) {
             (Registration::Waiting { retry_at }, _) if now >= *retry_at => self.boot(),
@@ -105,7 +105,7 @@ impl ChargePoint {
         }
     }
 
-    pub(super) fn heartbeat(&mut self, now: u64) {
+    pub(crate) fn heartbeat(&mut self, now: u64) {
         self.outbox.push("Heartbeat", 0, json!(HeartbeatRequest {}));
         if self.is_accepted() {
             self.registration = Registration::Accepted {
@@ -114,7 +114,7 @@ impl ChargePoint {
         }
     }
 
-    pub(super) fn registration_deadline(&self) -> Option<u64> {
+    pub(crate) fn registration_deadline(&self) -> Option<u64> {
         match self.registration {
             Registration::Waiting { retry_at } => Some(retry_at),
             Registration::Accepted { last_heartbeat } => self

@@ -1,28 +1,13 @@
-mod charging_profiles;
-mod composite;
 mod configuration;
+mod core;
 mod csms_call;
-mod diagnostics;
-mod driver;
-mod firmware_update;
-mod held;
-mod id_tags;
-mod local_authorization;
-mod local_list;
-mod log_upload;
-mod meter_values;
-mod offline_start;
-mod registration;
-mod remote_control;
-mod reporting;
+mod firmware;
+mod local_auth;
+mod remote_trigger;
 mod reservation;
-mod retry;
-mod schedule;
-mod security_event;
-mod security_profile;
+mod security;
 mod smart_charging;
 mod transaction;
-mod trigger;
 
 use crate::api::event::{Event, EventKind};
 use crate::api::io::{Input, Output};
@@ -35,19 +20,19 @@ use crate::v16::messages::core::status::{
 use crate::wire::ci_string::{CiString, TooLong};
 use crate::wire::frame::{self, Frame};
 use crate::wire::outbox::{Call, Outbox, Sent};
-use charging_profiles::ChargingProfiles;
 use configuration::Configuration;
-use firmware_update::FirmwareUpdate;
-use held::Held;
-use id_tags::IdTags;
-use local_list::LocalList;
-use log_upload::LogUpload;
-use registration::Registration;
+use core::registration::Registration;
+use firmware::firmware_update::FirmwareUpdate;
+use local_auth::id_tags::IdTags;
+use local_auth::local_list::LocalList;
 use reservation::Reservation;
-use security_event::STARTUP_OF_THE_DEVICE;
+use security::log_upload::LogUpload;
+use security::security_event::STARTUP_OF_THE_DEVICE;
 use serde::de::DeserializeOwned;
 use serde_json::{Value, json};
+use smart_charging::charging_profiles::ChargingProfiles;
 use transaction::Transaction;
+use transaction::held::Held;
 
 pub struct ChargePoint {
     station: Station,

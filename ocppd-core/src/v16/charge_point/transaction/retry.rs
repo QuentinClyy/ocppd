@@ -1,11 +1,13 @@
-use super::ChargePoint;
-use super::configuration::{TRANSACTION_MESSAGE_ATTEMPTS, TRANSACTION_MESSAGE_RETRY_INTERVAL};
 use crate::api::event::EventKind;
 use crate::api::io::Output;
+use crate::v16::charge_point::ChargePoint;
+use crate::v16::charge_point::configuration::{
+    TRANSACTION_MESSAGE_ATTEMPTS, TRANSACTION_MESSAGE_RETRY_INTERVAL,
+};
 use crate::wire::outbox::{Sent, is_transaction_message};
 
 impl ChargePoint {
-    pub(super) fn retry_transaction_message(
+    pub(crate) fn retry_transaction_message(
         &mut self,
         out: &mut Vec<Output>,
         now: u64,

@@ -1,10 +1,14 @@
-use super::ChargePoint;
-use super::configuration::{
-    CHARGE_PROFILE_MAX_STACK_LEVEL, CHARGING_SCHEDULE_MAX_PERIODS, MAX_CHARGING_PROFILES_INSTALLED,
-};
-use super::transaction::Transaction;
+pub(super) mod charging_profiles;
+pub(super) mod composite;
+pub(super) mod schedule;
+
 use crate::api::event::EventKind;
 use crate::api::io::Output;
+use crate::v16::charge_point::ChargePoint;
+use crate::v16::charge_point::configuration::{
+    CHARGE_PROFILE_MAX_STACK_LEVEL, CHARGING_SCHEDULE_MAX_PERIODS, MAX_CHARGING_PROFILES_INSTALLED,
+};
+use crate::v16::charge_point::transaction::Transaction;
 use crate::v16::messages::datatypes::charging_profile::{ChargingProfile, ChargingProfilePurpose};
 use crate::v16::messages::smart_charging::{
     ChargingProfileStatus, ClearChargingProfileRequest, ClearChargingProfileStatus,
@@ -12,7 +16,7 @@ use crate::v16::messages::smart_charging::{
 };
 
 impl ChargePoint {
-    pub(super) fn set_charging_profile(
+    pub(crate) fn set_charging_profile(
         &mut self,
         out: &mut Vec<Output>,
         now: u64,
@@ -38,18 +42,18 @@ impl ChargePoint {
         }
     }
 
-    pub(super) fn fits_remote_start(&self, profile: &ChargingProfile) -> bool {
+    pub(crate) fn fits_remote_start(&self, profile: &ChargingProfile) -> bool {
         profile.charging_profile_purpose == ChargingProfilePurpose::TxProfile
             && self.within_limits(profile)
     }
 
-    pub(super) fn attach_profile(&mut self, index: usize, profile: Option<ChargingProfile>) {
+    pub(crate) fn attach_profile(&mut self, index: usize, profile: Option<ChargingProfile>) {
         if let Transaction::Starting { profile: slot, .. } = &mut self.transactions[index] {
             *slot = profile;
         }
     }
 
-    pub(super) fn install_transaction_profile(
+    pub(crate) fn install_transaction_profile(
         &mut self,
         out: &mut Vec<Output>,
         now: u64,
@@ -97,7 +101,7 @@ impl ChargePoint {
         self.configuration.number(key).unwrap_or(0)
     }
 
-    pub(super) fn clear_charging_profile(
+    pub(crate) fn clear_charging_profile(
         &mut self,
         out: &mut Vec<Output>,
         now: u64,
@@ -122,5 +126,5 @@ impl ChargePoint {
 }
 
 #[cfg(test)]
-#[path = "smart_charging.test.rs"]
+#[path = "mod.test.rs"]
 mod tests;

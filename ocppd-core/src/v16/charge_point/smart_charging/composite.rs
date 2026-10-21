@@ -1,8 +1,8 @@
-use super::ChargePoint;
 use super::schedule;
-use super::transaction::Transaction;
 use crate::api::event::EventKind;
 use crate::api::io::Output;
+use crate::v16::charge_point::ChargePoint;
+use crate::v16::charge_point::transaction::Transaction;
 use crate::v16::messages::datatypes::charging_profile::{
     ChargingProfilePurpose, ChargingRateUnit, ChargingSchedule, ChargingSchedulePeriod,
 };
@@ -13,7 +13,7 @@ use crate::v16::messages::smart_charging::{
 use crate::wire::date_time::DateTime;
 
 impl ChargePoint {
-    pub(super) fn composite_limit_w(&self, connector: u32, at: u64) -> f64 {
+    pub(crate) fn composite_limit_w(&self, connector: u32, at: u64) -> f64 {
         let started = self.transaction_start(connector);
         let purpose_limit = |connector, purpose| {
             let profiles = self.charging_profiles.stacked(connector, purpose);
@@ -36,7 +36,7 @@ impl ChargePoint {
         limit
     }
 
-    pub(super) fn apply_limits(&mut self, out: &mut Vec<Output>, now: u64) {
+    pub(crate) fn apply_limits(&mut self, out: &mut Vec<Output>, now: u64) {
         let mut next_change: Option<u64> = None;
         for index in 0..self.transactions.len() {
             let connector = index as u32 + 1;
@@ -59,7 +59,7 @@ impl ChargePoint {
         self.limit_change_at = next_change;
     }
 
-    pub(super) fn next_limit_change(&self, connector: u32, at: u64) -> Option<u64> {
+    pub(crate) fn next_limit_change(&self, connector: u32, at: u64) -> Option<u64> {
         let started = self.transaction_start(connector);
         self.charging_profiles
             .for_connector(connector)
@@ -67,7 +67,7 @@ impl ChargePoint {
             .min()
     }
 
-    pub(super) fn composite_schedule(
+    pub(crate) fn composite_schedule(
         &self,
         now: u64,
         request: GetCompositeScheduleRequest,

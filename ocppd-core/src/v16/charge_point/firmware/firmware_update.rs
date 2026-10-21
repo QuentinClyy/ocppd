@@ -1,10 +1,10 @@
-use super::ChargePoint;
-use super::security_event::{
-    FIRMWARE_UPDATED, INVALID_FIRMWARE_SIGNATURE, INVALID_FIRMWARE_SIGNING_CERTIFICATE,
-};
-use super::transaction::Transaction;
 use crate::api::event::EventKind;
 use crate::api::io::Output;
+use crate::v16::charge_point::ChargePoint;
+use crate::v16::charge_point::security::security_event::{
+    FIRMWARE_UPDATED, INVALID_FIRMWARE_SIGNATURE, INVALID_FIRMWARE_SIGNING_CERTIFICATE,
+};
+use crate::v16::charge_point::transaction::Transaction;
 use crate::v16::messages::core::remote_control::ResetType;
 use crate::v16::messages::firmware::{
     FirmwareStatus, FirmwareStatusNotificationRequest, UpdateFirmwareRequest,
@@ -41,7 +41,7 @@ enum Stage {
 }
 
 impl ChargePoint {
-    pub(super) fn update_firmware(&mut self, now: u64, request: UpdateFirmwareRequest) {
+    pub(crate) fn update_firmware(&mut self, now: u64, request: UpdateFirmwareRequest) {
         let until = request.retrieve_date.unix_ms.max(now);
         self.firmware = Some(FirmwareUpdate {
             location: request.location,
@@ -50,7 +50,7 @@ impl ChargePoint {
         });
     }
 
-    pub(super) fn signed_update_firmware(
+    pub(crate) fn signed_update_firmware(
         &mut self,
         out: &mut Vec<Output>,
         now: u64,
@@ -82,7 +82,7 @@ impl ChargePoint {
         status
     }
 
-    pub(super) fn advance_firmware(&mut self, out: &mut Vec<Output>, now: u64) {
+    pub(crate) fn advance_firmware(&mut self, out: &mut Vec<Output>, now: u64) {
         while let Some(update) = &self.firmware {
             let next = match update.stage {
                 Stage::Waiting { until } if now >= until => {
@@ -121,7 +121,7 @@ impl ChargePoint {
         }
     }
 
-    pub(super) fn firmware_deadline(&self) -> Option<u64> {
+    pub(crate) fn firmware_deadline(&self) -> Option<u64> {
         match self.firmware.as_ref()?.stage {
             Stage::Waiting { until }
             | Stage::Downloading { until }
@@ -130,7 +130,7 @@ impl ChargePoint {
         }
     }
 
-    pub(super) fn installed_after_reboot(&mut self, out: &mut Vec<Output>, now: u64) {
+    pub(crate) fn installed_after_reboot(&mut self, out: &mut Vec<Output>, now: u64) {
         let Some(request_id) = self.installed_request.take() else {
             return;
         };
@@ -141,14 +141,14 @@ impl ChargePoint {
         self.security_event(out, now, FIRMWARE_UPDATED);
     }
 
-    pub(super) fn report_firmware_status(&mut self) {
+    pub(crate) fn report_firmware_status(&mut self) {
         let status = plain(self.current_firmware_status()).unwrap_or(FirmwareStatus::Idle);
         let request = FirmwareStatusNotificationRequest { status };
         self.outbox
             .push("FirmwareStatusNotification", 0, json!(request));
     }
 
-    pub(super) fn report_signed_firmware_status(&mut self) {
+    pub(crate) fn report_signed_firmware_status(&mut self) {
         let status = self.current_firmware_status();
         self.push_signed_status(status, self.signed_request_id());
     }

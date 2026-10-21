@@ -103,5 +103,5 @@ impl ChargePoint {
 }
 
 #[cfg(test)]
-#[path = "trigger.test.rs"]
+#[path = "remote_trigger.test.rs"]
 mod tests;

@@ -1,9 +1,9 @@
-use super::ChargePoint;
 use super::registration::Registration;
-use super::security_event::RESET_OR_REBOOT;
-use super::transaction::Transaction;
 use crate::api::event::EventKind;
 use crate::api::io::Output;
+use crate::v16::charge_point::ChargePoint;
+use crate::v16::charge_point::security::security_event::RESET_OR_REBOOT;
+use crate::v16::charge_point::transaction::Transaction;
 use crate::v16::messages::core::remote_control::{
     AvailabilityStatus, AvailabilityType, ChangeAvailabilityRequest, RemoteStartTransactionRequest,
     RemoteStopTransactionRequest, ResetRequest, ResetType, UnlockConnectorRequest, UnlockStatus,
@@ -12,7 +12,7 @@ use crate::v16::messages::core::transaction::Reason;
 use crate::v16::messages::datatypes::generic_status::GenericStatus;
 
 impl ChargePoint {
-    pub(super) fn remote_start(
+    pub(crate) fn remote_start(
         &mut self,
         out: &mut Vec<Output>,
         now: u64,
@@ -63,7 +63,7 @@ impl ChargePoint {
         GenericStatus::Accepted
     }
 
-    pub(super) fn remote_stop(
+    pub(crate) fn remote_stop(
         &mut self,
         out: &mut Vec<Output>,
         now: u64,
@@ -80,7 +80,7 @@ impl ChargePoint {
         GenericStatus::Accepted
     }
 
-    pub(super) fn unlock(
+    pub(crate) fn unlock(
         &mut self,
         out: &mut Vec<Output>,
         now: u64,
@@ -93,7 +93,7 @@ impl ChargePoint {
         UnlockStatus::Unlocked
     }
 
-    pub(super) fn reset(
+    pub(crate) fn reset(
         &mut self,
         out: &mut Vec<Output>,
         now: u64,
@@ -124,7 +124,7 @@ impl ChargePoint {
         GenericStatus::Accepted
     }
 
-    pub(super) fn reset_due(&self, now: u64) -> bool {
+    pub(crate) fn reset_due(&self, now: u64) -> bool {
         match self.resetting {
             Some(ResetType::Hard) => true,
             Some(ResetType::Soft) => self.outbox.is_drained(now),
@@ -132,7 +132,7 @@ impl ChargePoint {
         }
     }
 
-    pub(super) fn rebooted(&mut self) {
+    pub(crate) fn rebooted(&mut self) {
         self.resetting = None;
         self.startup_reported = false;
         self.registration = Registration::Offline;
@@ -145,7 +145,7 @@ impl ChargePoint {
         }
     }
 
-    pub(super) fn change_availability(
+    pub(crate) fn change_availability(
         &mut self,
         out: &mut Vec<Output>,
         now: u64,
@@ -179,7 +179,7 @@ impl ChargePoint {
         }
     }
 
-    pub(super) fn index_of(&self, connector: u32) -> Option<usize> {
+    pub(crate) fn index_of(&self, connector: u32) -> Option<usize> {
         connector
             .checked_sub(1)
             .map(|index| index as usize)
