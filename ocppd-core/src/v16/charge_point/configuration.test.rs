@@ -21,6 +21,21 @@ fn value_of(csms: &mut Csms, key: &str) -> Value {
 }
 
 #[test]
+fn given_booted_charge_point_when_every_key_asked_then_all_35_keys_without_unknown() {
+    let mut csms = Csms::booted();
+
+    let payload = result(csms.call(0, "GetConfiguration", json!({})));
+
+    let keys = payload["configurationKey"].as_array().unwrap();
+    assert_eq!(keys.len(), 35);
+    assert!(keys.contains(&json!({"key": "NumberOfConnectors", "readonly": true, "value": "1"})));
+    assert!(
+        keys.contains(&json!({"key": "HeartbeatInterval", "readonly": false, "value": "86400"}))
+    );
+    assert!(payload.get("unknownKey").is_none());
+}
+
+#[test]
 fn given_booted_charge_point_when_known_and_unknown_keys_asked_then_known_listed_and_unknown_reported()
  {
     let mut csms = Csms::booted();

@@ -10,7 +10,7 @@ use crate::v16::messages::security::certificates::{
     InstallCertificateResponse, InstallCertificateStatus,
 };
 use openssl::asn1::Asn1Time;
-use openssl::x509::X509;
+use openssl::x509::{X509, X509Ref};
 use std::cmp::Ordering;
 
 #[derive(Default)]
@@ -129,10 +129,17 @@ fn root(pem: &str, now: u64) -> Option<X509> {
     let certificate = X509::from_pem(pem.as_bytes()).ok()?;
     let key = certificate.public_key().ok()?;
     let self_signed = certificate.verify(&key).ok()?;
-    let now = Asn1Time::from_unix((now / 1000) as i64).ok()?;
-    let started = certificate.not_before().compare(&now).ok()? != Ordering::Greater;
-    let unexpired = certificate.not_after().compare(&now).ok()? != Ordering::Less;
-    Some(certificate).filter(|_| self_signed && started && unexpired)
+    Some(certificate).filter(|certificate| self_signed && valid_at(certificate, now))
+}
+
+pub(super) fn valid_at(certificate: &X509Ref, now: u64) -> bool {
+    let Ok(now) = Asn1Time::from_unix((now / 1000) as i64) else {
+        return false;
+    };
+    let started = certificate.not_before().compare(&now);
+    let unexpired = certificate.not_after().compare(&now);
+    started.is_ok_and(|order| order != Ordering::Greater)
+        && unexpired.is_ok_and(|order| order != Ordering::Less)
 }
 
 #[cfg(test)]

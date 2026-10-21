@@ -12,6 +12,7 @@ pub const CERTIFICATE_STORE_MAX_LENGTH: &str = "CertificateStoreMaxLength";
 pub const CHARGE_PROFILE_MAX_STACK_LEVEL: &str = "ChargeProfileMaxStackLevel";
 pub const CHARGING_SCHEDULE_MAX_PERIODS: &str = "ChargingScheduleMaxPeriods";
 pub const CONNECTION_TIME_OUT: &str = "ConnectionTimeOut";
+pub const CPO_NAME: &str = "CpoName";
 pub const HEARTBEAT_INTERVAL: &str = "HeartbeatInterval";
 pub const LOCAL_AUTH_LIST_ENABLED: &str = "LocalAuthListEnabled";
 pub const LOCAL_AUTHORIZE_OFFLINE: &str = "LocalAuthorizeOffline";
@@ -56,6 +57,7 @@ enum Access {
     CurrentValueOnly,
     SecurityProfile,
     WriteOnly,
+    Text,
 }
 
 impl Configuration {
@@ -79,6 +81,7 @@ impl Configuration {
             ("ClockAlignedDataInterval", "0", Access::CurrentValueOnly),
             (CONNECTION_TIME_OUT, "60", Access::Integer),
             ("ConnectorPhaseRotation", "1.RST", Access::CurrentValueOnly),
+            (CPO_NAME, "", Access::Text),
             ("GetConfigurationMaxKeys", "50", Access::ReadOnly),
             (HEARTBEAT_INTERVAL, "86400", Access::Integer),
             (LOCAL_AUTH_LIST_ENABLED, "true", Access::Boolean),
@@ -180,6 +183,7 @@ impl Configuration {
                     .parse::<u32>()
                     .is_ok_and(|profile| (current..=3).contains(&profile))
             }
+            Access::Text => true,
             Access::WriteOnly => hex(value).is_some_and(|key| (16..=20).contains(&key.len())),
         };
         if !valid {

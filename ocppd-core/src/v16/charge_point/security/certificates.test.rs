@@ -1,6 +1,7 @@
 use crate::api::event::EventKind;
 use crate::fixtures::v16::fake_csms::Csms;
 use crate::fixtures::v16::security::result;
+use crate::fixtures::x509::authority::Authority;
 use crate::v16::messages::security::certificates::CertificateUse;
 use serde_json::{Value, json};
 
@@ -42,6 +43,15 @@ fn with_root() -> Csms {
     let mut csms = Csms::booted();
     install(&mut csms, NOW, CENTRAL, ROOT);
     csms.events.clear();
+    csms
+}
+
+fn full_store() -> Csms {
+    let mut csms = Csms::booted();
+    for serial in 1..=10 {
+        let root = Authority::new(&format!("root {serial}")).pem();
+        install(&mut csms, NOW, CENTRAL, &root);
+    }
     csms
 }
 
@@ -137,6 +147,29 @@ fn given_installed_root_when_installed_again_then_accepted_and_one_copy_kept() {
     assert_eq!(status, "Accepted");
     let listed = installed(&mut csms, CENTRAL);
     assert_eq!(listed["certificateHashData"].as_array().unwrap().len(), 1);
+}
+
+#[test]
+fn given_booted_charge_point_when_ten_roots_installed_then_all_accepted() {
+    let mut csms = Csms::booted();
+
+    let statuses: Vec<Value> = (1..=10)
+        .map(|serial| {
+            let root = Authority::new(&format!("root {serial}")).pem();
+            install(&mut csms, NOW, CENTRAL, &root)
+        })
+        .collect();
+
+    assert_eq!(statuses, vec![json!("Accepted"); 10]);
+}
+
+#[test]
+fn given_certificate_store_max_length_roots_when_another_installed_then_rejected() {
+    let mut csms = full_store();
+
+    let status = install(&mut csms, NOW, CENTRAL, &Authority::new("root 11").pem());
+
+    assert_eq!(status, "Rejected");
 }
 
 #[test]

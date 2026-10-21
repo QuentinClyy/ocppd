@@ -5,7 +5,7 @@ mod firmware;
 mod local_auth;
 mod remote_trigger;
 mod reservation;
-mod security;
+pub mod security;
 mod smart_charging;
 mod transaction;
 
@@ -27,6 +27,7 @@ use local_auth::id_tags::IdTags;
 use local_auth::local_list::LocalList;
 use reservation::Reservation;
 use security::certificates::Certificates;
+use security::charge_point_certificate::ChargePointCertificate;
 use security::log_upload::LogUpload;
 use security::security_event::STARTUP_OF_THE_DEVICE;
 use serde::de::DeserializeOwned;
@@ -55,6 +56,7 @@ pub struct ChargePoint {
     log_upload: Option<LogUpload>,
     installed_request: Option<i32>,
     certificates: Certificates,
+    client_certificate: ChargePointCertificate,
     startup_reported: bool,
     boot_request: BootNotificationRequest,
     registration: Registration,
@@ -94,6 +96,7 @@ impl ChargePoint {
             log_upload: None,
             installed_request: None,
             certificates: Certificates::default(),
+            client_certificate: ChargePointCertificate::default(),
             startup_reported: false,
             boot_request,
             registration: Registration::Offline,
@@ -206,6 +209,7 @@ impl ChargePoint {
     fn call_succeeded(&mut self, out: &mut Vec<Output>, now: u64, call: &Call, payload: Value) {
         match call.action.as_str() {
             "BootNotification" => self.booted(out, now, payload),
+            "SignCertificate" => self.sign_certificate_reply(out, now, payload),
             "Authorize" if call.connector_id == 0 => self.held_reply(out, now, payload),
             "Authorize" | "StartTransaction" => self.transaction_reply(out, now, call, payload),
             _ => {}

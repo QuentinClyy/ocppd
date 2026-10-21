@@ -36,7 +36,8 @@ use crate::v16::messages::reservation::{
     CancelReservationRequest, CancelReservationResponse, ReserveNowRequest, ReserveNowResponse,
 };
 use crate::v16::messages::security::certificates::{
-    DeleteCertificateRequest, GetInstalledCertificateIdsRequest, InstallCertificateRequest,
+    CertificateSignedRequest, DeleteCertificateRequest, GetInstalledCertificateIdsRequest,
+    InstallCertificateRequest,
 };
 use crate::v16::messages::security::log::GetLogRequest;
 use crate::v16::messages::security::signed_firmware::{
@@ -180,6 +181,9 @@ impl ChargePoint {
             }
             "DeleteCertificate" => answer(payload, |request: DeleteCertificateRequest| {
                 self.delete_certificate(out, now, request)
+            }),
+            "CertificateSigned" => answer(payload, |request: CertificateSignedRequest| {
+                self.certificate_signed(out, now, request)
             }),
             "DataTransfer" => answer(payload, |_: DataTransferRequest| DataTransferResponse {
                 status: DataTransferStatus::UnknownVendorId,

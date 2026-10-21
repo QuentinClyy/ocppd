@@ -114,6 +114,7 @@ pub enum EventKind {
     CertificateDeleted {
         certificate_type: CertificateUse,
     },
+    ChargePointCertificateInstalled,
     SecurityEvent {
         #[serde(rename = "type")]
         event_type: String,

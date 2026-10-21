@@ -186,3 +186,14 @@ fn given_one_connector_when_status_of_connector_5_extended_triggered_then_reject
 
     assert_eq!(status, "Rejected");
 }
+
+#[test]
+fn given_booted_charge_point_when_sign_certificate_extended_triggered_then_accepted_and_csr_sent() {
+    let mut csms = Csms::booted();
+    let sign = json!({"requestedMessage": "SignChargePointCertificate"});
+
+    let status = extended(&mut csms, sign);
+
+    assert_eq!(status, "Accepted");
+    assert_eq!(csms.sent("SignCertificate").len(), 1);
+}

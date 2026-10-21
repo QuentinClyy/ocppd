@@ -71,7 +71,10 @@ impl ChargePoint {
                 return TriggerMessageStatus::Accepted;
             }
             ExtendedMessageTrigger::SignChargePointCertificate => {
-                return TriggerMessageStatus::NotImplemented;
+                return match self.sign_charge_point_certificate() {
+                    true => TriggerMessageStatus::Accepted,
+                    false => TriggerMessageStatus::Rejected,
+                };
             }
         };
         let request = TriggerMessageRequest {
