@@ -14,4 +14,4 @@ tokio = { version = "1", features = ["rt", "macros", "time", "sync", "io-std", "
 tokio-tungstenite = { version = "0.30.0", features = ["native-tls"] }
 
 [dev-dependencies]
-tokio = { version = "1", features = ["net", "process"] }
+tokio = { version = "1", features = ["net", "process", "rt-multi-thread"] }

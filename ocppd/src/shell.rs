@@ -14,11 +14,13 @@ use tokio::time::{Instant, sleep, sleep_until};
 use tokio_tungstenite::tungstenite::client::IntoClientRequest;
 use tokio_tungstenite::tungstenite::handshake::client::Request;
 use tokio_tungstenite::tungstenite::http::HeaderValue;
+use tokio_tungstenite::tungstenite::protocol::WebSocketConfig;
 use tokio_tungstenite::tungstenite::{self, Message};
 use tokio_tungstenite::{MaybeTlsStream, WebSocketStream, connect_async_tls_with_config};
 
 const RECONNECT_DELAY: Duration = Duration::from_secs(5);
 const MAX_RECONNECT_DELAY: Duration = Duration::from_secs(300);
+const READ_BUFFER_BYTES: usize = 4 * 1024;
 
 type Socket = WebSocketStream<MaybeTlsStream<TcpStream>>;
 
@@ -115,9 +117,15 @@ async fn connect(url: &str, charge_point: &ChargePoint) -> Result<Socket, String
         true => Some(tls::connector(charge_point).map_err(|err| err.to_string())?),
         false => None,
     };
-    let connected = connect_async_tls_with_config(request, None, false, tls).await;
+    let connected = connect_async_tls_with_config(request, Some(socket_config()), false, tls).await;
     let (socket, _) = connected.map_err(|err| err.to_string())?;
     Ok(socket)
+}
+
+fn socket_config() -> WebSocketConfig {
+    WebSocketConfig::default()
+        .read_buffer_size(READ_BUFFER_BYTES)
+        .write_buffer_size(0)
 }
 
 fn request(url: &str, id: &str, password: Option<Vec<u8>>) -> Result<Request, tungstenite::Error> {

@@ -65,3 +65,52 @@ without one the station does not connect.
 `"ev":{"capacity_kwh":60,"soc":0.2,"max_kw":11,"target_soc":1.0}`.
 The station draws at most 230 V × 32 A × 3 phases (22 kW). Meter values
 follow a charging curve that is flat up to 80 % and tapers after that.
+
+## Load
+
+One process, measured against `cargo run --release --example sink_csms
+127.0.0.1:9000 60` (a CSMS that accepts everything) on 20 cores, 16 GB:
+
+| Stations | Memory | Boot of all | Steady load |
+|---|---|---|---|
+| 1 000 | 28 MB | under 5 s | |
+| 10 000 | 221 MB | under 5 s | aligned heartbeats every 10 s: about 0.01 core |
+| 10 000 charging | 250 MB | | MeterValues every 10 s, 1 200 calls/s: 0.11 core |
+| 20 000 | 446 MB | 15 s | |
+
+The ceiling is the ephemeral port range: one CSMS address takes at most
+28 232 connections (`net.ipv4.ip_local_port_range` 32768–60999); further
+stations log `Cannot assign requested address` and retry with backoff. As
+the range fills, the kernel's port search, not ocppd, costs the CPU. Widen
+the range or spread stations over several processes and CSMS addresses to
+go further.
+
+## Known limitations
+
+OCPP 1.6J with the Security Whitepaper (edition 4) is complete. The station
+simulates, it does not transfer:
+
+- UpdateFirmware, SignedUpdateFirmware, GetDiagnostics and GetLog never
+  download or upload anything; `retries`, `retryInterval` and time windows
+  are ignored; the new firmware version is the last segment of the URL, and
+  a firmware signature only has to be present.
+- Certificates, the station key and its certificate live in memory (they
+  survive a Reset, not a restart). Keys are EC P-256; only self-signed roots
+  are installed.
+- Off through configuration keys: reservations on connector 0
+  (`ReserveConnectorZeroSupported`), a main meter, offline transactions for
+  unknown id tags (`AllowOfflineTxForUnknownId` is not offered).
+- `minChargingRate` is ignored and the authorization cache has no size
+  limit.
+
+Open protocol gaps:
+
+- UnlockConnector always answers `Unlocked`.
+- An unanswered SignCertificate is not resent (whitepaper A02.FR.17–19);
+  CertificateSigned does not check the leaf's CN/O.
+- SetChargingProfile does not validate the schedule's content.
+- No fallback to the previous security profile when the new one cannot
+  connect; DeleteCertificate never answers `Failed`.
+- An offline transaction whose StartTransaction is abandoned is never
+  reported to the CSMS.
+
