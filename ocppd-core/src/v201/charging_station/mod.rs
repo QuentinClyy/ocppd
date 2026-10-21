@@ -5,6 +5,7 @@ mod registration;
 mod report;
 mod reset;
 mod status;
+mod transaction;
 mod variables;
 
 use crate::api::event::{Event, Kind, LinkEvent};
@@ -16,6 +17,7 @@ use crate::v201::messages::custom_data::without_custom_data;
 use crate::v201::messages::provisioning::boot::{
     BootNotificationRequest, BootReason, ChargingStationInfo,
 };
+use crate::v201::messages::transactions::TransactionEventResponse;
 use crate::wire::ci_string::{CiString, TooLong};
 use crate::wire::frame::{self, Frame};
 use crate::wire::outbox::{Call, Outbox};
@@ -25,6 +27,7 @@ use registration::Registration;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 use serde_json::Value;
+use transaction::Session;
 
 const TRANSACTION_MESSAGES: [&str; 1] = ["TransactionEvent"];
 
@@ -33,6 +36,7 @@ pub struct ChargingStation {
     outbox: Outbox,
     reported: Vec<Option<ConnectorStatus>>,
     resend_statuses: bool,
+    sessions: Vec<Session>,
     device_model: DeviceModel,
     resetting: bool,
     boot_request: BootNotificationRequest,
@@ -58,6 +62,7 @@ impl ChargingStation {
             outbox: Outbox::new(&TRANSACTION_MESSAGES),
             reported: vec![None; connectors],
             resend_statuses: false,
+            sessions: (0..connectors).map(|_| Session::default()).collect(),
             device_model,
             resetting: false,
             boot_request,
@@ -73,6 +78,7 @@ impl ChargingStation {
         [
             self.registration_deadline(),
             self.outbox.deadline(self.is_accepted()),
+            self.transaction_deadline(),
         ]
         .into_iter()
         .flatten()
@@ -120,6 +126,7 @@ impl ChargingStation {
             self.call_failed(now, &sent.call);
         }
         self.registration_tick(now);
+        self.transaction_tick(out, now);
     }
 
     fn receive(&mut self, out: &mut Vec<Output>, now: u64, text: &str) {
@@ -154,14 +161,21 @@ impl ChargingStation {
     }
 
     fn call_succeeded(&mut self, out: &mut Vec<Output>, now: u64, call: &Call, payload: Value) {
-        if call.action == "BootNotification" {
-            self.booted(out, now, payload);
+        match call.action.as_str() {
+            "BootNotification" => self.booted(out, now, payload),
+            "Authorize" => self.authorize_reply(out, now, call, payload),
+            "TransactionEvent" => {
+                self.decode::<TransactionEventResponse>(out, now, "TransactionEvent", payload);
+            }
+            _ => {}
         }
     }
 
     fn call_failed(&mut self, now: u64, call: &Call) {
-        if call.action == "BootNotification" {
-            self.boot_failed(now);
+        match call.action.as_str() {
+            "BootNotification" => self.boot_failed(now),
+            "Authorize" => self.authorize_failed(call),
+            _ => {}
         }
     }
 

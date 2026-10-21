@@ -11,6 +11,11 @@ pub const DATE_TIME: &str = "DateTime";
 pub const DEVICE_DATA_CTRLR: &str = "DeviceDataCtrlr";
 pub const ITEMS_PER_MESSAGE: &str = "ItemsPerMessage";
 pub const AVAILABILITY_STATE: &str = "AvailabilityState";
+pub const TX_CTRLR: &str = "TxCtrlr";
+pub const TX_START_POINT: &str = "TxStartPoint";
+pub const TX_STOP_POINT: &str = "TxStopPoint";
+pub const STOP_TX_ON_EV_SIDE_DISCONNECT: &str = "StopTxOnEVSideDisconnect";
+const TX_POINTS: &str = "EVConnected,Authorized,PowerPathClosed,EnergyTransfer";
 pub const CONNECTOR_STATUSES: &str = "Available,Occupied,Reserved,Unavailable,Faulted";
 
 pub const ITEMS_PER_GET: usize = 50;
@@ -152,6 +157,33 @@ pub fn entries(station: &Station) -> Result<Vec<Entry>, TooLong> {
             SequenceList,
         )
         .values("Heartbeat,RealTimeClock"),
+        row(TX_CTRLR, "EVConnectionTimeOut", "60", ReadWrite, Integer)
+            .unit("s")
+            .min(0.0),
+        row(
+            TX_CTRLR,
+            STOP_TX_ON_EV_SIDE_DISCONNECT,
+            "true",
+            ReadWrite,
+            Boolean,
+        ),
+        row(
+            TX_CTRLR,
+            TX_START_POINT,
+            "EVConnected,Authorized",
+            ReadWrite,
+            MemberList,
+        )
+        .values(TX_POINTS),
+        row(
+            TX_CTRLR,
+            TX_STOP_POINT,
+            "EVConnected,Authorized",
+            ReadWrite,
+            MemberList,
+        )
+        .values(TX_POINTS),
+        row(TX_CTRLR, "StopTxOnInvalidId", "true", ReadWrite, Boolean),
         row(
             "SecurityCtrlr",
             "OrganizationName",

@@ -1,0 +1,85 @@
+use super::Authorization;
+use crate::api::io::Output;
+use crate::v201::charging_station::ChargingStation;
+use crate::v201::event::EventKind;
+use crate::v201::messages::datatypes::component::Evse;
+use crate::v201::messages::transactions::{
+    StoppedReason, TransactionEventRequest, TransactionEventType, TransactionInfo, TriggerReason,
+};
+use crate::wire::date_time::DateTime;
+use serde_json::json;
+
+const CONNECTOR_ID: u32 = 1;
+
+impl ChargingStation {
+    pub(super) fn send_transaction_event(
+        &mut self,
+        out: &mut Vec<Output>,
+        now: u64,
+        index: usize,
+        event_type: TransactionEventType,
+        trigger_reason: TriggerReason,
+    ) {
+        let charging_state = self.charging_state(now, index);
+        let session = &mut self.sessions[index];
+        let id_token = match &session.authorization {
+            Authorization::Authorized { id_token, .. } => Some(id_token.clone()),
+            _ => None,
+        };
+        let Some(transaction) = &mut session.transaction else {
+            return;
+        };
+        let send_id_token = id_token.filter(|_| !transaction.id_token_sent);
+        transaction.id_token_sent |= send_id_token.is_some();
+        let state_changed = charging_state != transaction.charging_state;
+        transaction.charging_state = charging_state;
+        let ended = event_type == TransactionEventType::Ended;
+        let evse = index as u32 + 1;
+        let request = TransactionEventRequest {
+            event_type,
+            meter_value: None,
+            timestamp: DateTime { unix_ms: now },
+            trigger_reason,
+            seq_no: transaction.seq_no,
+            offline: None,
+            number_of_phases_used: None,
+            cable_max_current: None,
+            reservation_id: None,
+            transaction_info: TransactionInfo {
+                transaction_id: transaction.id.clone(),
+                charging_state: (event_type == TransactionEventType::Started || state_changed)
+                    .then_some(charging_state),
+                time_spent_charging: None,
+                stopped_reason: ended.then(|| stopped_reason(trigger_reason)),
+                remote_start_id: None,
+            },
+            evse: Some(Evse {
+                id: evse,
+                connector_id: Some(CONNECTOR_ID),
+            }),
+            id_token: send_id_token,
+        };
+        transaction.seq_no += 1;
+        let transaction_id = transaction.id.as_str().to_owned();
+        self.outbox.push("TransactionEvent", evse, json!(request));
+        let kind = EventKind::TransactionEvent {
+            evse,
+            transaction_id,
+            event_type,
+            trigger_reason,
+        };
+        self.emit(out, now, kind);
+    }
+}
+
+fn stopped_reason(trigger: TriggerReason) -> StoppedReason {
+    match trigger {
+        TriggerReason::StopAuthorized => StoppedReason::Local,
+        TriggerReason::EvCommunicationLost => StoppedReason::EvDisconnected,
+        TriggerReason::EvConnectTimeout => StoppedReason::Timeout,
+        TriggerReason::Deauthorized => StoppedReason::DeAuthorized,
+        TriggerReason::RemoteStop => StoppedReason::Remote,
+        TriggerReason::ResetCommand => StoppedReason::ImmediateReset,
+        _ => StoppedReason::Other,
+    }
+}

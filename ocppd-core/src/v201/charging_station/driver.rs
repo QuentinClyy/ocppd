@@ -1,9 +1,15 @@
 use super::ChargingStation;
+use super::device_model::table::{STOP_TX_ON_EV_SIDE_DISCONNECT, TX_CTRLR};
+use super::transaction::Authorization;
 use crate::api::intent::Intent;
 use crate::api::io::Output;
+use crate::v201::messages::transactions::TriggerReason;
 
 impl ChargingStation {
     pub(super) fn intent(&mut self, out: &mut Vec<Output>, now: u64, intent: Intent) {
+        if let Intent::Authorize { connector, id_tag } = &intent {
+            return self.present_id_token(out, now, *connector, id_tag);
+        }
         let evse = intent.connector();
         let index = evse
             .and_then(|evse| evse.checked_sub(1))
@@ -12,20 +18,34 @@ impl ChargingStation {
         let Some(index) = index else {
             return self.reject(out, now, evse, "unknown connector");
         };
-        let connector = &mut self.station.connectors[index];
+        let plugged = self.station.connectors[index].plugged.is_some();
         match intent {
-            Intent::PlugIn { ev, .. } if connector.plugged.is_none() => {
-                connector.plug_in(ev.ev(), ev.soc)
+            Intent::PlugIn { .. } if plugged => self.reject(out, now, evse, "already plugged in"),
+            Intent::PlugIn { ev, .. } => {
+                self.station.connectors[index].plug_in(ev.ev(), ev.soc);
+                self.settle(out, now, index, TriggerReason::CablePluggedIn);
             }
-            Intent::PlugIn { .. } => self.reject(out, now, evse, "already plugged in"),
-            Intent::Unplug { .. } if connector.plugged.is_some() => connector.unplug(now),
-            Intent::Unplug { .. } => self.reject(out, now, evse, "nothing plugged in"),
-            Intent::Authorize { .. } | Intent::Stop { .. } => self.reject(
-                out,
-                now,
-                evse,
-                "transactions are not implemented for OCPP 2.0.1",
-            ),
+            Intent::Unplug { .. } if !plugged => self.reject(out, now, evse, "nothing plugged in"),
+            Intent::Unplug { .. } => {
+                self.station.connectors[index].unplug(now);
+                if self
+                    .device_model
+                    .value(TX_CTRLR, STOP_TX_ON_EV_SIDE_DISCONNECT)
+                    == Some("true")
+                {
+                    self.sessions[index].authorization = Authorization::None;
+                }
+                self.settle(out, now, index, TriggerReason::EvCommunicationLost);
+            }
+            Intent::Stop { .. } => {
+                let session = &self.sessions[index];
+                if session.transaction.is_none() && session.authorization == Authorization::None {
+                    return self.reject(out, now, evse, "no active transaction");
+                }
+                self.sessions[index].authorization = Authorization::None;
+                self.settle(out, now, index, TriggerReason::StopAuthorized);
+            }
+            Intent::Authorize { .. } => {}
         }
     }
 }
