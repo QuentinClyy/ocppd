@@ -11,6 +11,7 @@ use tokio::net::TcpStream;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 use tokio::time::{Instant, sleep, sleep_until};
 use tokio_tungstenite::tungstenite::client::IntoClientRequest;
+use tokio_tungstenite::tungstenite::handshake::client::Request;
 use tokio_tungstenite::tungstenite::http::HeaderValue;
 use tokio_tungstenite::tungstenite::{self, Message};
 use tokio_tungstenite::{MaybeTlsStream, WebSocketStream, connect_async};
@@ -55,20 +56,18 @@ pub async fn run(
         {
             Wake::Input(input) => input,
             Wake::Lost(reason) => link.lose(&reason),
-            Wake::Reconnect => {
-                match connect(&url, &link.id, charge_point.basic_auth_password()).await {
-                    Ok(socket) => {
-                        link.socket = Some(socket);
-                        link.failures = 0;
-                        Input::Connected
-                    }
-                    Err(err) => {
-                        eprintln!("{}: connect to {url} failed: {err}", link.id);
-                        link.schedule_reconnect();
-                        continue;
-                    }
+            Wake::Reconnect => match connect(&url, &charge_point).await {
+                Ok(socket) => {
+                    link.socket = Some(socket);
+                    link.failures = 0;
+                    Input::Connected
                 }
-            }
+                Err(err) => {
+                    eprintln!("{}: connect to {url} failed: {err}", link.id);
+                    link.schedule_reconnect();
+                    continue;
+                }
+            },
         };
         while let Some(reason) = execute(&mut charge_point, input, &mut link.socket, &events).await
         {
@@ -100,11 +99,18 @@ fn backoff(id: &str, failures: u32, jitter: bool) -> Duration {
     }
 }
 
-async fn connect(
-    url: &str,
-    id: &str,
-    password: Option<Vec<u8>>,
-) -> Result<Socket, tungstenite::Error> {
+async fn connect(url: &str, charge_point: &ChargePoint) -> Result<Socket, String> {
+    if charge_point.requires_tls() && !url.starts_with("wss://") {
+        return Err("security profile requires a wss:// url".into());
+    }
+    let id = &charge_point.station().id;
+    let request = request(url, id, charge_point.basic_auth_password());
+    let connected = connect_async(request.map_err(|err| err.to_string())?).await;
+    let (socket, _) = connected.map_err(|err| err.to_string())?;
+    Ok(socket)
+}
+
+fn request(url: &str, id: &str, password: Option<Vec<u8>>) -> Result<Request, tungstenite::Error> {
     let mut request = url.into_client_request()?;
     let headers = request.headers_mut();
     headers.insert(
@@ -116,8 +122,7 @@ async fn connect(
         let value = HeaderValue::from_str(&credentials).map_err(tungstenite::http::Error::from)?;
         headers.insert("Authorization", value);
     }
-    let (socket, _) = connect_async(request).await?;
-    Ok(socket)
+    Ok(request)
 }
 
 async fn execute(

@@ -65,6 +65,17 @@ async fn given_security_profile_1_and_authorization_key_when_connecting_then_bas
 }
 
 #[tokio::test]
+async fn given_security_profile_2_when_spawned_with_a_ws_url_then_refused_without_connecting() {
+    let spawn = r#"{"command":"spawn","prefix":"CP","count":1,
+        "configuration":{"AuthorizationKey":"30313233343536373839616263646566","SecurityProfile":"2"}}"#;
+
+    let (error, connected) = first_error("ws", spawn).await;
+
+    assert!(error.contains("requires a wss:// url"), "{error}");
+    assert!(!connected, "no connection attempted");
+}
+
+#[tokio::test]
 async fn given_authorized_tag_when_start_transaction_accepted_then_transaction_started_on_stdout() {
     let mut run = plugged().await;
     run.command(AUTHORIZE).await;
@@ -94,6 +105,26 @@ async fn plugged() -> Run {
     let id = run.call("StatusNotification").await;
     run.reply(&id, json!({})).await;
     run
+}
+
+async fn first_error(scheme: &str, spawn: &str) -> (String, bool) {
+    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let port = listener.local_addr().unwrap().port();
+    let csms = format!("{scheme}://127.0.0.1:{port}");
+    let mut child = Command::new(env!("CARGO_BIN_EXE_ocppd"))
+        .args(["--csms", &csms])
+        .stdin(Stdio::piped())
+        .stderr(Stdio::piped())
+        .kill_on_drop(true)
+        .spawn()
+        .unwrap();
+    let mut stdin = child.stdin.take().unwrap();
+    let line = format!("{}\n", spawn.replace('\n', ""));
+    stdin.write_all(line.as_bytes()).await.unwrap();
+    let mut stderr = BufReader::new(child.stderr.take().unwrap()).lines();
+    let error = bounded(stderr.next_line()).await.unwrap().unwrap();
+    let accepted = timeout(Duration::from_millis(200), listener.accept()).await;
+    (error, accepted.is_ok())
 }
 
 async fn start(spawn: &str, heartbeat_interval: u32) -> Run {

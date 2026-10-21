@@ -124,6 +124,18 @@ fn given_authorization_key_at_profile_3_when_connecting_then_no_basic_auth() {
 }
 
 #[test]
+fn given_each_profile_when_connecting_then_tls_only_from_profile_2() {
+    for (profile, tls) in [("0", false), ("1", false), ("2", true), ("3", true)] {
+        let mut csms = Csms::booted();
+        csms.charge_point.configure("SecurityProfile", profile);
+
+        let required = csms.charge_point.requires_tls();
+
+        assert_eq!(required, tls, "profile {profile}");
+    }
+}
+
+#[test]
 fn given_new_charge_point_when_configured_at_spawn_then_value_rules_apply_but_not_a05_prerequisites()
  {
     let mut csms = Csms::booted();

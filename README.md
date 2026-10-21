@@ -6,6 +6,8 @@ events as JSON lines on stdout. OCPP 1.6J first, 2.0.1 later.
 
 ## Build
 
+Needs OpenSSL headers for `wss` (`apt install libssl-dev pkg-config`).
+
 ```
 cargo build --release
 ```
@@ -29,6 +31,21 @@ echo '{"command":"spawn","prefix":"CP","count":1}' |
 
 This starts station `CP1`, which connects to `<csms>/CP1` using the
 `ocpp1.6` subprotocol.
+
+### Security profiles
+
+`spawn` takes an optional `"configuration"` object, applied with the same
+rules as ChangeConfiguration. A refused key stops the spawn.
+
+```
+{"command":"spawn","prefix":"CP","count":1,
+ "configuration":{"AuthorizationKey":"30313233343536373839616263646566","SecurityProfile":"2"}}
+```
+
+`AuthorizationKey` is the hex-encoded basic auth password, sent from
+profile 1. From profile 2 the CSMS url must be `wss://`. To trust a
+self-signed CSMS certificate, point `SSL_CERT_FILE` at its PEM file; that
+file then replaces the system trust store.
 
 ### Commands
 
