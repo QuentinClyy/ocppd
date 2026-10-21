@@ -1,10 +1,13 @@
-use crate::api::event::EventKind;
+use crate::api::event::LinkEvent;
 use crate::api::io::Output;
 use crate::v16::charge_point::ChargePoint;
 use crate::v16::charge_point::configuration::{
     TRANSACTION_MESSAGE_ATTEMPTS, TRANSACTION_MESSAGE_RETRY_INTERVAL,
 };
-use crate::wire::outbox::{Sent, is_transaction_message};
+use crate::v16::event::EventKind;
+use crate::wire::outbox::Sent;
+
+pub const TRANSACTION_MESSAGES: [&str; 3] = ["StartTransaction", "StopTransaction", "MeterValues"];
 
 impl ChargePoint {
     pub(crate) fn retry_transaction_message(
@@ -22,7 +25,11 @@ impl ChargePoint {
             .number(TRANSACTION_MESSAGE_ATTEMPTS)
             .unwrap_or(1);
         if sent.attempts >= attempts {
-            self.emit(out, now, EventKind::CallAbandoned { action });
+            self.emit(
+                out,
+                now,
+                EventKind::Link(LinkEvent::CallAbandoned { action }),
+            );
             return Some(sent);
         }
         let interval = self
@@ -34,15 +41,19 @@ impl ChargePoint {
         self.emit(
             out,
             now,
-            EventKind::CallRetried {
+            EventKind::Link(LinkEvent::CallRetried {
                 action,
                 attempt,
                 retry_at,
-            },
+            }),
         );
         self.outbox.retry(sent, retry_at);
         None
     }
+}
+
+pub fn is_transaction_message(action: &str) -> bool {
+    TRANSACTION_MESSAGES.contains(&action)
 }
 
 #[cfg(test)]

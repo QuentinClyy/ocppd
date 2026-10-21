@@ -1,7 +1,8 @@
-use crate::api::event::EventKind;
+use crate::api::event::LinkEvent;
 use crate::api::intent::{EvSpec, Intent};
 use crate::api::io::Input;
 use crate::fixtures::v16::fake_csms::{Csms, MINUTE, authorize};
+use crate::v16::event::EventKind;
 use serde_json::{Value, json};
 
 fn offline_with_list() -> Csms {
@@ -140,10 +141,10 @@ fn given_offline_with_list_when_an_unlisted_id_tag_presented_then_refused_as_off
 
     assert_eq!(
         csms.events,
-        vec![EventKind::IntentRejected {
+        vec![EventKind::Link(LinkEvent::IntentRejected {
             connector: Some(1),
             reason: "offline".into(),
-        }]
+        })]
     );
 }
 
@@ -160,8 +161,10 @@ fn given_one_attempt_and_an_offline_session_when_its_start_fails_then_both_start
     csms.fail(MINUTE);
 
     assert!(csms.sent("StopTransaction").is_empty());
-    let abandoned = |action: &str| EventKind::CallAbandoned {
-        action: action.into(),
+    let abandoned = |action: &str| {
+        EventKind::Link(LinkEvent::CallAbandoned {
+            action: action.into(),
+        })
     };
     assert!(csms.events.contains(&abandoned("StartTransaction")));
     assert!(csms.events.contains(&abandoned("StopTransaction")));

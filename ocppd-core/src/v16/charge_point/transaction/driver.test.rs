@@ -1,7 +1,8 @@
-use crate::api::event::EventKind;
+use crate::api::event::LinkEvent;
 use crate::api::intent::{EvSpec, Intent};
 use crate::api::io::Input;
 use crate::fixtures::v16::fake_csms::{Csms, MINUTE, authorize};
+use crate::v16::event::EventKind;
 use crate::v16::messages::core::status::ChargePointStatus;
 use crate::v16::messages::core::transaction::Reason;
 use crate::v16::messages::datatypes::id_tag::AuthorizationStatus;
@@ -28,10 +29,10 @@ fn rejected(csms: &mut Csms, intent: Intent) -> Vec<EventKind> {
 }
 
 fn intent_rejected(connector: Option<u32>, reason: &str) -> Vec<EventKind> {
-    vec![EventKind::IntentRejected {
+    vec![EventKind::Link(LinkEvent::IntentRejected {
         connector,
         reason: reason.into(),
-    }]
+    })]
 }
 
 fn plugged() -> Csms {

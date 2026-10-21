@@ -1,8 +1,8 @@
-use crate::api::event::EventKind;
 use crate::api::intent::{EvSpec, Intent};
 use crate::api::io::Input;
 use crate::fixtures::v16::charging_profiles::status;
 use crate::fixtures::v16::fake_csms::{Csms, MINUTE, authorize, register};
+use crate::v16::event::EventKind;
 use crate::v16::messages::core::status::ChargePointStatus;
 use serde_json::{Value, json};
 

@@ -1,9 +1,9 @@
 use super::meter_values::{Reading, meter_value};
-use crate::api::event::EventKind;
 use crate::api::io::Output;
 use crate::v16::charge_point::ChargePoint;
 use crate::v16::charge_point::configuration::METER_VALUE_SAMPLE_INTERVAL;
 use crate::v16::charge_point::transaction::Transaction;
+use crate::v16::event::EventKind;
 use crate::v16::messages::core::meter_values::MeterValuesRequest;
 use crate::v16::messages::core::status::ChargePointStatus;
 use crate::v16::messages::datatypes::meter_value::{Measurand, ReadingContext};

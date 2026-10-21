@@ -1,12 +1,4 @@
-use crate::v16::messages::core::boot::RegistrationStatus;
-use crate::v16::messages::core::remote_control::ResetType;
-use crate::v16::messages::core::status::ChargePointStatus;
-use crate::v16::messages::core::transaction::Reason;
-use crate::v16::messages::datatypes::id_tag::AuthorizationStatus;
-use crate::v16::messages::firmware::DiagnosticsStatus;
-use crate::v16::messages::security::certificates::CertificateUse;
-use crate::v16::messages::security::log::UploadLogStatus;
-use crate::v16::messages::security::signed_firmware::SignedFirmwareStatus;
+use crate::v16;
 use serde::Serialize;
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -14,17 +6,20 @@ pub struct Event {
     pub station: String,
     pub at: u64,
     #[serde(flatten)]
-    pub kind: EventKind,
+    pub kind: Kind,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(untagged)]
+pub enum Kind {
+    V16(v16::event::EventKind),
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
-pub enum EventKind {
+pub enum LinkEvent {
     Connected,
     Disconnected,
-    BootStatus {
-        status: RegistrationStatus,
-    },
     CallTimedOut {
         action: String,
     },
@@ -47,46 +42,6 @@ pub enum EventKind {
         connector: Option<u32>,
         reason: String,
     },
-    StatusChanged {
-        connector: u32,
-        status: ChargePointStatus,
-    },
-    Authorization {
-        #[serde(skip_serializing_if = "Option::is_none")]
-        connector: Option<u32>,
-        id_tag: String,
-        status: AuthorizationStatus,
-    },
-    TransactionStarted {
-        connector: u32,
-        transaction_id: i32,
-    },
-    TransactionStopped {
-        connector: u32,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        transaction_id: Option<i32>,
-        reason: Reason,
-    },
-    MeterSample {
-        connector: u32,
-        register_wh: f64,
-        power_w: f64,
-        soc: f64,
-    },
-    ConfigurationChanged {
-        key: String,
-        value: String,
-    },
-    AvailabilityChanged {
-        connector: u32,
-        operative: bool,
-    },
-    Reset {
-        reset_type: ResetType,
-    },
-    AuthorizationExpired {
-        id_tag: String,
-    },
     CallRetried {
         action: String,
         attempt: u32,
@@ -95,69 +50,8 @@ pub enum EventKind {
     CallAbandoned {
         action: String,
     },
-    LocalListUpdated {
-        version: i32,
-        entries: usize,
-    },
-    ChargingProfileSet {
-        connector: u32,
-        charging_profile_id: i32,
-    },
-    LogStatus {
-        status: UploadLogStatus,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        request_id: Option<i32>,
-    },
-    CertificateInstalled {
-        certificate_type: CertificateUse,
-    },
-    CertificateDeleted {
-        certificate_type: CertificateUse,
-    },
-    ChargePointCertificateInstalled,
-    SecurityEvent {
-        #[serde(rename = "type")]
-        event_type: String,
-    },
-    FirmwareStatus {
-        status: SignedFirmwareStatus,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        request_id: Option<i32>,
-    },
-    DiagnosticsStatus {
-        status: DiagnosticsStatus,
-    },
-    ChargingLimitChanged {
-        connector: u32,
-        limit_w: f64,
-    },
-    ChargingProfilesCleared {
-        count: usize,
-    },
-    Reserved {
-        connector: u32,
-        reservation_id: i32,
-        id_tag: String,
-        expires: u64,
-    },
-    ReservationEnded {
-        connector: u32,
-        reservation_id: i32,
-        reason: ReservationEnd,
-    },
-    RemoteStart {
-        #[serde(skip_serializing_if = "Option::is_none")]
-        connector: Option<u32>,
-        id_tag: String,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        expires: Option<u64>,
-    },
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "snake_case")]
-pub enum ReservationEnd {
-    Used,
-    Expired,
-    Cancelled,
-}
+#[cfg(test)]
+#[path = "event.test.rs"]
+mod tests;

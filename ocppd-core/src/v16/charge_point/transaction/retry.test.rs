@@ -1,7 +1,8 @@
-use crate::api::event::EventKind;
+use crate::api::event::LinkEvent;
 use crate::api::intent::{EvSpec, Intent};
 use crate::api::io::Input;
 use crate::fixtures::v16::fake_csms::{Csms, MINUTE};
+use crate::v16::event::EventKind;
 use crate::v16::messages::core::status::ChargePointStatus;
 
 fn stopping() -> Csms {
@@ -15,9 +16,9 @@ fn retried(csms: &Csms) -> Vec<(u32, u64)> {
     csms.events
         .iter()
         .filter_map(|kind| match kind {
-            EventKind::CallRetried {
+            EventKind::Link(LinkEvent::CallRetried {
                 attempt, retry_at, ..
-            } => Some((*attempt, *retry_at)),
+            }) => Some((*attempt, *retry_at)),
             _ => None,
         })
         .collect()
@@ -106,9 +107,12 @@ fn given_two_attempts_when_the_last_one_fails_then_abandoned() {
 
     csms.fail(MINUTE);
 
-    assert!(csms.events.contains(&EventKind::CallAbandoned {
-        action: "StopTransaction".into()
-    }));
+    assert!(
+        csms.events
+            .contains(&EventKind::Link(LinkEvent::CallAbandoned {
+                action: "StopTransaction".into()
+            }))
+    );
     assert_eq!(csms.sent("StopTransaction").len(), 2);
 }
 
@@ -151,8 +155,12 @@ fn given_two_attempts_and_a_disconnect_when_the_resent_one_fails_then_not_abando
 
     csms.fail(MINUTE);
 
-    assert!(!csms.events.contains(&EventKind::CallAbandoned {
-        action: "StopTransaction".into()
-    }));
+    assert!(
+        !csms
+            .events
+            .contains(&EventKind::Link(LinkEvent::CallAbandoned {
+                action: "StopTransaction".into()
+            }))
+    );
     csms.expect("StopTransaction");
 }

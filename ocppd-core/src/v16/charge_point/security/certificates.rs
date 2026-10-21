@@ -1,8 +1,8 @@
 use super::hash_data::{hash_data, same};
-use crate::api::event::EventKind;
 use crate::api::io::Output;
 use crate::v16::charge_point::ChargePoint;
 use crate::v16::charge_point::configuration::CERTIFICATE_STORE_MAX_LENGTH;
+use crate::v16::event::EventKind;
 use crate::v16::messages::security::certificates::{
     CertificateHashData, CertificateUse, DeleteCertificateRequest, DeleteCertificateResponse,
     DeleteCertificateStatus, GetInstalledCertificateIdsRequest, GetInstalledCertificateIdsResponse,

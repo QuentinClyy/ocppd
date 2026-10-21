@@ -1,8 +1,8 @@
-use crate::api::event::EventKind;
 use crate::api::io::Output;
 use crate::v16::charge_point::ChargePoint;
 use crate::v16::charge_point::firmware::diagnostics::UPLOAD_MS;
 use crate::v16::charge_point::firmware::firmware_update::reachable;
+use crate::v16::event::EventKind;
 use crate::v16::messages::security::log::{
     GetLogRequest, GetLogResponse, LogStatus, LogStatusNotificationRequest, LogType,
     UploadLogStatus,

@@ -1,9 +1,9 @@
 use super::certificates::valid_at;
 use super::security_event::INVALID_CHARGE_POINT_CERTIFICATE;
-use crate::api::event::EventKind;
 use crate::api::io::Output;
 use crate::v16::charge_point::ChargePoint;
 use crate::v16::charge_point::configuration::CPO_NAME;
+use crate::v16::event::EventKind;
 use crate::v16::messages::datatypes::generic_status::GenericStatus;
 use crate::v16::messages::security::certificates::{
     CertificateSignedRequest, CertificateSignedResponse, SignCertificateRequest,

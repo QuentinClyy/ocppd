@@ -1,10 +1,10 @@
-use crate::api::event::EventKind;
 use crate::api::io::Output;
 use crate::v16::charge_point::ChargePoint;
 use crate::v16::charge_point::security::security_event::{
     FIRMWARE_UPDATED, INVALID_FIRMWARE_SIGNATURE, INVALID_FIRMWARE_SIGNING_CERTIFICATE,
 };
 use crate::v16::charge_point::transaction::Transaction;
+use crate::v16::event::EventKind;
 use crate::v16::messages::core::remote_control::ResetType;
 use crate::v16::messages::firmware::{
     FirmwareStatus, FirmwareStatusNotificationRequest, UpdateFirmwareRequest,

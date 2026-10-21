@@ -1,8 +1,8 @@
 use super::schedule;
-use crate::api::event::EventKind;
 use crate::api::io::Output;
 use crate::v16::charge_point::ChargePoint;
 use crate::v16::charge_point::transaction::Transaction;
+use crate::v16::event::EventKind;
 use crate::v16::messages::datatypes::charging_profile::{
     ChargingProfilePurpose, ChargingRateUnit, ChargingSchedule, ChargingSchedulePeriod, tenths_down,
 };

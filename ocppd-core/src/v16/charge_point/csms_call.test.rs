@@ -1,8 +1,9 @@
-use crate::api::event::EventKind;
+use crate::api::event::LinkEvent;
 use crate::api::io::{Input, Output};
 use crate::fixtures::v16::raw::{
     accepted_charge_point, boot_response, charge_point, kinds, only_call, result,
 };
+use crate::v16::event::EventKind;
 use crate::wire::frame::Frame;
 use serde_json::json;
 
@@ -15,7 +16,9 @@ fn given_pending_boot_when_answer_with_an_unknown_id_arrives_then_reported_as_un
 
     assert_eq!(
         kinds(&outputs),
-        vec![EventKind::UnknownResponse { id: "nope".into() }]
+        vec![EventKind::Link(LinkEvent::UnknownResponse {
+            id: "nope".into()
+        })]
     );
 }
 
@@ -71,9 +74,9 @@ fn given_new_charge_point_when_frame_is_not_json_then_reported_as_rejected() {
 
     assert_eq!(
         kinds(&outputs),
-        vec![EventKind::FrameRejected {
+        vec![EventKind::Link(LinkEvent::FrameRejected {
             reason: "frame is not valid JSON".into()
-        }]
+        })]
     );
 }
 
@@ -83,6 +86,9 @@ fn given_accepted_charge_point_when_disconnected_then_reported_and_no_deadline()
 
     let outputs = charge_point.handle(2_000, Input::Disconnected);
 
-    assert_eq!(kinds(&outputs), vec![EventKind::Disconnected]);
+    assert_eq!(
+        kinds(&outputs),
+        vec![EventKind::Link(LinkEvent::Disconnected)]
+    );
     assert_eq!(charge_point.next_deadline(), None);
 }

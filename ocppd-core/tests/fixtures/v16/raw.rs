@@ -1,9 +1,9 @@
-use crate::api::event::Event;
-use crate::api::event::EventKind;
+use crate::api::event::{Event, Kind};
 use crate::api::io::{Input, Output};
 use crate::station::Station;
 use crate::station::connector::Connector;
 use crate::v16::charge_point::ChargePoint;
+use crate::v16::event::EventKind;
 use crate::wire::frame::Frame;
 use serde_json::{Value, json};
 
@@ -75,5 +75,6 @@ pub fn accepted_charge_point(now: u64, interval: u64) -> ChargePoint {
 }
 
 pub fn v16_kind(event: Event) -> EventKind {
-    event.kind
+    let Kind::V16(kind) = event.kind;
+    kind
 }

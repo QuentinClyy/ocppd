@@ -1,8 +1,8 @@
 use super::Transaction;
-use crate::api::event::EventKind;
 use crate::api::io::Output;
 use crate::v16::charge_point::ChargePoint;
 use crate::v16::charge_point::configuration::CONNECTION_TIME_OUT;
+use crate::v16::event::EventKind;
 use crate::v16::messages::core::transaction::{AuthorizeRequest, AuthorizeResponse};
 use crate::v16::messages::datatypes::charging_profile::ChargingProfile;
 use crate::v16::messages::datatypes::id_tag::{AuthorizationStatus, IdToken};

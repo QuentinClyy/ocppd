@@ -1,7 +1,7 @@
-use crate::api::event::EventKind;
 use crate::fixtures::v16::fake_csms::Csms;
 use crate::fixtures::v16::security::result;
 use crate::fixtures::x509::authority::Authority;
+use crate::v16::event::EventKind;
 use crate::v16::messages::security::certificates::CertificateUse;
 use serde_json::{Value, json};
 

@@ -1,7 +1,8 @@
-use crate::api::event::EventKind;
+use crate::api::event::LinkEvent;
 use crate::api::intent::EvSpec;
 use crate::api::io::Input;
 use crate::fixtures::v16::fake_csms::{Csms, MINUTE};
+use crate::v16::event::EventKind;
 use crate::wire::frame::Frame;
 use serde_json::{Value, json};
 
@@ -205,7 +206,10 @@ fn given_booted_charge_point_when_invalid_csms_calls_received_then_the_ocpp_j_4_
             other => panic!("{action} {payload}: expected an error, got {other:?}"),
         }
         assert!(
-            matches!(csms.events[..], [EventKind::InvalidPayload { .. }]),
+            matches!(
+                csms.events[..],
+                [EventKind::Link(LinkEvent::InvalidPayload { .. })]
+            ),
             "{action} {payload}"
         );
     }

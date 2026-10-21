@@ -1,6 +1,7 @@
-use crate::api::event::EventKind;
+use crate::api::event::LinkEvent;
 use crate::api::intent::{EvSpec, Intent};
 use crate::fixtures::v16::fake_csms::{Csms, MINUTE, authorize};
+use crate::v16::event::EventKind;
 use crate::v16::messages::datatypes::id_tag::AuthorizationStatus;
 use serde_json::json;
 
@@ -53,7 +54,7 @@ fn given_cached_id_tag_and_local_authorize_offline_when_presented_offline_then_a
         !csms
             .events
             .iter()
-            .any(|kind| matches!(kind, EventKind::IntentRejected { .. }))
+            .any(|kind| matches!(kind, EventKind::Link(LinkEvent::IntentRejected { .. })))
     );
 }
 

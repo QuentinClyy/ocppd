@@ -1,9 +1,10 @@
-use crate::api::event::EventKind;
+use crate::api::event::LinkEvent;
 use crate::api::intent::{EvSpec, Intent};
 use crate::api::io::Input;
 use crate::fixtures::v16::fake_csms::{Csms, MINUTE, authorize};
 use crate::fixtures::v16::plugged::plugged;
 use crate::fixtures::v16::replies::status;
+use crate::v16::event::EventKind;
 use crate::v16::messages::core::status::ChargePointStatus;
 use serde_json::json;
 
@@ -187,10 +188,10 @@ fn given_inoperative_connector_with_plugged_ev_when_id_tag_presented_then_refuse
 
     csms.intent(0, authorize("TAG1"));
 
-    let rejected = EventKind::IntentRejected {
+    let rejected = EventKind::Link(LinkEvent::IntentRejected {
         connector: Some(1),
         reason: "unavailable".into(),
-    };
+    });
     assert_eq!(csms.events, vec![rejected]);
 }
 

@@ -1,6 +1,6 @@
-use crate::api::event::EventKind;
 use crate::api::intent::{EvSpec, Intent};
 use crate::fixtures::v16::fake_csms::{Csms, authorize};
+use crate::v16::event::EventKind;
 use crate::wire::frame::Frame;
 use serde_json::{Value, json};
 

@@ -1,8 +1,9 @@
-use crate::api::event::EventKind;
+use crate::api::event::LinkEvent;
 use crate::api::intent::{EvSpec, Intent};
 use crate::api::io::Input;
 use crate::fixtures::v16::fake_csms::{Csms, MINUTE};
 use crate::fixtures::v16::replies::status;
+use crate::v16::event::EventKind;
 use crate::v16::messages::core::status::ChargePointStatus;
 use crate::v16::messages::datatypes::id_tag::AuthorizationStatus;
 use serde_json::{Value, json};
@@ -180,10 +181,10 @@ fn given_two_evs_waiting_when_tag_swiped_without_connector_then_rejected_as_ambi
 
     csms.intent(0, swipe(None));
 
-    let expected = EventKind::IntentRejected {
+    let expected = EventKind::Link(LinkEvent::IntentRejected {
         connector: None,
         reason: "ambiguous connector".into(),
-    };
+    });
     assert_eq!(csms.events, vec![expected]);
 }
 
@@ -196,10 +197,10 @@ fn given_held_authorization_when_another_tag_swiped_then_rejected_as_pending() {
 
     csms.intent(1_000, swipe(None));
 
-    let expected = EventKind::IntentRejected {
+    let expected = EventKind::Link(LinkEvent::IntentRejected {
         connector: None,
         reason: "authorization pending".into(),
-    };
+    });
     assert_eq!(csms.events, vec![expected]);
 }
 

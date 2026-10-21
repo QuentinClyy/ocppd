@@ -1,7 +1,8 @@
 use super::Transaction;
-use crate::api::event::EventKind;
+use crate::api::event::LinkEvent;
 use crate::api::io::Output;
 use crate::v16::charge_point::ChargePoint;
+use crate::v16::event::EventKind;
 use crate::v16::messages::core::transaction::{Reason, StartTransactionResponse};
 use crate::v16::messages::datatypes::id_tag::AuthorizationStatus;
 use crate::wire::frame::Frame;
@@ -68,7 +69,11 @@ impl ChargePoint {
             };
             self.outbox.resolve(&id);
             let action = "StopTransaction".to_owned();
-            self.emit(out, now, EventKind::CallAbandoned { action });
+            self.emit(
+                out,
+                now,
+                EventKind::Link(LinkEvent::CallAbandoned { action }),
+            );
         }
     }
 }

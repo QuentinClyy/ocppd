@@ -1,9 +1,9 @@
 use super::registration::Registration;
-use crate::api::event::EventKind;
 use crate::api::io::Output;
 use crate::v16::charge_point::security::security_event::RESET_OR_REBOOT;
 use crate::v16::charge_point::transaction::Transaction;
 use crate::v16::charge_point::{ChargePoint, survives_disconnect};
+use crate::v16::event::EventKind;
 use crate::v16::messages::core::remote_control::{
     AvailabilityStatus, AvailabilityType, ChangeAvailabilityRequest, RemoteStartTransactionRequest,
     RemoteStopTransactionRequest, ResetRequest, ResetType, UnlockConnectorRequest, UnlockStatus,

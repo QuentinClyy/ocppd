@@ -1,7 +1,8 @@
-use crate::api::event::{EventKind, ReservationEnd};
+use crate::api::event::LinkEvent;
 use crate::api::intent::{EvSpec, Intent};
 use crate::api::io::Input;
 use crate::fixtures::v16::fake_csms::{Csms, MINUTE, authorize};
+use crate::v16::event::{EventKind, ReservationEnd};
 use crate::v16::messages::core::status::ChargePointStatus;
 use crate::wire::frame::Frame;
 use serde_json::{Value, json};
@@ -87,10 +88,13 @@ fn given_reserved_connector_with_plugged_ev_when_another_id_tag_accepted_then_re
     csms.answer(0, json!({"idTagInfo": {"status": "Accepted"}}));
 
     assert!(csms.sent("StartTransaction").is_empty());
-    assert!(csms.events.contains(&EventKind::IntentRejected {
-        connector: Some(1),
-        reason: "reserved".into(),
-    }));
+    assert!(
+        csms.events
+            .contains(&EventKind::Link(LinkEvent::IntentRejected {
+                connector: Some(1),
+                reason: "reserved".into(),
+            }))
+    );
     assert_eq!(csms.statuses(), vec![ChargePointStatus::Reserved]);
 }
 

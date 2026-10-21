@@ -3,10 +3,10 @@ use serde_json::Value;
 use std::collections::VecDeque;
 
 const CALL_TIMEOUT_MS: u64 = 30_000;
-const TRANSACTION_MESSAGES: [&str; 3] = ["StartTransaction", "StopTransaction", "MeterValues"];
 const SENT_BEFORE_REGISTRATION: &str = "BootNotification";
 
 pub struct Outbox {
+    transaction_messages: &'static [&'static str],
     queue: VecDeque<Queued>,
     pending: Option<Pending>,
     last_id: u64,
@@ -36,8 +36,9 @@ struct Pending {
 }
 
 impl Outbox {
-    pub fn new() -> Self {
+    pub fn new(transaction_messages: &'static [&'static str]) -> Self {
         Outbox {
+            transaction_messages,
             queue: VecDeque::new(),
             pending: None,
             last_id: 0,
@@ -66,7 +67,7 @@ impl Outbox {
         }
         let mut transactions_waiting = false;
         let index = self.queue.iter().position(|queued| {
-            let transactional = is_transaction_message(&queued.sent.call.action);
+            let transactional = self.is_transaction_message(&queued.sent.call.action);
             let waiting = queued.not_before > now || (transactional && transactions_waiting);
             transactions_waiting |= transactional && waiting;
             let allowed = registered || queued.sent.call.action == SENT_BEFORE_REGISTRATION;
@@ -140,8 +141,8 @@ impl Outbox {
         self.queue
             .retain(|queued| kept(&queued.sent.call.action, &queued.sent.payload));
     }
-}
 
-pub fn is_transaction_message(action: &str) -> bool {
-    TRANSACTION_MESSAGES.contains(&action)
+    fn is_transaction_message(&self, action: &str) -> bool {
+        self.transaction_messages.contains(&action)
+    }
 }

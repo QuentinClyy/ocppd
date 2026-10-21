@@ -2,13 +2,13 @@ pub(super) mod charging_profiles;
 pub(super) mod composite;
 pub(super) mod schedule;
 
-use crate::api::event::EventKind;
 use crate::api::io::Output;
 use crate::v16::charge_point::ChargePoint;
 use crate::v16::charge_point::configuration::{
     CHARGE_PROFILE_MAX_STACK_LEVEL, CHARGING_SCHEDULE_MAX_PERIODS, MAX_CHARGING_PROFILES_INSTALLED,
 };
 use crate::v16::charge_point::transaction::Transaction;
+use crate::v16::event::EventKind;
 use crate::v16::messages::datatypes::charging_profile::{ChargingProfile, ChargingProfilePurpose};
 use crate::v16::messages::smart_charging::{
     ChargingProfileStatus, ClearChargingProfileRequest, ClearChargingProfileStatus,

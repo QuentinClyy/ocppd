@@ -1,4 +1,4 @@
-use crate::api::event::EventKind;
+use crate::api::event::LinkEvent;
 use crate::api::io::{Input, Output};
 use crate::fixtures::v16::fake_csms::Csms;
 use crate::fixtures::v16::raw::{
@@ -6,6 +6,7 @@ use crate::fixtures::v16::raw::{
 };
 use crate::station::Station;
 use crate::v16::charge_point::ChargePoint;
+use crate::v16::event::EventKind;
 use crate::v16::messages::core::boot::RegistrationStatus;
 use crate::v16::messages::core::status::ChargePointStatus;
 use serde_json::json;
@@ -142,7 +143,10 @@ fn given_new_charge_point_when_connected_then_boot_notification_and_startup_even
     let startup = EventKind::SecurityEvent {
         event_type: "StartupOfTheDevice".into(),
     };
-    assert_eq!(kinds(&outputs), vec![EventKind::Connected, startup]);
+    assert_eq!(
+        kinds(&outputs),
+        vec![EventKind::Link(LinkEvent::Connected), startup]
+    );
 }
 
 #[test]
@@ -265,9 +269,9 @@ fn given_unanswered_boot_when_it_times_out_then_reported_and_retried_a_minute_la
     assert!(calls(&outputs).is_empty());
     assert_eq!(
         kinds(&outputs),
-        vec![EventKind::CallTimedOut {
+        vec![EventKind::Link(LinkEvent::CallTimedOut {
             action: "BootNotification".into()
-        }]
+        })]
     );
     assert_eq!(charge_point.next_deadline(), Some(90_000));
 }
@@ -292,10 +296,10 @@ fn given_sent_boot_when_answered_with_call_error_then_reported_and_retried_later
 
     assert_eq!(
         kinds(&outputs),
-        vec![EventKind::CallFailed {
+        vec![EventKind::Link(LinkEvent::CallFailed {
             action: "BootNotification".into(),
             code: "InternalError".into()
-        }]
+        })]
     );
     assert_eq!(charge_point.next_deadline(), Some(61_000));
 }
@@ -314,7 +318,7 @@ fn given_sent_boot_when_answer_has_an_unknown_field_then_invalid_and_retried_lat
 
     assert!(matches!(
         kinds(&outputs)[..],
-        [EventKind::InvalidPayload { .. }]
+        [EventKind::Link(LinkEvent::InvalidPayload { .. })]
     ));
     assert_eq!(charge_point.next_deadline(), Some(61_000));
 }
@@ -327,7 +331,7 @@ fn given_sent_boot_when_answer_cannot_be_decoded_then_invalid_and_retried_later(
 
     assert!(matches!(
         kinds(&outputs)[..],
-        [EventKind::InvalidPayload { .. }]
+        [EventKind::Link(LinkEvent::InvalidPayload { .. })]
     ));
     assert_eq!(charge_point.next_deadline(), Some(61_000));
 }

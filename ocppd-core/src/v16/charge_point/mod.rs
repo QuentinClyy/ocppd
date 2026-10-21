@@ -9,9 +9,10 @@ pub mod security;
 mod smart_charging;
 mod transaction;
 
-use crate::api::event::{Event, EventKind};
+use crate::api::event::{Event, Kind, LinkEvent};
 use crate::api::io::{Input, Output};
 use crate::station::Station;
+use crate::v16::event::EventKind;
 use crate::v16::messages::core::boot::BootNotificationRequest;
 use crate::v16::messages::core::remote_control::ResetType;
 use crate::v16::messages::core::status::{
@@ -19,7 +20,7 @@ use crate::v16::messages::core::status::{
 };
 use crate::wire::ci_string::{CiString, TooLong};
 use crate::wire::frame::{self, Frame};
-use crate::wire::outbox::{Call, Outbox, Sent, is_transaction_message};
+use crate::wire::outbox::{Call, Outbox, Sent};
 use crate::wire::payload;
 use configuration::Configuration;
 use core::registration::Registration;
@@ -37,6 +38,7 @@ use serde_json::{Value, json};
 use smart_charging::charging_profiles::ChargingProfiles;
 use transaction::Transaction;
 use transaction::held::Held;
+use transaction::retry::{TRANSACTION_MESSAGES, is_transaction_message};
 
 pub struct ChargePoint {
     station: Station,
@@ -81,7 +83,7 @@ impl ChargePoint {
         let connectors = station.connectors.len();
         Ok(ChargePoint {
             station,
-            outbox: Outbox::new(),
+            outbox: Outbox::new(&TRANSACTION_MESSAGES),
             transactions: vec![Transaction::Idle; connectors],
             reported: vec![None; connectors + 1],
             resend_statuses: false,
@@ -132,7 +134,7 @@ impl ChargePoint {
         let mut out = Vec::new();
         match input {
             Input::Connected => {
-                self.emit(&mut out, now, EventKind::Connected);
+                self.emit(&mut out, now, EventKind::Link(LinkEvent::Connected));
                 self.connected(now);
                 if !self.startup_reported {
                     self.startup_reported = true;
@@ -144,7 +146,7 @@ impl ChargePoint {
                 self.disconnected();
                 self.outbox.keep(survives_disconnect);
                 self.connection_lost();
-                self.emit(&mut out, now, EventKind::Disconnected);
+                self.emit(&mut out, now, EventKind::Link(LinkEvent::Disconnected));
             }
             Input::Tick => self.tick(&mut out, now),
             Input::Frame(text) => self.receive(&mut out, now, &text),
@@ -172,7 +174,11 @@ impl ChargePoint {
     fn tick(&mut self, out: &mut Vec<Output>, now: u64) {
         if let Some(sent) = self.outbox.expire(now) {
             let action = sent.call.action.clone();
-            self.emit(out, now, EventKind::CallTimedOut { action });
+            self.emit(
+                out,
+                now,
+                EventKind::Link(LinkEvent::CallTimedOut { action }),
+            );
             self.call_failed(out, now, sent);
         }
         self.registration_tick(now);
@@ -186,7 +192,11 @@ impl ChargePoint {
             Ok(frame) => frame,
             Err(err) => {
                 let reason = err.to_string();
-                self.emit(out, now, EventKind::FrameRejected { reason });
+                self.emit(
+                    out,
+                    now,
+                    EventKind::Link(LinkEvent::FrameRejected { reason }),
+                );
                 return;
             }
         };
@@ -198,15 +208,19 @@ impl ChargePoint {
             } => self.csms_call(out, now, id, &action, payload),
             Frame::CallResult { id, payload } => match self.outbox.resolve(&id) {
                 Some(sent) => self.call_succeeded(out, now, &sent.call, payload),
-                None => self.emit(out, now, EventKind::UnknownResponse { id }),
+                None => self.emit(out, now, EventKind::Link(LinkEvent::UnknownResponse { id })),
             },
             Frame::CallError { id, code, .. } => match self.outbox.resolve(&id) {
                 Some(sent) => {
                     let action = sent.call.action.clone();
-                    self.emit(out, now, EventKind::CallFailed { action, code });
+                    self.emit(
+                        out,
+                        now,
+                        EventKind::Link(LinkEvent::CallFailed { action, code }),
+                    );
                     self.call_failed(out, now, sent);
                 }
-                None => self.emit(out, now, EventKind::UnknownResponse { id }),
+                None => self.emit(out, now, EventKind::Link(LinkEvent::UnknownResponse { id })),
             },
         }
     }
@@ -260,7 +274,11 @@ impl ChargePoint {
             Err(invalid) => {
                 let action = action.to_owned();
                 let reason = invalid.reason;
-                self.emit(out, now, EventKind::InvalidPayload { action, reason });
+                self.emit(
+                    out,
+                    now,
+                    EventKind::Link(LinkEvent::InvalidPayload { action, reason }),
+                );
                 None
             }
         }
@@ -274,14 +292,18 @@ impl ChargePoint {
         reason: &str,
     ) {
         let reason = reason.to_owned();
-        self.emit(out, now, EventKind::IntentRejected { connector, reason });
+        self.emit(
+            out,
+            now,
+            EventKind::Link(LinkEvent::IntentRejected { connector, reason }),
+        );
     }
 
     pub(super) fn emit(&self, out: &mut Vec<Output>, now: u64, kind: EventKind) {
         out.push(Output::Emit(Event {
             station: self.station.id.clone(),
             at: now,
-            kind,
+            kind: Kind::V16(kind),
         }));
     }
 }

@@ -5,8 +5,9 @@ use super::configuration::{
 use super::local_auth::id_tags::IdTags;
 use super::local_auth::local_list::Limits;
 use super::security::security_event::RECONFIGURATION_OF_SECURITY_PARAMETERS;
-use crate::api::event::EventKind;
+use crate::api::event::LinkEvent;
 use crate::api::io::Output;
+use crate::v16::event::EventKind;
 use crate::v16::messages::core::configuration::{
     ChangeConfigurationRequest, ChangeConfigurationResponse, ConfigurationStatus,
     GetConfigurationRequest,
@@ -202,10 +203,10 @@ impl ChargePoint {
             Ok(payload) => Frame::CallResult { id, payload },
             Err((code, description)) => {
                 if let ErrorCode::Invalid(_) = code {
-                    let kind = EventKind::InvalidPayload {
+                    let kind = EventKind::Link(LinkEvent::InvalidPayload {
                         action: action.to_owned(),
                         reason: description.clone(),
-                    };
+                    });
                     self.emit(out, now, kind);
                 }
                 Frame::CallError {
