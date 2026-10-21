@@ -35,6 +35,9 @@ use crate::v16::messages::remote_trigger::{
 use crate::v16::messages::reservation::{
     CancelReservationRequest, CancelReservationResponse, ReserveNowRequest, ReserveNowResponse,
 };
+use crate::v16::messages::security::certificates::{
+    DeleteCertificateRequest, GetInstalledCertificateIdsRequest, InstallCertificateRequest,
+};
 use crate::v16::messages::security::log::GetLogRequest;
 use crate::v16::messages::security::signed_firmware::{
     SignedUpdateFirmwareRequest, SignedUpdateFirmwareResponse,
@@ -166,6 +169,17 @@ impl ChargePoint {
                 SignedUpdateFirmwareResponse {
                     status: self.signed_update_firmware(out, now, request),
                 }
+            }),
+            "InstallCertificate" => answer(payload, |request: InstallCertificateRequest| {
+                self.install_certificate(out, now, request)
+            }),
+            "GetInstalledCertificateIds" => {
+                answer(payload, |request: GetInstalledCertificateIdsRequest| {
+                    self.installed_certificate_ids(request)
+                })
+            }
+            "DeleteCertificate" => answer(payload, |request: DeleteCertificateRequest| {
+                self.delete_certificate(out, now, request)
             }),
             "DataTransfer" => answer(payload, |_: DataTransferRequest| DataTransferResponse {
                 status: DataTransferStatus::UnknownVendorId,

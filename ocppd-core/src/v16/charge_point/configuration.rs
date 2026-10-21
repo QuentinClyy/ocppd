@@ -8,6 +8,7 @@ use serde_json::Value;
 
 pub const AUTHORIZATION_CACHE_ENABLED: &str = "AuthorizationCacheEnabled";
 pub const AUTHORIZATION_KEY: &str = "AuthorizationKey";
+pub const CERTIFICATE_STORE_MAX_LENGTH: &str = "CertificateStoreMaxLength";
 pub const CHARGE_PROFILE_MAX_STACK_LEVEL: &str = "ChargeProfileMaxStackLevel";
 pub const CHARGING_SCHEDULE_MAX_PERIODS: &str = "ChargingScheduleMaxPeriods";
 pub const CONNECTION_TIME_OUT: &str = "ConnectionTimeOut";
@@ -67,6 +68,7 @@ impl Configuration {
                 "false",
                 Access::CurrentValueOnly,
             ),
+            (CERTIFICATE_STORE_MAX_LENGTH, "10", Access::ReadOnly),
             (CHARGE_PROFILE_MAX_STACK_LEVEL, "10", Access::ReadOnly),
             (
                 "ChargingScheduleAllowedChargingRateUnit",

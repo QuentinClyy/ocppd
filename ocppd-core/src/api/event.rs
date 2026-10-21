@@ -4,6 +4,7 @@ use crate::v16::messages::core::status::ChargePointStatus;
 use crate::v16::messages::core::transaction::Reason;
 use crate::v16::messages::datatypes::id_tag::AuthorizationStatus;
 use crate::v16::messages::firmware::DiagnosticsStatus;
+use crate::v16::messages::security::certificates::CertificateUse;
 use crate::v16::messages::security::log::UploadLogStatus;
 use crate::v16::messages::security::signed_firmware::SignedFirmwareStatus;
 use serde::Serialize;
@@ -106,6 +107,12 @@ pub enum EventKind {
         status: UploadLogStatus,
         #[serde(skip_serializing_if = "Option::is_none")]
         request_id: Option<i32>,
+    },
+    CertificateInstalled {
+        certificate_type: CertificateUse,
+    },
+    CertificateDeleted {
+        certificate_type: CertificateUse,
     },
     SecurityEvent {
         #[serde(rename = "type")]

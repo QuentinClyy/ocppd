@@ -26,6 +26,7 @@ use firmware::firmware_update::FirmwareUpdate;
 use local_auth::id_tags::IdTags;
 use local_auth::local_list::LocalList;
 use reservation::Reservation;
+use security::certificates::Certificates;
 use security::log_upload::LogUpload;
 use security::security_event::STARTUP_OF_THE_DEVICE;
 use serde::de::DeserializeOwned;
@@ -53,6 +54,7 @@ pub struct ChargePoint {
     uploading_until: Option<u64>,
     log_upload: Option<LogUpload>,
     installed_request: Option<i32>,
+    certificates: Certificates,
     startup_reported: bool,
     boot_request: BootNotificationRequest,
     registration: Registration,
@@ -91,6 +93,7 @@ impl ChargePoint {
             uploading_until: None,
             log_upload: None,
             installed_request: None,
+            certificates: Certificates::default(),
             startup_reported: false,
             boot_request,
             registration: Registration::Offline,
