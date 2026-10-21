@@ -1,7 +1,7 @@
 use super::ChargingStation;
 use crate::api::io::Output;
 use crate::v201::event::EventKind;
-use crate::v201::messages::availability::{ConnectorStatus, StatusNotificationRequest};
+use crate::v201::messages::availability::StatusNotificationRequest;
 use crate::wire::date_time::DateTime;
 use serde_json::json;
 
@@ -10,10 +10,7 @@ const CONNECTOR_ID: u32 = 1;
 impl ChargingStation {
     pub(super) fn report_statuses(&mut self, out: &mut Vec<Output>, now: u64) {
         for index in 0..self.reported.len() {
-            let status = match self.station.connectors[index].plugged {
-                Some(_) => ConnectorStatus::Occupied,
-                None => ConnectorStatus::Available,
-            };
+            let status = self.connector_status(index);
             let changed = self.reported[index] != Some(status);
             if !changed && !self.resend_statuses {
                 continue;

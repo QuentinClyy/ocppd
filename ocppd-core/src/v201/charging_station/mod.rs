@@ -1,7 +1,11 @@
 mod csms_call;
+mod device_model;
 mod driver;
 mod registration;
+mod report;
+mod reset;
 mod status;
+mod variables;
 
 use crate::api::event::{Event, Kind, LinkEvent};
 use crate::api::io::{Input, Output};
@@ -16,6 +20,7 @@ use crate::wire::ci_string::{CiString, TooLong};
 use crate::wire::frame::{self, Frame};
 use crate::wire::outbox::{Call, Outbox};
 use crate::wire::payload;
+use device_model::{DeviceModel, table};
 use registration::Registration;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
@@ -28,6 +33,8 @@ pub struct ChargingStation {
     outbox: Outbox,
     reported: Vec<Option<ConnectorStatus>>,
     resend_statuses: bool,
+    device_model: DeviceModel,
+    resetting: bool,
     boot_request: BootNotificationRequest,
     registration: Registration,
 }
@@ -45,11 +52,14 @@ impl ChargingStation {
             reason: BootReason::PowerUp,
         };
         let connectors = station.connectors.len();
+        let device_model = DeviceModel::new(table::entries(&station)?);
         Ok(ChargingStation {
             station,
             outbox: Outbox::new(&TRANSACTION_MESSAGES),
             reported: vec![None; connectors],
             resend_statuses: false,
+            device_model,
+            resetting: false,
             boot_request,
             registration: Registration::Offline,
         })
@@ -90,6 +100,10 @@ impl ChargingStation {
         if self.is_accepted() {
             self.report_statuses(&mut out, now);
         }
+        if self.reset_due(now) {
+            self.rebooted();
+            out.push(Output::Close);
+        }
         if self.is_connected()
             && let Some(frame) = self.outbox.next_frame(now, self.is_accepted())
         {
@@ -118,7 +132,11 @@ impl ChargingStation {
             }
         };
         match frame {
-            Frame::Call { id, action, .. } => self.csms_call(out, id, &action),
+            Frame::Call {
+                id,
+                action,
+                payload,
+            } => self.csms_call(out, now, id, &action, payload),
             Frame::CallResult { id, payload } => match self.outbox.resolve(&id) {
                 Some(sent) => self.call_succeeded(out, now, &sent.call, payload),
                 None => self.emit(out, now, EventKind::Link(LinkEvent::UnknownResponse { id })),

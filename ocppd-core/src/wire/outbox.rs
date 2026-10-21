@@ -10,6 +10,7 @@ pub struct Outbox {
     queue: VecDeque<Queued>,
     pending: Option<Pending>,
     last_id: u64,
+    instructing: bool,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -27,6 +28,7 @@ pub struct Sent {
 struct Queued {
     sent: Sent,
     not_before: u64,
+    instructed: bool,
 }
 
 struct Pending {
@@ -42,6 +44,7 @@ impl Outbox {
             queue: VecDeque::new(),
             pending: None,
             last_id: 0,
+            instructing: false,
         }
     }
 
@@ -58,7 +61,12 @@ impl Outbox {
         self.queue.push_back(Queued {
             sent,
             not_before: 0,
+            instructed: self.instructing,
         });
+    }
+
+    pub fn set_instructing(&mut self, instructing: bool) {
+        self.instructing = instructing;
     }
 
     pub fn next_frame(&mut self, now: u64, registered: bool) -> Option<Frame> {
@@ -70,7 +78,9 @@ impl Outbox {
             let transactional = self.is_transaction_message(&queued.sent.call.action);
             let waiting = queued.not_before > now || (transactional && transactions_waiting);
             transactions_waiting |= transactional && waiting;
-            let allowed = registered || queued.sent.call.action == SENT_BEFORE_REGISTRATION;
+            let allowed = registered
+                || queued.instructed
+                || queued.sent.call.action == SENT_BEFORE_REGISTRATION;
             allowed && !waiting
         })?;
         let mut sent = self.queue.remove(index)?.sent;
@@ -105,7 +115,11 @@ impl Outbox {
     }
 
     pub fn retry(&mut self, sent: Sent, not_before: u64) {
-        self.queue.push_front(Queued { sent, not_before });
+        self.queue.push_front(Queued {
+            sent,
+            not_before,
+            instructed: false,
+        });
     }
 
     pub fn queued_payloads(
@@ -136,6 +150,7 @@ impl Outbox {
             self.queue.push_front(Queued {
                 sent,
                 not_before: 0,
+                instructed: false,
             });
         }
         self.queue

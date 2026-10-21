@@ -63,7 +63,7 @@ impl Protocol {
             Protocol::V16(charge_point) => {
                 charge_point.configure(key, value) == ConfigurationStatus::Accepted
             }
-            Protocol::V201(_) => false,
+            Protocol::V201(charging_station) => charging_station.configure(key, value),
         }
     }
 

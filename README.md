@@ -31,9 +31,12 @@ echo '{"command":"spawn","prefix":"CP","count":1}' |
 
 This starts station `CP1`, which connects to `<csms>/CP1` using the
 `ocpp1.6` subprotocol. `spawn` also takes `"ocpp": "2.0.1"` for an OCPP 2.0.1
-station (`ocpp2.0.1` subprotocol; boot, heartbeat and status so far) and
-`"csms"` to send that batch to another CSMS than `--csms`, so one process
-can run a mixed fleet:
+station (`ocpp2.0.1` subprotocol; so far boot, heartbeat, status, the
+device model and Reset) and `"csms"` to send that batch to another CSMS than
+`--csms`, so one process can run a mixed fleet. For a 2.0.1 station,
+`"configuration"` keys use the Part 2 shortcut notation
+`Component[instance].Variable[instance]`, e.g.
+`{"OCPPCommCtrlr.OfflineThreshold":"120"}`:
 
 ```
 {"command":"spawn","prefix":"CS","count":1,"ocpp":"2.0.1","csms":"ws://localhost:8081"}

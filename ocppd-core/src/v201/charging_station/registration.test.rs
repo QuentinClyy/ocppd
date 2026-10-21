@@ -1,15 +1,28 @@
 use crate::api::event::LinkEvent;
-use crate::api::io::Input;
+use crate::api::io::{Input, Output};
 use crate::fixtures::v201::station::{MINUTE, Run, boot};
 use crate::v201::event::EventKind;
 use crate::v201::messages::provisioning::boot::RegistrationStatus;
-use serde_json::json;
+use crate::wire::frame::Frame;
+use serde_json::{Value, json};
 
 fn booted_as(status: &str, interval: u32) -> Run {
     let mut run = Run::new(1);
     run.input(0, Input::Connected);
     run.answer(0, boot(status, interval));
     run
+}
+
+fn only_error(run: &Run) -> (String, String) {
+    match &run.replies[..] {
+        [Frame::CallError { id, code, .. }] => (id.clone(), code.clone()),
+        other => panic!("expected one error, got {other:?}"),
+    }
+}
+
+fn csms_frame(run: &mut Run, action: &str, payload: Value) {
+    let call = json!([2, "c1", action, payload]).to_string();
+    run.input(0, Input::Frame(call));
 }
 
 #[test]
@@ -165,4 +178,48 @@ fn given_booting_station_when_boot_answer_has_unknown_field_then_invalid_and_ret
         Some(EventKind::Link(LinkEvent::InvalidPayload { .. }))
     ));
     assert_eq!(run.station.next_deadline(), Some(MINUTE));
+}
+
+#[test]
+fn given_booted_station_when_unsupported_csms_call_then_not_implemented_and_connection_kept() {
+    let mut run = Run::accepted(300);
+
+    csms_frame(&mut run, "PublishFirmware", json!({}));
+
+    assert_eq!(
+        only_error(&run),
+        ("c1".to_owned(), "NotImplemented".to_owned())
+    );
+    assert!(
+        !run.station
+            .handle(0, Input::Tick)
+            .iter()
+            .any(|output| matches!(output, Output::Close))
+    );
+}
+
+#[test]
+fn given_pending_boot_when_get_base_report_then_notify_report_sent_per_b02_fr_02_and_tc_b_02() {
+    let mut run = booted_as("Pending", 300);
+    let base = json!({"requestId": 1, "reportBase": "SummaryInventory"});
+
+    let status = run.result(0, "GetBaseReport", base)["status"].clone();
+
+    assert_eq!(status, "Accepted");
+    assert_eq!(run.last_call().1, "NotifyReport");
+}
+
+#[test]
+fn given_rejected_boot_when_csms_call_then_security_error_and_nothing_sent_per_b03_fr_08_and_tc_b_30()
+ {
+    let mut run = booted_as("Rejected", 300);
+    let report = json!({"requestId": 1, "reportBase": "SummaryInventory"});
+
+    csms_frame(&mut run, "GetBaseReport", report);
+
+    assert_eq!(
+        only_error(&run),
+        ("c1".to_owned(), "SecurityError".to_owned())
+    );
+    assert_eq!(run.actions(), vec!["BootNotification"]);
 }

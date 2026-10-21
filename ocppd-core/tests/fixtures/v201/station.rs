@@ -78,6 +78,30 @@ impl Run {
         }
     }
 
+    pub fn csms(&mut self, now: u64, action: &str, payload: Value) -> Frame {
+        let call = json!([2, "csms-1", action, payload]).to_string();
+        self.input(now, Input::Frame(call));
+        self.replies.pop().expect("no reply to the CSMS call")
+    }
+
+    pub fn result(&mut self, now: u64, action: &str, payload: Value) -> Value {
+        match self.csms(now, action, payload) {
+            Frame::CallResult { payload, .. } => payload,
+            other => panic!("{action}: expected a result, got {other:?}"),
+        }
+    }
+
+    pub fn reconnect(&mut self, now: u64) {
+        self.input(now, Input::Disconnected);
+        self.input(now, Input::Connected);
+    }
+
+    pub fn boot_request(&self) -> Value {
+        let (_, action, payload) = self.last_call();
+        assert_eq!(action, "BootNotification");
+        payload
+    }
+
     pub fn last_call(&self) -> (String, String, Value) {
         self.calls.last().expect("no call sent").clone()
     }

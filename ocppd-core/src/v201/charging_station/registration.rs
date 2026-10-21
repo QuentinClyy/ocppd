@@ -1,4 +1,5 @@
 use super::ChargingStation;
+use super::device_model::table::{HEARTBEAT_INTERVAL, OCPP_COMM_CTRLR};
 use crate::api::io::Output;
 use crate::station::jitter::fraction;
 use crate::v201::event::EventKind;
@@ -10,24 +11,18 @@ const RETRY_MS: u64 = 60_000;
 
 pub enum Registration {
     Offline,
-    Disconnected {
-        heartbeat_ms: Option<u64>,
-    },
+    Disconnected,
     Booting,
-    Waiting {
-        retry_at: u64,
-    },
-    Accepted {
-        last_heartbeat: u64,
-        heartbeat_ms: Option<u64>,
-    },
+    Waiting { retry_at: u64 },
+    Rejected { retry_at: u64 },
+    Accepted { last_heartbeat: u64 },
 }
 
 impl ChargingStation {
     pub(super) fn is_connected(&self) -> bool {
         !matches!(
             self.registration,
-            Registration::Offline | Registration::Disconnected { .. }
+            Registration::Offline | Registration::Disconnected
         )
     }
 
@@ -35,12 +30,15 @@ impl ChargingStation {
         matches!(self.registration, Registration::Accepted { .. })
     }
 
+    pub(super) fn is_rejected(&self) -> bool {
+        matches!(self.registration, Registration::Rejected { .. })
+    }
+
     pub(super) fn connected(&mut self, now: u64) {
         match self.registration {
-            Registration::Disconnected { heartbeat_ms } => {
+            Registration::Disconnected => {
                 self.registration = Registration::Accepted {
                     last_heartbeat: now,
-                    heartbeat_ms,
                 }
             }
             _ => self.boot(),
@@ -49,9 +47,7 @@ impl ChargingStation {
 
     pub(super) fn disconnected(&mut self) {
         self.registration = match self.registration {
-            Registration::Accepted { heartbeat_ms, .. } => {
-                Registration::Disconnected { heartbeat_ms }
-            }
+            Registration::Accepted { .. } => Registration::Disconnected,
             _ => Registration::Offline,
         };
     }
@@ -79,12 +75,16 @@ impl ChargingStation {
         let interval_ms = u64::from(response.interval) * 1000;
         if status != RegistrationStatus::Accepted {
             let wait_ms = Some(interval_ms).filter(|&ms| ms > 0).unwrap_or(RETRY_MS);
-            self.registration = Registration::Waiting {
-                retry_at: now + wait_ms,
+            let retry_at = now + wait_ms;
+            self.registration = match status {
+                RegistrationStatus::Rejected => Registration::Rejected { retry_at },
+                _ => Registration::Waiting { retry_at },
             };
             return;
         }
-        let heartbeat_ms = Some(interval_ms).filter(|&ms| ms > 0);
+        let interval = response.interval.to_string();
+        self.device_model
+            .set_value(OCPP_COMM_CTRLR, None, HEARTBEAT_INTERVAL, interval);
         let phase = match self.station.jitter {
             true => fraction(&self.station.id, 0),
             false => 0.0,
@@ -92,22 +92,22 @@ impl ChargingStation {
         let phase_ms = (phase * interval_ms as f64) as u64;
         self.registration = Registration::Accepted {
             last_heartbeat: now.saturating_sub(phase_ms),
-            heartbeat_ms,
         };
         self.resend_statuses = true;
     }
 
     pub(super) fn registration_tick(&mut self, now: u64) {
+        let heartbeat_due = self.heartbeat_at().is_some_and(|at| now >= at);
         match self.registration {
-            Registration::Waiting { retry_at } if now >= retry_at => self.boot(),
-            Registration::Accepted {
-                last_heartbeat,
-                heartbeat_ms: Some(interval),
-            } if now >= last_heartbeat + interval => {
+            Registration::Waiting { retry_at } | Registration::Rejected { retry_at }
+                if now >= retry_at =>
+            {
+                self.boot()
+            }
+            Registration::Accepted { .. } if heartbeat_due => {
                 self.outbox.push("Heartbeat", 0, json!(HeartbeatRequest {}));
                 self.registration = Registration::Accepted {
                     last_heartbeat: now,
-                    heartbeat_ms: Some(interval),
                 };
             }
             _ => {}
@@ -116,15 +116,23 @@ impl ChargingStation {
 
     pub(super) fn registration_deadline(&self) -> Option<u64> {
         match self.registration {
-            Registration::Waiting { retry_at } => Some(retry_at),
-            Registration::Accepted {
-                last_heartbeat,
-                heartbeat_ms,
-            } => heartbeat_ms.map(|interval| last_heartbeat + interval),
-            Registration::Offline | Registration::Disconnected { .. } | Registration::Booting => {
-                None
+            Registration::Waiting { retry_at } | Registration::Rejected { retry_at } => {
+                Some(retry_at)
             }
+            Registration::Accepted { .. } => self.heartbeat_at(),
+            Registration::Offline | Registration::Disconnected | Registration::Booting => None,
         }
+    }
+
+    fn heartbeat_at(&self) -> Option<u64> {
+        let Registration::Accepted { last_heartbeat } = self.registration else {
+            return None;
+        };
+        let seconds = self
+            .device_model
+            .number(OCPP_COMM_CTRLR, HEARTBEAT_INTERVAL)
+            .filter(|&seconds| seconds > 0)?;
+        Some(last_heartbeat + seconds * 1000)
     }
 }
 
