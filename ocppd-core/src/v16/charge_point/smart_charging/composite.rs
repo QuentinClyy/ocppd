@@ -4,7 +4,7 @@ use crate::api::io::Output;
 use crate::v16::charge_point::ChargePoint;
 use crate::v16::charge_point::transaction::Transaction;
 use crate::v16::messages::datatypes::charging_profile::{
-    ChargingProfilePurpose, ChargingRateUnit, ChargingSchedule, ChargingSchedulePeriod,
+    ChargingProfilePurpose, ChargingRateUnit, ChargingSchedule, ChargingSchedulePeriod, tenths_down,
 };
 use crate::v16::messages::datatypes::generic_status::GenericStatus;
 use crate::v16::messages::smart_charging::{
@@ -86,7 +86,7 @@ impl ChargePoint {
         let mut periods: Vec<ChargingSchedulePeriod> = Vec::new();
         let mut at = now;
         while at < end {
-            let limit = self.in_unit(self.composite_limit_w(connector, at), unit);
+            let limit = tenths_down(self.in_unit(self.composite_limit_w(connector, at), unit));
             if periods.last().is_none_or(|last| last.limit != limit) {
                 periods.push(ChargingSchedulePeriod {
                     start_period: ((at - now) / 1000) as u32,

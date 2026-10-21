@@ -146,3 +146,23 @@ fn given_offline_with_list_when_an_unlisted_id_tag_presented_then_refused_as_off
         }]
     );
 }
+
+#[test]
+fn given_one_attempt_and_an_offline_session_when_its_start_fails_then_both_start_and_stop_abandoned()
+ {
+    let mut csms = offline_with_list();
+    csms.configure(0, "TransactionMessageAttempts", "1");
+    start(&mut csms, 0);
+    unplug(&mut csms, 30_000);
+    csms.reconnect(MINUTE);
+    csms.expect("StartTransaction");
+
+    csms.fail(MINUTE);
+
+    assert!(csms.sent("StopTransaction").is_empty());
+    let abandoned = |action: &str| EventKind::CallAbandoned {
+        action: action.into(),
+    };
+    assert!(csms.events.contains(&abandoned("StartTransaction")));
+    assert!(csms.events.contains(&abandoned("StopTransaction")));
+}

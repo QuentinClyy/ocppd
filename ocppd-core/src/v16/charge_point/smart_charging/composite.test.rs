@@ -238,3 +238,17 @@ fn given_one_connector_when_composite_schedule_of_connector_2_requested_then_rej
 
     assert_eq!(payload, json!({"status": "Rejected"}));
 }
+
+#[test]
+fn given_watt_limit_when_requested_in_amps_then_rounded_down_to_a_tenth() {
+    let mut csms = Csms::booted();
+    let watts = json!({
+        "chargingRateUnit": "W",
+        "chargingSchedulePeriod": [{"startPeriod": 0, "limit": 11000.0}],
+    });
+    set(&mut csms, 0, profile(1, "ChargePointMaxProfile", 0, watts));
+
+    let schedule = periods(&mut csms, 0, 1, 3600);
+
+    assert_eq!(schedule, vec![(0, 15.9)]);
+}

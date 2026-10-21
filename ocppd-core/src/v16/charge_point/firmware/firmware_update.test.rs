@@ -353,3 +353,17 @@ fn given_downloading_firmware_when_its_status_triggered_then_downloading_reporte
         vec![json!("Downloading"), json!("Downloading")]
     );
 }
+
+#[test]
+fn given_booted_charge_point_when_update_location_is_not_a_uri_then_property_constraint_violation()
+{
+    let mut csms = Csms::booted();
+    let request = json!({"location": "ocppd-2.0.0.bin", "retrieveDate": RETRIEVE});
+
+    let reply = csms.call(0, "UpdateFirmware", request);
+
+    match reply {
+        Frame::CallError { code, .. } => assert_eq!(code, "PropertyConstraintViolation"),
+        other => panic!("expected an error, got {other:?}"),
+    }
+}

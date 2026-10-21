@@ -48,20 +48,24 @@ use crate::v16::messages::smart_charging::{
     SetChargingProfileRequest, SetChargingProfileResponse,
 };
 use crate::wire::frame::Frame;
+use crate::wire::payload::{self, Violation};
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 use serde_json::{Value, json};
 
 enum ErrorCode {
     NotImplemented,
-    FormationViolation,
+    Invalid(Violation),
 }
 
 impl ErrorCode {
     fn as_str(&self) -> &'static str {
         match self {
             ErrorCode::NotImplemented => "NotImplemented",
-            ErrorCode::FormationViolation => "FormationViolation",
+            ErrorCode::Invalid(Violation::Formation) => "FormationViolation",
+            ErrorCode::Invalid(Violation::Occurrence) => "OccurenceConstraintViolation",
+            ErrorCode::Invalid(Violation::Type) => "TypeConstraintViolation",
+            ErrorCode::Invalid(Violation::Property) => "PropertyConstraintViolation",
         }
     }
 }
@@ -197,7 +201,7 @@ impl ChargePoint {
         let frame = match answered {
             Ok(payload) => Frame::CallResult { id, payload },
             Err((code, description)) => {
-                if let ErrorCode::FormationViolation = code {
+                if let ErrorCode::Invalid(_) = code {
                     let kind = EventKind::InvalidPayload {
                         action: action.to_owned(),
                         reason: description.clone(),
@@ -267,12 +271,12 @@ impl ChargePoint {
     }
 }
 
-fn answer<Request: DeserializeOwned, Response: Serialize>(
+fn answer<Request: DeserializeOwned + Serialize, Response: Serialize>(
     payload: Value,
     handler: impl FnOnce(Request) -> Response,
 ) -> Result<Value, (ErrorCode, String)> {
-    let request = serde_json::from_value(payload)
-        .map_err(|err| (ErrorCode::FormationViolation, err.to_string()))?;
+    let request = payload::decode(payload)
+        .map_err(|invalid| (ErrorCode::Invalid(invalid.violation), invalid.reason))?;
     Ok(json!(handler(request)))
 }
 

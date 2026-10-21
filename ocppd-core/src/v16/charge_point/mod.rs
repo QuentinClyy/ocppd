@@ -20,6 +20,7 @@ use crate::v16::messages::core::status::{
 use crate::wire::ci_string::{CiString, TooLong};
 use crate::wire::frame::{self, Frame};
 use crate::wire::outbox::{Call, Outbox, Sent, is_transaction_message};
+use crate::wire::payload;
 use configuration::Configuration;
 use core::registration::Registration;
 use firmware::firmware_update::FirmwareUpdate;
@@ -30,6 +31,7 @@ use security::certificates::Certificates;
 use security::charge_point_certificate::ChargePointCertificate;
 use security::log_upload::LogUpload;
 use security::security_event::{STARTUP_OF_THE_DEVICE, is_critical};
+use serde::Serialize;
 use serde::de::DeserializeOwned;
 use serde_json::{Value, json};
 use smart_charging::charging_profiles::ChargingProfiles;
@@ -162,9 +164,7 @@ impl ChargePoint {
             out.push(Output::Close);
         }
         if self.is_connected() {
-            if let Some(frame) = self.outbox.next_frame(now, self.is_accepted()) {
-                out.push(Output::Send(frame));
-            }
+            self.send_next(&mut out, now);
         }
         out
     }
@@ -248,18 +248,18 @@ impl ChargePoint {
             .push("StatusNotification", connector_id, json!(request));
     }
 
-    pub(super) fn decode<T: DeserializeOwned>(
+    pub(super) fn decode<T: DeserializeOwned + Serialize>(
         &self,
         out: &mut Vec<Output>,
         now: u64,
         action: &str,
         payload: Value,
     ) -> Option<T> {
-        match serde_json::from_value(payload) {
+        match payload::decode(payload) {
             Ok(response) => Some(response),
-            Err(err) => {
+            Err(invalid) => {
                 let action = action.to_owned();
-                let reason = err.to_string();
+                let reason = invalid.reason;
                 self.emit(out, now, EventKind::InvalidPayload { action, reason });
                 None
             }

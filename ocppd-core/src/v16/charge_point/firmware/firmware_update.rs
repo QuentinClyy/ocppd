@@ -44,7 +44,7 @@ impl ChargePoint {
     pub(crate) fn update_firmware(&mut self, now: u64, request: UpdateFirmwareRequest) {
         let until = request.retrieve_date.unix_ms.max(now);
         self.firmware = Some(FirmwareUpdate {
-            location: request.location,
+            location: request.location.into(),
             signed: None,
             stage: Stage::Waiting { until },
         });

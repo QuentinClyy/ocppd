@@ -301,6 +301,25 @@ fn given_sent_boot_when_answered_with_call_error_then_reported_and_retried_later
 }
 
 #[test]
+fn given_sent_boot_when_answer_has_an_unknown_field_then_invalid_and_retried_later() {
+    let (mut charge_point, id) = boot_sent();
+    let response = json!({
+        "status": "Accepted",
+        "currentTime": "2026-10-20T00:00:00Z",
+        "interval": 300,
+        "extra": 1
+    });
+
+    let outputs = charge_point.handle(1_000, result(&id, response));
+
+    assert!(matches!(
+        kinds(&outputs)[..],
+        [EventKind::InvalidPayload { .. }]
+    ));
+    assert_eq!(charge_point.next_deadline(), Some(61_000));
+}
+
+#[test]
 fn given_sent_boot_when_answer_cannot_be_decoded_then_invalid_and_retried_later() {
     let (mut charge_point, id) = boot_sent();
 

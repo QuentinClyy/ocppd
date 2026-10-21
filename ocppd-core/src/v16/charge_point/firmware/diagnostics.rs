@@ -22,7 +22,7 @@ impl ChargePoint {
         let Ok(file_name) = CiString::new(&file_name) else {
             return GetDiagnosticsResponse { file_name: None };
         };
-        if reachable(&request.location) {
+        if reachable(request.location.as_str()) {
             self.uploading_until = Some(now + UPLOAD_MS);
             self.diagnostics_status(out, now, DiagnosticsStatus::Uploading);
         } else {

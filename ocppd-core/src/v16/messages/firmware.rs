@@ -1,11 +1,12 @@
 use crate::wire::ci_string::CiString;
 use crate::wire::date_time::DateTime;
+use crate::wire::uri::Uri;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UpdateFirmwareRequest {
-    pub location: String,
+    pub location: Uri,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub retries: Option<u32>,
     pub retrieve_date: DateTime,
@@ -38,7 +39,7 @@ pub enum FirmwareStatus {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GetDiagnosticsRequest {
-    pub location: String,
+    pub location: Uri,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub retries: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]

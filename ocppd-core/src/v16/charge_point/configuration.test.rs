@@ -163,3 +163,50 @@ fn given_booted_charge_point_when_2_0_1_call_received_then_not_implemented() {
         other => panic!("expected an error, got {other:?}"),
     }
 }
+
+#[test]
+fn given_booted_charge_point_when_invalid_csms_calls_received_then_the_ocpp_j_4_2_3_error_codes() {
+    let cases = [
+        ("Reset", json!([]), "FormationViolation"),
+        (
+            "Reset",
+            json!({"type": "Soft", "now": true}),
+            "FormationViolation",
+        ),
+        ("Reset", json!({}), "OccurenceConstraintViolation"),
+        (
+            "GetConfiguration",
+            json!({"key": 5}),
+            "TypeConstraintViolation",
+        ),
+        (
+            "Reset",
+            json!({"type": "Gentle"}),
+            "PropertyConstraintViolation",
+        ),
+        (
+            "UnlockConnector",
+            json!({"connectorId": -1}),
+            "PropertyConstraintViolation",
+        ),
+        (
+            "ChangeConfiguration",
+            json!({"key": "k".repeat(51), "value": "1"}),
+            "PropertyConstraintViolation",
+        ),
+    ];
+    for (action, payload, expected) in cases {
+        let mut csms = Csms::booted();
+
+        let reply = csms.call(0, action, payload.clone());
+
+        match reply {
+            Frame::CallError { code, .. } => assert_eq!(code, expected, "{action} {payload}"),
+            other => panic!("{action} {payload}: expected an error, got {other:?}"),
+        }
+        assert!(
+            matches!(csms.events[..], [EventKind::InvalidPayload { .. }]),
+            "{action} {payload}"
+        );
+    }
+}

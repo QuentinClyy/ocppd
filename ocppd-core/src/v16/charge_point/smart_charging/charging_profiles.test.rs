@@ -2,6 +2,7 @@ use crate::api::event::EventKind;
 use crate::api::intent::{EvSpec, Intent};
 use crate::fixtures::v16::charging_profiles::{clear, profile, set};
 use crate::fixtures::v16::fake_csms::{Csms, MINUTE};
+use crate::wire::frame::Frame;
 use serde_json::{Value, json};
 
 fn tx_profile_for(transaction_id: i32) -> Value {
@@ -158,6 +159,27 @@ fn given_booted_charge_point_when_rates_in_tenths_set_then_accepted() {
     let status = set(&mut csms, 1, fine());
 
     assert_eq!(status, "Accepted");
+}
+
+#[test]
+fn given_booted_charge_point_when_rates_finer_than_a_tenth_set_then_property_constraint_violation()
+{
+    for (field, rate) in [("limit", 16.25), ("minChargingRate", 0.05)] {
+        let mut csms = Csms::booted();
+        let mut off = fine();
+        match field {
+            "limit" => off["chargingSchedule"]["chargingSchedulePeriod"][0]["limit"] = json!(rate),
+            _ => off["chargingSchedule"]["minChargingRate"] = json!(rate),
+        }
+        let request = json!({"connectorId": 1, "csChargingProfiles": off});
+
+        let reply = csms.call(0, "SetChargingProfile", request);
+
+        match reply {
+            Frame::CallError { code, .. } => assert_eq!(code, "PropertyConstraintViolation"),
+            other => panic!("{field} {rate}: expected an error, got {other:?}"),
+        }
+    }
 }
 
 fn replaced_by_id() -> Csms {

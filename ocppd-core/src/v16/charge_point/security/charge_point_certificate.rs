@@ -124,8 +124,6 @@ fn signing_request(
     Ok((key, pem))
 }
 
-// The leaf carries the pending key and is valid now; each certificate is
-// signed by the next one in the chain.
 fn fits(key: &PKey<Private>, chain: &[X509], now: u64) -> bool {
     let Some(leaf) = chain.first() else {
         return false;

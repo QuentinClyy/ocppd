@@ -63,11 +63,11 @@ pub fn parse(text: &str) -> Result<Frame, FrameError> {
         Some(2) => Ok(Frame::Call {
             id,
             action: string(&items[2], "action")?,
-            payload: object(&items[3], "payload")?,
+            payload: items[3].clone(),
         }),
         Some(3) => Ok(Frame::CallResult {
             id,
-            payload: object(&items[2], "payload")?,
+            payload: items[2].clone(),
         }),
         _ => Ok(Frame::CallError {
             id,

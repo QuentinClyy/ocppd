@@ -6,7 +6,6 @@ use openssl::x509::X509Ref;
 const SEQUENCE: u8 = 0x30;
 const BIT_STRING: u8 = 0x03;
 
-// Only self-signed roots are stored, so each one is its own issuer.
 pub fn hash_data(root: &X509Ref, algorithm: HashAlgorithm) -> Option<CertificateHashData> {
     let digest = match algorithm {
         HashAlgorithm::Sha256 => MessageDigest::sha256(),
@@ -32,19 +31,18 @@ pub fn same(left: &CertificateHashData, right: &CertificateHashData) -> bool {
         && left.serial_number.matches(&right.serial_number)
 }
 
-// SubjectPublicKeyInfo ::= SEQUENCE { algorithm SEQUENCE, subjectPublicKey BIT STRING }.
-// The key hash covers the BIT STRING's bits, without its unused-bits octet.
-fn public_key_bits(key_info: &[u8]) -> Option<&[u8]> {
-    let (SEQUENCE, fields, _) = element(key_info)? else {
+fn public_key_bits(subject_public_key_info: &[u8]) -> Option<&[u8]> {
+    let (SEQUENCE, fields, _) = element(subject_public_key_info)? else {
         return None;
     };
-    let (SEQUENCE, _, rest) = element(fields)? else {
+    let (SEQUENCE, _algorithm, rest) = element(fields)? else {
         return None;
     };
-    let (BIT_STRING, bits, _) = element(rest)? else {
+    let (BIT_STRING, bit_string, _) = element(rest)? else {
         return None;
     };
-    bits.get(1..)
+    let (_unused_bits, key) = bit_string.split_first()?;
+    Some(key)
 }
 
 fn element(der: &[u8]) -> Option<(u8, &[u8], &[u8])> {

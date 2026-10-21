@@ -4,6 +4,7 @@ use crate::api::io::Output;
 use crate::v16::charge_point::ChargePoint;
 use crate::v16::messages::core::transaction::{Reason, StartTransactionResponse};
 use crate::v16::messages::datatypes::id_tag::AuthorizationStatus;
+use crate::wire::frame::Frame;
 use serde_json::json;
 
 impl ChargePoint {
@@ -58,6 +59,30 @@ impl ChargePoint {
             }
         }
         stop_filled
+    }
+
+    pub(crate) fn send_next(&mut self, out: &mut Vec<Output>, now: u64) {
+        while let Some(frame) = self.outbox.next_frame(now, self.is_accepted()) {
+            let Some(id) = stop_without_transaction_id(&frame) else {
+                return out.push(Output::Send(frame));
+            };
+            self.outbox.resolve(&id);
+            let action = "StopTransaction".to_owned();
+            self.emit(out, now, EventKind::CallAbandoned { action });
+        }
+    }
+}
+
+fn stop_without_transaction_id(frame: &Frame) -> Option<String> {
+    match frame {
+        Frame::Call {
+            id,
+            action,
+            payload,
+        } if action == "StopTransaction" && payload.get("transactionId").is_none() => {
+            Some(id.clone())
+        }
+        _ => None,
     }
 }
 
