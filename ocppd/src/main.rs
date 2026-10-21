@@ -1,4 +1,5 @@
 mod basic_auth;
+mod protocol;
 mod shell;
 mod tls;
 
@@ -6,8 +7,7 @@ use ocppd_core::api::event::Event;
 use ocppd_core::api::intent::Intent;
 use ocppd_core::station::Station;
 use ocppd_core::station::connector::Connector;
-use ocppd_core::v16::charge_point::ChargePoint;
-use ocppd_core::v16::messages::core::configuration::ConfigurationStatus;
+use protocol::{Protocol, Version};
 use serde::Deserialize;
 use serde_json::Value;
 use std::collections::{BTreeMap, HashMap};
@@ -23,6 +23,9 @@ struct Spawn {
     jitter: bool,
     #[serde(default)]
     configuration: BTreeMap<String, String>,
+    #[serde(default)]
+    ocpp: Version,
+    csms: Option<String>,
 }
 
 fn jitter_by_default() -> bool {
@@ -118,7 +121,12 @@ fn spawn(csms: &str, command: &Spawn, events: &UnboundedSender<Event>, stations:
             eprintln!("station {id} already exists");
             continue;
         }
-        let url = format!("{csms}/{id}");
+        let base = command
+            .csms
+            .as_deref()
+            .unwrap_or(csms)
+            .trim_end_matches('/');
+        let url = format!("{base}/{id}");
         let station = Station {
             id: id.clone(),
             vendor: "ocppd".into(),
@@ -131,18 +139,19 @@ fn spawn(csms: &str, command: &Spawn, events: &UnboundedSender<Event>, stations:
             jitter: command.jitter,
             connectors: vec![Connector::default()],
         };
-        match ChargePoint::new(station) {
-            Ok(mut charge_point) => {
-                let refused = command.configuration.iter().find(|(key, value)| {
-                    charge_point.configure(key, value) != ConfigurationStatus::Accepted
-                });
+        match Protocol::new(command.ocpp, station) {
+            Ok(mut protocol) => {
+                let refused = command
+                    .configuration
+                    .iter()
+                    .find(|(key, value)| !protocol.configure(key, value));
                 if let Some((key, _)) = refused {
                     eprintln!("cannot spawn station {id}: {key} refused");
                     continue;
                 }
                 let (intents, receiver) = unbounded_channel();
                 stations.insert(id, intents);
-                tokio::spawn(shell::run(charge_point, url, events.clone(), receiver));
+                tokio::spawn(shell::run(protocol, url, events.clone(), receiver));
             }
             Err(err) => eprintln!("cannot spawn station {id}: {err}"),
         }

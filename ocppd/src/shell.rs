@@ -1,11 +1,11 @@
 use crate::basic_auth;
+use crate::protocol::Protocol;
 use crate::tls;
 use futures_util::{SinkExt, StreamExt};
 use ocppd_core::api::event::Event;
 use ocppd_core::api::intent::Intent;
 use ocppd_core::api::io::{Input, Output};
 use ocppd_core::station::jitter::fraction;
-use ocppd_core::v16::charge_point::ChargePoint;
 use ocppd_core::wire::frame;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tokio::net::TcpStream;
@@ -41,25 +41,24 @@ enum Wake {
 }
 
 pub async fn run(
-    mut charge_point: ChargePoint,
+    mut protocol: Protocol,
     url: String,
     events: UnboundedSender<Event>,
     receiver: UnboundedReceiver<Intent>,
 ) {
     let mut link = Link {
-        id: charge_point.station().id.clone(),
+        id: protocol.station().id.clone(),
         socket: None,
         failures: 0,
         reconnect_at: Instant::now(),
-        jitter: charge_point.station().jitter,
+        jitter: protocol.station().jitter,
     };
     let mut intents = Some(receiver);
     loop {
-        let mut input = match next_wake(&mut link, charge_point.next_deadline(), &mut intents).await
-        {
+        let mut input = match next_wake(&mut link, protocol.next_deadline(), &mut intents).await {
             Wake::Input(input) => input,
             Wake::Lost(reason) => link.lose(&reason),
-            Wake::Reconnect => match connect(&url, &charge_point).await {
+            Wake::Reconnect => match connect(&url, &protocol).await {
                 Ok(socket) => {
                     link.socket = Some(socket);
                     link.failures = 0;
@@ -72,8 +71,7 @@ pub async fn run(
                 }
             },
         };
-        while let Some(reason) = execute(&mut charge_point, input, &mut link.socket, &events).await
-        {
+        while let Some(reason) = execute(&mut protocol, input, &mut link.socket, &events).await {
             input = link.lose(&reason);
         }
     }
@@ -102,19 +100,24 @@ fn backoff(id: &str, failures: u32, jitter: bool) -> Duration {
     }
 }
 
-async fn connect(url: &str, charge_point: &ChargePoint) -> Result<Socket, String> {
+async fn connect(url: &str, protocol: &Protocol) -> Result<Socket, String> {
     let secure = url.starts_with("wss://");
-    if charge_point.requires_tls() && !secure {
+    if protocol.requires_tls() && !secure {
         return Err("security profile requires a wss:// url".into());
     }
-    if charge_point.requires_client_certificate() && charge_point.client_certificate().is_none() {
+    if protocol.requires_client_certificate() && protocol.client_certificate().is_none() {
         return Err("security profile 3 requires a charge point certificate".into());
     }
-    let id = &charge_point.station().id;
-    let request = request(url, id, charge_point.basic_auth_password());
+    let id = &protocol.station().id;
+    let request = request(
+        url,
+        id,
+        protocol.subprotocol(),
+        protocol.basic_auth_password(),
+    );
     let request = request.map_err(|err| err.to_string())?;
     let tls = match secure {
-        true => Some(tls::connector(charge_point).map_err(|err| err.to_string())?),
+        true => Some(tls::connector(protocol).map_err(|err| err.to_string())?),
         false => None,
     };
     let connected = connect_async_tls_with_config(request, Some(socket_config()), false, tls).await;
@@ -128,12 +131,17 @@ fn socket_config() -> WebSocketConfig {
         .write_buffer_size(0)
 }
 
-fn request(url: &str, id: &str, password: Option<Vec<u8>>) -> Result<Request, tungstenite::Error> {
+fn request(
+    url: &str,
+    id: &str,
+    subprotocol: &'static str,
+    password: Option<Vec<u8>>,
+) -> Result<Request, tungstenite::Error> {
     let mut request = url.into_client_request()?;
     let headers = request.headers_mut();
     headers.insert(
         "Sec-WebSocket-Protocol",
-        HeaderValue::from_static("ocpp1.6"),
+        HeaderValue::from_static(subprotocol),
     );
     if let Some(password) = password {
         let credentials = basic_auth::header(id, &password);
@@ -144,12 +152,12 @@ fn request(url: &str, id: &str, password: Option<Vec<u8>>) -> Result<Request, tu
 }
 
 async fn execute(
-    charge_point: &mut ChargePoint,
+    protocol: &mut Protocol,
     input: Input,
     socket: &mut Option<Socket>,
     events: &UnboundedSender<Event>,
 ) -> Option<String> {
-    for output in charge_point.handle(now_ms(), input) {
+    for output in protocol.handle(now_ms(), input) {
         match (output, socket.as_mut()) {
             (Output::Emit(event), _) => emit(events, event),
             (Output::Send(frame), Some(open)) => {

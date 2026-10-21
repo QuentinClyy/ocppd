@@ -75,6 +75,8 @@ pub fn accepted_charge_point(now: u64, interval: u64) -> ChargePoint {
 }
 
 pub fn v16_kind(event: Event) -> EventKind {
-    let Kind::V16(kind) = event.kind;
+    let Kind::V16(kind) = event.kind else {
+        panic!("a 1.6 charge point emitted {event:?}");
+    };
     kind
 }

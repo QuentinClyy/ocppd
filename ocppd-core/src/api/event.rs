@@ -1,4 +1,4 @@
-use crate::v16;
+use crate::{v16, v201};
 use serde::Serialize;
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -13,6 +13,7 @@ pub struct Event {
 #[serde(untagged)]
 pub enum Kind {
     V16(v16::event::EventKind),
+    V201(v201::event::EventKind),
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]

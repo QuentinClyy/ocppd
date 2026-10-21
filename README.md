@@ -30,7 +30,14 @@ echo '{"command":"spawn","prefix":"CP","count":1}' |
 ```
 
 This starts station `CP1`, which connects to `<csms>/CP1` using the
-`ocpp1.6` subprotocol.
+`ocpp1.6` subprotocol. `spawn` also takes `"ocpp": "2.0.1"` for an OCPP 2.0.1
+station (`ocpp2.0.1` subprotocol; boot, heartbeat and status so far) and
+`"csms"` to send that batch to another CSMS than `--csms`, so one process
+can run a mixed fleet:
+
+```
+{"command":"spawn","prefix":"CS","count":1,"ocpp":"2.0.1","csms":"ws://localhost:8081"}
+```
 
 ### Security profiles
 
