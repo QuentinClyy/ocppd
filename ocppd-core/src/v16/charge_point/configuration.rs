@@ -181,7 +181,7 @@ impl Configuration {
                 let current: u32 = key.value.as_str().parse().unwrap_or(0);
                 value
                     .parse::<u32>()
-                    .is_ok_and(|profile| (current..=3).contains(&profile))
+                    .is_ok_and(|profile| profile > current && profile <= 3)
             }
             Access::Text => true,
             Access::WriteOnly => hex(value).is_some_and(|key| (16..=20).contains(&key.len())),

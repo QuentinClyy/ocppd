@@ -1,4 +1,5 @@
 use crate::basic_auth;
+use crate::tls;
 use futures_util::{SinkExt, StreamExt};
 use ocppd_core::api::event::Event;
 use ocppd_core::api::intent::Intent;
@@ -14,7 +15,7 @@ use tokio_tungstenite::tungstenite::client::IntoClientRequest;
 use tokio_tungstenite::tungstenite::handshake::client::Request;
 use tokio_tungstenite::tungstenite::http::HeaderValue;
 use tokio_tungstenite::tungstenite::{self, Message};
-use tokio_tungstenite::{MaybeTlsStream, WebSocketStream, connect_async};
+use tokio_tungstenite::{MaybeTlsStream, WebSocketStream, connect_async_tls_with_config};
 
 const RECONNECT_DELAY: Duration = Duration::from_secs(5);
 const MAX_RECONNECT_DELAY: Duration = Duration::from_secs(300);
@@ -100,12 +101,21 @@ fn backoff(id: &str, failures: u32, jitter: bool) -> Duration {
 }
 
 async fn connect(url: &str, charge_point: &ChargePoint) -> Result<Socket, String> {
-    if charge_point.requires_tls() && !url.starts_with("wss://") {
+    let secure = url.starts_with("wss://");
+    if charge_point.requires_tls() && !secure {
         return Err("security profile requires a wss:// url".into());
+    }
+    if charge_point.requires_client_certificate() && charge_point.client_certificate().is_none() {
+        return Err("security profile 3 requires a charge point certificate".into());
     }
     let id = &charge_point.station().id;
     let request = request(url, id, charge_point.basic_auth_password());
-    let connected = connect_async(request.map_err(|err| err.to_string())?).await;
+    let request = request.map_err(|err| err.to_string())?;
+    let tls = match secure {
+        true => Some(tls::connector(charge_point).map_err(|err| err.to_string())?),
+        false => None,
+    };
+    let connected = connect_async_tls_with_config(request, None, false, tls).await;
     let (socket, _) = connected.map_err(|err| err.to_string())?;
     Ok(socket)
 }
@@ -143,8 +153,8 @@ async fn execute(
             (Output::Send(frame), None) => eprintln!("frame dropped while offline: {frame:?}"),
             (Output::Close, Some(open)) => {
                 return Some(match open.close(None).await {
-                    Ok(()) => "closed for reset".into(),
-                    Err(err) => format!("closed for reset: {err}"),
+                    Ok(()) => "closed by the station".into(),
+                    Err(err) => format!("closed by the station: {err}"),
                 });
             }
             (Output::Close, None) => {}

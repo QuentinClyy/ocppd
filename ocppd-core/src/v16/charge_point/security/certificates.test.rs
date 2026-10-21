@@ -222,3 +222,24 @@ fn given_installed_root_when_deleted_by_its_sha512_hash_data_then_accepted() {
 
     assert_eq!(status, "Accepted");
 }
+
+#[test]
+fn given_no_roots_when_connecting_then_no_csms_trusted() {
+    let csms = Csms::booted();
+
+    let roots = csms.charge_point.csms_roots();
+
+    assert!(roots.is_empty());
+}
+
+#[test]
+fn given_central_system_and_manufacturer_roots_when_connecting_then_csms_trusted_through_central_system_roots_only()
+ {
+    let mut csms = with_root();
+    install(&mut csms, NOW, "ManufacturerRootCertificate", OTHER_ROOT);
+
+    let roots = csms.charge_point.csms_roots();
+
+    let pem = String::from_utf8(roots.concat()).unwrap();
+    assert_eq!(pem.trim(), ROOT.trim());
+}

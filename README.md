@@ -42,10 +42,13 @@ rules as ChangeConfiguration. A refused key stops the spawn.
  "configuration":{"AuthorizationKey":"30313233343536373839616263646566","SecurityProfile":"2"}}
 ```
 
-`AuthorizationKey` is the hex-encoded basic auth password, sent from
-profile 1. From profile 2 the CSMS url must be `wss://`. To trust a
-self-signed CSMS certificate, point `SSL_CERT_FILE` at its PEM file; that
-file then replaces the system trust store.
+`AuthorizationKey` is the hex-encoded basic auth password, sent at
+profiles 1 and 2. From profile 2 the CSMS url must be `wss://`. The CSMS
+certificate is trusted through the system store, or `SSL_CERT_FILE` (a PEM
+file that then replaces the system store), plus any root the CSMS installed
+with InstallCertificate. Profile 3 presents the charge point certificate
+the CSMS signed after an ExtendedTriggerMessage(SignChargePointCertificate);
+without one the station does not connect.
 
 ### Commands
 

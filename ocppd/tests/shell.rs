@@ -76,6 +76,31 @@ async fn given_security_profile_2_when_spawned_with_a_ws_url_then_refused_withou
 }
 
 #[tokio::test]
+async fn given_security_profile_3_without_certificate_when_spawned_then_refused_without_connecting()
+{
+    let spawn = r#"{"command":"spawn","prefix":"CP","count":1,
+        "configuration":{"SecurityProfile":"3"}}"#;
+
+    let (error, connected) = first_error("wss", spawn).await;
+
+    assert!(
+        error.contains("requires a charge point certificate"),
+        "{error}"
+    );
+    assert!(!connected, "no connection attempted");
+}
+
+#[tokio::test]
+async fn given_plugged_station_when_tag_authorized_on_stdin_then_authorize_sent() {
+    let mut run = plugged().await;
+
+    run.command(AUTHORIZE).await;
+
+    let frame = run.next_call().await;
+    assert_eq!(frame[2], "Authorize");
+}
+
+#[tokio::test]
 async fn given_authorized_tag_when_start_transaction_accepted_then_transaction_started_on_stdout() {
     let mut run = plugged().await;
     run.command(AUTHORIZE).await;

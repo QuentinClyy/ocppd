@@ -19,7 +19,7 @@ use crate::v16::messages::core::status::{
 };
 use crate::wire::ci_string::{CiString, TooLong};
 use crate::wire::frame::{self, Frame};
-use crate::wire::outbox::{Call, Outbox, Sent};
+use crate::wire::outbox::{Call, Outbox, Sent, is_transaction_message};
 use configuration::Configuration;
 use core::registration::Registration;
 use firmware::firmware_update::FirmwareUpdate;
@@ -29,7 +29,7 @@ use reservation::Reservation;
 use security::certificates::Certificates;
 use security::charge_point_certificate::ChargePointCertificate;
 use security::log_upload::LogUpload;
-use security::security_event::STARTUP_OF_THE_DEVICE;
+use security::security_event::{STARTUP_OF_THE_DEVICE, is_critical};
 use serde::de::DeserializeOwned;
 use serde_json::{Value, json};
 use smart_charging::charging_profiles::ChargingProfiles;
@@ -58,6 +58,7 @@ pub struct ChargePoint {
     certificates: Certificates,
     client_certificate: ChargePointCertificate,
     startup_reported: bool,
+    reconnect_requested: bool,
     boot_request: BootNotificationRequest,
     registration: Registration,
 }
@@ -98,6 +99,7 @@ impl ChargePoint {
             certificates: Certificates::default(),
             client_certificate: ChargePointCertificate::default(),
             startup_reported: false,
+            reconnect_requested: false,
             boot_request,
             registration: Registration::Offline,
         })
@@ -136,8 +138,9 @@ impl ChargePoint {
                 }
             }
             Input::Disconnected => {
+                self.reconnect_requested = false;
                 self.disconnected();
-                self.outbox.keep_transaction_messages();
+                self.outbox.keep(survives_disconnect);
                 self.connection_lost();
                 self.emit(&mut out, now, EventKind::Disconnected);
             }
@@ -154,6 +157,8 @@ impl ChargePoint {
         self.advance_log_upload(&mut out, now);
         if self.reset_due(now) {
             self.rebooted();
+            out.push(Output::Close);
+        } else if self.reconnect_due(now) {
             out.push(Output::Close);
         }
         if self.is_connected() {
@@ -279,4 +284,8 @@ impl ChargePoint {
             kind,
         }));
     }
+}
+
+pub(crate) fn survives_disconnect(action: &str, payload: &Value) -> bool {
+    is_transaction_message(action) || action == "SecurityEventNotification" && is_critical(payload)
 }

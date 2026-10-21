@@ -221,7 +221,10 @@ impl ChargePoint {
         now: u64,
         request: &ChangeConfigurationRequest,
     ) -> ChangeConfigurationResponse {
-        let status = self.configuration.change(request);
+        let status = match self.security_prerequisites_met(request) {
+            true => self.configuration.change(request),
+            false => ConfigurationStatus::Rejected,
+        };
         if status != ConfigurationStatus::Accepted {
             return ChangeConfigurationResponse { status };
         }
@@ -236,6 +239,7 @@ impl ChargePoint {
         }
         if secret || key.eq_ignore_ascii_case(SECURITY_PROFILE) {
             self.security_event(out, now, RECONFIGURATION_OF_SECURITY_PARAMETERS);
+            self.reconnect_requested = true;
         }
         ChangeConfigurationResponse { status }
     }

@@ -3,7 +3,7 @@ use super::security_event::INVALID_CHARGE_POINT_CERTIFICATE;
 use crate::api::event::EventKind;
 use crate::api::io::Output;
 use crate::v16::charge_point::ChargePoint;
-use crate::v16::charge_point::configuration::{CPO_NAME, SECURITY_PROFILE};
+use crate::v16::charge_point::configuration::CPO_NAME;
 use crate::v16::messages::datatypes::generic_status::GenericStatus;
 use crate::v16::messages::security::certificates::{
     CertificateSignedRequest, CertificateSignedResponse, SignCertificateRequest,
@@ -17,8 +17,6 @@ use openssl::nid::Nid;
 use openssl::pkey::{PKey, Private};
 use openssl::x509::{X509, X509NameBuilder, X509ReqBuilder};
 use serde_json::{Value, json};
-
-const CLIENT_CERTIFICATE_PROFILE: u32 = 3;
 
 #[derive(Default)]
 pub struct ChargePointCertificate {
@@ -38,18 +36,23 @@ pub struct ClientCertificate {
 
 impl ChargePoint {
     pub fn client_certificate(&self) -> Option<ClientCertificate> {
-        let profile = self.configuration.number(SECURITY_PROFILE)?;
+        if !self.requires_client_certificate() {
+            return None;
+        }
         let identity = self.client_certificate.installed.as_ref()?;
         let mut chain_pem = Vec::new();
         for certificate in &identity.chain {
             chain_pem.extend(certificate.to_pem().ok()?);
         }
         let key_pkcs8_pem = identity.key.private_key_to_pem_pkcs8().ok()?;
-        let certificate = ClientCertificate {
+        Some(ClientCertificate {
             chain_pem,
             key_pkcs8_pem,
-        };
-        Some(certificate).filter(|_| profile == CLIENT_CERTIFICATE_PROFILE)
+        })
+    }
+
+    pub(crate) fn has_charge_point_certificate(&self) -> bool {
+        self.client_certificate.installed.is_some()
     }
 
     pub(crate) fn sign_charge_point_certificate(&mut self) -> bool {

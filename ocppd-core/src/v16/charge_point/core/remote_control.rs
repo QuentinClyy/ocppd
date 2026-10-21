@@ -1,9 +1,9 @@
 use super::registration::Registration;
 use crate::api::event::EventKind;
 use crate::api::io::Output;
-use crate::v16::charge_point::ChargePoint;
 use crate::v16::charge_point::security::security_event::RESET_OR_REBOOT;
 use crate::v16::charge_point::transaction::Transaction;
+use crate::v16::charge_point::{ChargePoint, survives_disconnect};
 use crate::v16::messages::core::remote_control::{
     AvailabilityStatus, AvailabilityType, ChangeAvailabilityRequest, RemoteStartTransactionRequest,
     RemoteStopTransactionRequest, ResetRequest, ResetType, UnlockConnectorRequest, UnlockStatus,
@@ -136,7 +136,7 @@ impl ChargePoint {
         self.resetting = None;
         self.startup_reported = false;
         self.registration = Registration::Offline;
-        self.outbox.keep_transaction_messages();
+        self.outbox.keep(survives_disconnect);
         self.connection_lost();
         for transaction in &mut self.transactions {
             if *transaction == Transaction::Finished {

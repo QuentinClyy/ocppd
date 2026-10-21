@@ -1,5 +1,6 @@
 mod basic_auth;
 mod shell;
+mod tls;
 
 use ocppd_core::api::event::Event;
 use ocppd_core::api::intent::Intent;

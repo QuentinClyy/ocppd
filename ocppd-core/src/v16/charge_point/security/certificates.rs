@@ -51,6 +51,15 @@ impl ChargePoint {
         InstallCertificateResponse { status }
     }
 
+    pub fn csms_roots(&self) -> Vec<Vec<u8>> {
+        let roots = self.certificates.installed.iter().filter(|installed| {
+            installed.certificate_type == CertificateUse::CentralSystemRootCertificate
+        });
+        roots
+            .filter_map(|installed| installed.certificate.to_pem().ok())
+            .collect()
+    }
+
     pub(crate) fn installed_certificate_ids(
         &self,
         request: GetInstalledCertificateIdsRequest,

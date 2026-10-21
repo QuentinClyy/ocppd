@@ -129,7 +129,7 @@ impl Outbox {
         waiting.filter(|&at| at > 0).min().filter(|_| registered)
     }
 
-    pub fn keep_transaction_messages(&mut self) {
+    pub fn keep(&mut self, kept: impl Fn(&str, &Value) -> bool) {
         if let Some(Pending { mut sent, .. }) = self.pending.take() {
             sent.attempts = sent.attempts.saturating_sub(1);
             self.queue.push_front(Queued {
@@ -138,7 +138,7 @@ impl Outbox {
             });
         }
         self.queue
-            .retain(|queued| is_transaction_message(&queued.sent.call.action));
+            .retain(|queued| kept(&queued.sent.call.action, &queued.sent.payload));
     }
 }
 
