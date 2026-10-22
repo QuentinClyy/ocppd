@@ -87,13 +87,15 @@ pub enum EventKind {
         count: usize,
     },
     Reserved {
-        evse: u32,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        evse: Option<u32>,
         reservation_id: i32,
         id_tag: String,
         expires: u64,
     },
     ReservationEnded {
-        evse: u32,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        evse: Option<u32>,
         reservation_id: i32,
         reason: ReservationEnd,
     },

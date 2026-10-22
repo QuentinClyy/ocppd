@@ -4,6 +4,7 @@ use crate::fixtures::v201::reservation::{
     EXPIRY, EXPIRY_MS, accepted, authorize, reserve, sent, statuses,
 };
 use crate::fixtures::v201::station::Run;
+use crate::protocol::v201::event::{EventKind, ReservationEnd};
 use serde_json::{Value, json};
 
 fn plugged_with_authorized_start() -> Run {
@@ -13,6 +14,23 @@ fn plugged_with_authorized_start() -> Run {
     run.input(0, Input::Intent(Intent::PlugIn { connector: 1, ev }));
     run.answer_all(0);
     run
+}
+
+#[test]
+fn given_available_evse_when_reserved_then_accepted_and_reserved_per_h01_fr_03_and_fr_23_and_tc_h_01()
+ {
+    let mut run = Run::accepted(86_400);
+
+    let status = reserve(&mut run, 1, Some(1), "04A2B3C4");
+
+    assert_eq!(status, "Accepted");
+    assert_eq!(statuses(&run), vec![(1, "Reserved".to_owned())]);
+    assert!(run.events.contains(&EventKind::Reserved {
+        evse: Some(1),
+        reservation_id: 1,
+        id_tag: "04A2B3C4".into(),
+        expires: EXPIRY_MS,
+    }));
 }
 
 #[test]
@@ -61,6 +79,19 @@ fn given_one_evse_when_evse_2_reserved_then_rejected() {
     let mut run = Run::accepted(86_400);
 
     let status = reserve(&mut run, 1, Some(2), "04A2B3C4");
+
+    assert_eq!(status, "Rejected");
+}
+
+#[test]
+fn given_no_unspecified_reservations_when_reserved_without_evse_then_rejected_per_h01_fr_19() {
+    let mut run = Run::accepted(86_400);
+    assert!(
+        run.station
+            .configure("ReservationCtrlr.NonEvseSpecific", "false")
+    );
+
+    let status = reserve(&mut run, 1, None, "04A2B3C4");
 
     assert_eq!(status, "Rejected");
 }
@@ -133,6 +164,22 @@ fn given_reservation_when_unknown_reservation_cancelled_then_rejected_per_h02_fr
 }
 
 #[test]
+fn given_reservation_when_cancelled_then_accepted_and_evse_available_per_h02_fr_02_to_fr_04_and_tc_h_17()
+ {
+    let mut run = reserved();
+
+    let status = cancel(&mut run, 1);
+
+    assert_eq!(status, "Accepted");
+    assert_eq!(statuses(&run).last().unwrap().1, "Available");
+    assert!(run.events.contains(&EventKind::ReservationEnded {
+        evse: Some(1),
+        reservation_id: 1,
+        reason: ReservationEnd::Cancelled
+    }));
+}
+
+#[test]
 fn given_reservation_when_scheduled_then_due_at_its_expiry_per_h04_fr_01() {
     let run = reserved();
 
@@ -171,6 +218,16 @@ fn given_reserved_evse_when_made_inoperative_then_reservation_removed_per_h01_fr
 }
 
 #[test]
+fn given_reserved_evse_when_another_id_token_accepted_then_no_transaction_per_h03_fr_01_and_tc_h_02()
+ {
+    let mut run = reserved();
+
+    authorize(&mut run, 1, "0A0B0C0D", accepted());
+
+    assert!(sent(&run, "TransactionEvent").is_empty());
+}
+
+#[test]
 fn given_reserved_evse_and_cached_other_id_token_when_presented_again_then_refused_from_the_cache_per_h03_fr_01()
  {
     let mut run = reserved();
@@ -184,6 +241,22 @@ fn given_reserved_evse_and_cached_other_id_token_when_presented_again_then_refus
 
     assert_eq!(sent(&run, "Authorize").len(), 1, "decided from the cache");
     assert!(sent(&run, "TransactionEvent").is_empty());
+}
+
+#[test]
+fn given_reserved_evse_when_reserved_id_token_accepted_then_transaction_uses_the_reservation_per_h01_fr_15_and_tc_h_01()
+ {
+    let mut run = reserved();
+
+    authorize(&mut run, 1, "04A2B3C4", accepted());
+
+    let started = &sent(&run, "TransactionEvent")[0];
+    assert_eq!(started["reservationId"], 1);
+    assert!(run.events.contains(&EventKind::ReservationEnded {
+        evse: Some(1),
+        reservation_id: 1,
+        reason: ReservationEnd::Used
+    }));
 }
 
 #[test]

@@ -37,7 +37,7 @@ availability, the authorization cache and the local list, security
 profiles 1 to 3, network profiles, CA certificates, GetLog,
 UpdateFirmware, CustomerInformation, charging profiles from
 SetChargingProfile or a remote start, GetCompositeSchedule, and
-reservations of an EVSE) and `"csms"` to send that batch to another CSMS
+reservations of a given EVSE, any EVSE or a connector type) and `"csms"` to send that batch to another CSMS
 than `--csms`, so one process can run a mixed fleet. For a 2.0.1 station,
 `"configuration"` keys use the Part 2 shortcut notation
 `Component[instance].Variable[instance]`, e.g.

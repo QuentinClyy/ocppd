@@ -168,7 +168,7 @@ impl ChargingStation {
         }
         match self.station.connectors[index].plugged {
             Some(_) => ConnectorStatus::Occupied,
-            None if self.reserved(index).is_some() => ConnectorStatus::Reserved,
+            None if self.reserved(index) => ConnectorStatus::Reserved,
             None => ConnectorStatus::Available,
         }
     }
