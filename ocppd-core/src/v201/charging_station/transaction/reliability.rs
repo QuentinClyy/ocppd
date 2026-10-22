@@ -24,10 +24,14 @@ impl ChargingStation {
     ) {
         let response =
             self.decode::<TransactionEventResponse>(out, now, TRANSACTION_EVENT, payload);
-        let status = response
-            .and_then(|response| response.id_token_info)
-            .map(|info| info.status);
+        let info = response.and_then(|response| response.id_token_info);
         let index = call.connector_id as usize - 1;
+        if let (Some(info), Authorization::Authorized { id_token, .. }) =
+            (&info, self.sessions[index].authorization.clone())
+        {
+            self.remember(&id_token, info.clone(), now);
+        }
+        let status = info.map(|info| info.status);
         let refused = status.is_some_and(|status| status != AuthorizationStatus::Accepted);
         let running = self.sessions[index].transaction.is_some();
         if !refused || !running {

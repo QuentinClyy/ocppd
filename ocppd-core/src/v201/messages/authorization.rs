@@ -1,4 +1,5 @@
 use crate::v201::messages::datatypes::id_token::{IdToken, IdTokenInfo};
+use crate::v201::messages::datatypes::status_info::StatusInfo;
 use crate::wire::ci_string::CiString;
 use serde::{Deserialize, Serialize};
 
@@ -53,4 +54,21 @@ pub enum AuthorizeCertificateStatus {
     NoCertificateAvailable,
     CertChainError,
     ContractCancelled,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ClearCacheRequest {}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ClearCacheResponse {
+    pub status: ClearCacheStatus,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub status_info: Option<StatusInfo>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ClearCacheStatus {
+    Accepted,
+    Rejected,
 }

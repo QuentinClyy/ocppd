@@ -1,3 +1,4 @@
+mod authorization;
 mod physical;
 mod row;
 pub(super) mod shortcut;

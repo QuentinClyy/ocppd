@@ -13,6 +13,7 @@ pub struct Row<'a> {
     data_type: DataType,
     unit: Option<&'a str>,
     min: Option<f64>,
+    max: Option<f64>,
     values: Option<&'a str>,
 }
 
@@ -33,6 +34,7 @@ pub fn row<'a>(
         data_type,
         unit: None,
         min: None,
+        max: None,
         values: None,
     }
 }
@@ -58,6 +60,11 @@ impl<'a> Row<'a> {
         self
     }
 
+    pub fn max(mut self, max: f64) -> Self {
+        self.max = Some(max);
+        self
+    }
+
     pub fn values(mut self, values: &'a str) -> Self {
         self.values = Some(values);
         self
@@ -80,7 +87,7 @@ impl<'a> Row<'a> {
                 unit: text(self.unit)?,
                 data_type: self.data_type,
                 min_limit: self.min,
-                max_limit: None,
+                max_limit: self.max,
                 values_list: text(self.values)?,
                 supports_monitoring: false,
             },

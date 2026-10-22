@@ -2,6 +2,7 @@ mod availability;
 mod csms_call;
 mod device_model;
 mod driver;
+mod local_auth;
 mod metering;
 mod registration;
 mod remote_control;
@@ -27,6 +28,8 @@ use crate::wire::outbox::{Call, Outbox, Sent};
 use crate::wire::payload;
 use availability::Availability;
 use device_model::{DeviceModel, table};
+use local_auth::cache::Cache;
+use local_auth::list::LocalList;
 use registration::Registration;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
@@ -42,6 +45,8 @@ pub struct ChargingStation {
     resend_statuses: bool,
     offline_since: Option<u64>,
     sessions: Vec<Session>,
+    local_list: LocalList,
+    cache: Cache,
     evses: Vec<Availability>,
     station_availability: Availability,
     device_model: DeviceModel,
@@ -72,6 +77,8 @@ impl ChargingStation {
             resend_statuses: false,
             offline_since: None,
             sessions: (0..connectors).map(|_| Session::default()).collect(),
+            local_list: LocalList::default(),
+            cache: Cache::default(),
             evses: vec![Availability::default(); connectors],
             station_availability: Availability::default(),
             device_model,

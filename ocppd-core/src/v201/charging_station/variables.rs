@@ -1,6 +1,7 @@
 use super::ChargingStation;
 use super::device_model::shortcut;
 use super::device_model::table::{AVAILABILITY_STATE, CLOCK_CTRLR, DATE_TIME};
+use super::local_auth::{AUTH_CACHE_CTRLR, ENTRIES, LOCAL_AUTH_LIST_CTRLR};
 use crate::api::io::Output;
 use crate::v201::event::EventKind;
 use crate::v201::messages::availability::ConnectorStatus;
@@ -88,6 +89,12 @@ impl ChargingStation {
         let date_time = DateTime { unix_ms: now }.to_string();
         self.device_model
             .set_value(CLOCK_CTRLR, None, DATE_TIME, date_time);
+        let entries = self.local_list.tokens.len().to_string();
+        self.device_model
+            .set_value(LOCAL_AUTH_LIST_CTRLR, None, ENTRIES, entries);
+        let entries = self.cache.tokens.len().to_string();
+        self.device_model
+            .set_value(AUTH_CACHE_CTRLR, None, ENTRIES, entries);
         let station = match self.station_availability.operative {
             true => "Available",
             false => "Unavailable",

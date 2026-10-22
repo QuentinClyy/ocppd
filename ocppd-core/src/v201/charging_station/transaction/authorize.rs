@@ -2,6 +2,7 @@ use super::Authorization;
 use crate::api::io::Output;
 use crate::v201::charging_station::ChargingStation;
 use crate::v201::charging_station::device_model::table::{AUTH_CTRLR, MASTER_PASS_GROUP_ID};
+use crate::v201::charging_station::local_auth::Decision;
 use crate::v201::event::EventKind;
 use crate::v201::messages::authorization::{AuthorizeRequest, AuthorizeResponse};
 use crate::v201::messages::datatypes::id_token::{AuthorizationStatus, IdToken, IdTokenType};
@@ -18,9 +19,6 @@ impl ChargingStation {
         evse: Option<u32>,
         id_tag: &str,
     ) {
-        if !self.is_accepted() {
-            return self.reject(out, now, evse, "offline: the id cannot be authorized");
-        }
         let Some(index) = self.evse_for_id_token(evse) else {
             return self.reject(out, now, evse, "no connector to authorize");
         };
@@ -36,27 +34,73 @@ impl ChargingStation {
         if !self.operative(index) {
             return self.reject(out, now, evse, "connector unavailable");
         }
-        let session = &mut self.sessions[index];
-        match &session.authorization {
+        match self.sessions[index].authorization.clone() {
             Authorization::Authorized {
                 id_token: started, ..
             } if started.id_token.matches(&id_token.id_token) => {
-                session.authorization = Authorization::None;
+                self.sessions[index].authorization = Authorization::None;
                 self.settle(out, now, index, TriggerReason::StopAuthorized);
             }
             Authorization::Pending(_) => self.reject(out, now, evse, "an authorization is pending"),
-            Authorization::Authorized { .. } if session.checking.is_some() => {
+            Authorization::Authorized { .. } if self.sessions[index].checking.is_some() => {
                 self.reject(out, now, evse, "an authorization is pending")
             }
-            Authorization::Authorized { .. } => {
-                session.checking = Some(id_token.clone());
-                self.send_authorize(index, id_token);
-            }
-            Authorization::None => {
-                session.authorization = Authorization::Pending(id_token.clone());
-                self.send_authorize(index, id_token);
-            }
+            Authorization::Authorized { group: started, .. } => match self.decide(now, &id_token) {
+                Decision::Local(group) => {
+                    if self.is_master_pass(group.as_ref()) {
+                        return self.stop_all(out, now);
+                    }
+                    let same = matches!((&group, &started), (Some(group), Some(started)) if group.matches(started));
+                    if same {
+                        self.sessions[index].authorization = Authorization::None;
+                        return self.settle(out, now, index, TriggerReason::StopAuthorized);
+                    }
+                    self.ask(out, now, index, id_token, false);
+                }
+                Decision::Ask => self.ask(out, now, index, id_token, false),
+                Decision::Refuse => self.reject(out, now, evse, "id not authorized"),
+            },
+            Authorization::None => match self.decide(now, &id_token) {
+                Decision::Local(group) => {
+                    let kind = EventKind::Authorization {
+                        evse: index as u32 + 1,
+                        id_tag: id_token.id_token.as_str().to_owned(),
+                        status: Some(AuthorizationStatus::Accepted),
+                    };
+                    self.emit(out, now, kind);
+                    if self.is_master_pass(group.as_ref()) {
+                        return self.stop_all(out, now);
+                    }
+                    self.sessions[index].authorization = Authorization::Authorized {
+                        id_token,
+                        group,
+                        at: now,
+                    };
+                    self.settle(out, now, index, TriggerReason::Authorized);
+                }
+                Decision::Ask => self.ask(out, now, index, id_token, true),
+                Decision::Refuse => self.reject(out, now, evse, "id not authorized"),
+            },
         }
+    }
+
+    fn ask(
+        &mut self,
+        out: &mut Vec<Output>,
+        now: u64,
+        index: usize,
+        id_token: IdToken,
+        starting: bool,
+    ) {
+        if !self.is_accepted() {
+            let evse = Some(index as u32 + 1);
+            return self.reject(out, now, evse, "offline: the id cannot be authorized");
+        }
+        match starting {
+            true => self.sessions[index].authorization = Authorization::Pending(id_token.clone()),
+            false => self.sessions[index].checking = Some(id_token.clone()),
+        }
+        self.send_authorize(index, id_token);
     }
 
     pub(in crate::v201::charging_station) fn authorize_reply(
@@ -78,6 +122,9 @@ impl ChargingStation {
         let info = self
             .decode::<AuthorizeResponse>(out, now, "Authorize", payload)
             .map(|response| response.id_token_info);
+        if let Some(info) = &info {
+            self.remember(&id_token, info.clone(), now);
+        }
         let status = info.as_ref().map(|info| info.status);
         let group = info
             .and_then(|info| info.group_id_token)

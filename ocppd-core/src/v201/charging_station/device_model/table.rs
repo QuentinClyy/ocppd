@@ -189,20 +189,6 @@ pub fn entries(station: &Station) -> Result<Vec<Entry>, TooLong> {
         .values(TX_POINTS),
         row(TX_CTRLR, "StopTxOnInvalidId", "true", ReadWrite, Boolean),
         row(
-            AUTH_CTRLR,
-            MASTER_PASS_GROUP_ID,
-            "",
-            ReadWrite,
-            DataType::String,
-        ),
-        row(
-            AUTH_CTRLR,
-            "AuthorizeRemoteStart",
-            "false",
-            ReadWrite,
-            Boolean,
-        ),
-        row(
             SAMPLED_DATA_CTRLR,
             "TxStartedMeasurands",
             ENERGY,
@@ -288,6 +274,7 @@ pub fn entries(station: &Station) -> Result<Vec<Entry>, TooLong> {
         ),
         row("SecurityCtrlr", "SecurityProfile", "0", ReadOnly, Integer),
     ];
+    rows.extend(super::authorization::rows());
     rows.extend(super::physical::rows(station));
     rows.into_iter().map(Row::entry).collect()
 }

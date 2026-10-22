@@ -3,8 +3,10 @@ use super::device_model::table::ITEMS_PER_GET;
 use crate::api::event::LinkEvent;
 use crate::api::io::Output;
 use crate::v201::event::EventKind;
+use crate::v201::messages::authorization::ClearCacheRequest;
 use crate::v201::messages::availability::ChangeAvailabilityRequest;
 use crate::v201::messages::custom_data::without_custom_data;
+use crate::v201::messages::local_auth::{GetLocalListVersionRequest, SendLocalListRequest};
 use crate::v201::messages::provisioning::report::GetBaseReportRequest;
 use crate::v201::messages::provisioning::reset::ResetRequest;
 use crate::v201::messages::provisioning::variables::{GetVariablesRequest, SetVariablesRequest};
@@ -95,6 +97,13 @@ impl ChargingStation {
             }),
             "ChangeAvailability" => answer(payload, |request: ChangeAvailabilityRequest| {
                 Ok(self.change_availability(out, now, request))
+            }),
+            "ClearCache" => answer(payload, |_: ClearCacheRequest| Ok(self.clear_cache())),
+            "SendLocalList" => answer(payload, |request: SendLocalListRequest| {
+                Ok(self.send_local_list(out, now, &request))
+            }),
+            "GetLocalListVersion" => answer(payload, |_: GetLocalListVersionRequest| {
+                Ok(self.local_list_version())
             }),
             "Reset" => answer(payload, |request: ResetRequest| {
                 Ok(self.reset(out, now, request))

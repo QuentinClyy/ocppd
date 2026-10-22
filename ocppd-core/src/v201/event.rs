@@ -50,6 +50,10 @@ pub enum EventKind {
         evse: Option<u32>,
         operative: bool,
     },
+    LocalListUpdated {
+        version: i32,
+        entries: usize,
+    },
     #[serde(untagged)]
     Link(LinkEvent),
 }
