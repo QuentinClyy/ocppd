@@ -50,7 +50,10 @@ impl ChargingStation {
     pub(super) fn rebooted(&mut self, out: &mut Vec<Output>, now: u64) {
         self.resetting = false;
         self.registration = Registration::Offline;
-        self.boot_request.reason = BootReason::RemoteReset;
+        self.boot_request.reason = match self.rebooting_for_firmware() {
+            true => BootReason::FirmwareUpdate,
+            false => BootReason::RemoteReset,
+        };
         self.outbox.keep(|action, _| super::kept_offline(action));
         self.startup_reported = false;
         self.security_event(out, now, RESET_OR_REBOOT);

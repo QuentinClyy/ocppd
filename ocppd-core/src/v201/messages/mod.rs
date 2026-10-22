@@ -3,6 +3,8 @@ pub mod availability;
 pub mod certificates;
 pub mod custom_data;
 pub mod datatypes;
+pub mod diagnostics;
+pub mod firmware;
 pub mod local_auth;
 pub mod meter_values;
 pub mod provisioning;

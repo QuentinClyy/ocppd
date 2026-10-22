@@ -126,6 +126,17 @@ impl ChargingStation {
             .retain(|installed| !installed.fallback);
     }
 
+    pub(super) fn trusted_firmware_signer(&self, pem: &str, now: u64) -> bool {
+        let Ok(signer) = X509::from_pem(pem.as_bytes()) else {
+            return false;
+        };
+        valid_at(&signer, now)
+            && self.certificates.installed.iter().any(|installed| {
+                installed.kind == InstallCertificateUse::ManufacturerRootCertificate
+                    && signed_by(&signer, &installed.certificate)
+            })
+    }
+
     pub(super) fn certificate_count(&self) -> usize {
         self.certificates.installed.len()
     }

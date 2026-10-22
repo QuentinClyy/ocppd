@@ -104,6 +104,14 @@ impl ChargingStation {
                 }
                 TriggerMessageStatus::Accepted
             }
+            MessageTrigger::LogStatusNotification => {
+                self.report_log_status();
+                TriggerMessageStatus::Accepted
+            }
+            MessageTrigger::FirmwareStatusNotification => {
+                self.report_firmware_status();
+                TriggerMessageStatus::Accepted
+            }
             _ => TriggerMessageStatus::NotImplemented,
         }
     }

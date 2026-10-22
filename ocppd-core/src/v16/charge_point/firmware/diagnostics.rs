@@ -1,5 +1,5 @@
-use super::firmware_update::reachable;
 use crate::api::io::Output;
+use crate::file_transfer::{UPLOAD_MS, reachable};
 use crate::v16::charge_point::ChargePoint;
 use crate::v16::event::EventKind;
 use crate::v16::messages::firmware::{
@@ -8,8 +8,6 @@ use crate::v16::messages::firmware::{
 };
 use crate::wire::ci_string::CiString;
 use serde_json::json;
-
-pub const UPLOAD_MS: u64 = 10_000;
 
 impl ChargePoint {
     pub(crate) fn get_diagnostics(

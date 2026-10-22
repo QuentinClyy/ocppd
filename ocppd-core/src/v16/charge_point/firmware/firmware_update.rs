@@ -1,4 +1,5 @@
 use crate::api::io::Output;
+use crate::file_transfer::{DOWNLOAD_MS, reachable};
 use crate::v16::charge_point::ChargePoint;
 use crate::v16::charge_point::security::security_event::{
     FIRMWARE_UPDATED, INVALID_FIRMWARE_SIGNATURE, INVALID_FIRMWARE_SIGNING_CERTIFICATE,
@@ -16,9 +17,7 @@ use crate::v16::messages::security::signed_firmware::{
 use crate::wire::ci_string::CiString;
 use serde_json::json;
 
-const DOWNLOAD_MS: u64 = 10_000;
 const INSTALL_MS: u64 = 10_000;
-const SCHEMES: [&str; 4] = ["http://", "https://", "ftp://", "ftps://"];
 
 pub struct FirmwareUpdate {
     location: String,
@@ -260,10 +259,6 @@ impl ChargePoint {
             .iter()
             .all(|transaction| matches!(transaction, Transaction::Idle | Transaction::Finished))
     }
-}
-
-pub fn reachable(location: &str) -> bool {
-    SCHEMES.iter().any(|scheme| location.starts_with(scheme))
 }
 
 fn plain(status: SignedFirmwareStatus) -> Option<FirmwareStatus> {

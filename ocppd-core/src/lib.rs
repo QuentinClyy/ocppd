@@ -1,4 +1,5 @@
 pub mod api;
+pub mod file_transfer;
 pub mod station;
 pub mod v16;
 pub mod v201;

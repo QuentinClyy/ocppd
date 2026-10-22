@@ -94,6 +94,7 @@ impl ChargingStation {
             last_heartbeat: now.saturating_sub(phase_ms),
         };
         self.resend_statuses = true;
+        self.installed_after_reboot(out, now);
     }
 
     pub(super) fn registration_tick(&mut self, now: u64) {

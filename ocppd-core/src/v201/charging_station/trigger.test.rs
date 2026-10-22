@@ -7,6 +7,17 @@ fn trigger(run: &mut Run, request: Value) -> Value {
 }
 
 #[test]
+fn given_booted_station_when_heartbeat_triggered_then_accepted_and_sent_after_the_response_per_f06_fr_04_and_tc_f_20()
+ {
+    let mut run = Run::accepted(86_400);
+
+    let status = trigger(&mut run, json!({"requestedMessage": "Heartbeat"}));
+
+    assert_eq!(status, "Accepted");
+    assert_eq!(run.last_call().1, "Heartbeat");
+}
+
+#[test]
 fn given_accepted_boot_when_boot_notification_triggered_then_rejected_per_f06_fr_17_and_tc_f_26() {
     let mut run = Run::accepted(86_400);
 
@@ -22,6 +33,18 @@ fn given_booted_station_when_status_triggered_without_connector_then_rejected_pe
     let status = trigger(&mut run, json!({"requestedMessage": "StatusNotification"}));
 
     assert_eq!(status, "Rejected");
+}
+
+#[test]
+fn given_booted_station_when_status_of_one_connector_triggered_then_accepted_per_f06_fr_12_and_tc_f_23()
+ {
+    let mut run = Run::accepted(86_400);
+    let one =
+        json!({"requestedMessage": "StatusNotification", "evse": {"id": 1, "connectorId": 1}});
+
+    let status = trigger(&mut run, one);
+
+    assert_eq!(status, "Accepted");
 }
 
 #[test]

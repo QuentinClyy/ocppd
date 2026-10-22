@@ -13,7 +13,16 @@ pub const CERTIFICATE_ENTRIES: &str = "CertificateEntries";
 pub const STARTUP_OF_THE_DEVICE: &str = "StartupOfTheDevice";
 pub const RESET_OR_REBOOT: &str = "ResetOrReboot";
 pub const RECONFIGURATION_OF_SECURITY_PARAMETERS: &str = "ReconfigurationOfSecurityParameters";
-const CRITICAL: [&str; 2] = [STARTUP_OF_THE_DEVICE, RESET_OR_REBOOT];
+pub const FIRMWARE_UPDATED: &str = "FirmwareUpdated";
+pub const INVALID_FIRMWARE_SIGNATURE: &str = "InvalidFirmwareSignature";
+pub const INVALID_FIRMWARE_SIGNING_CERTIFICATE: &str = "InvalidFirmwareSigningCertificate";
+const CRITICAL: [&str; 5] = [
+    STARTUP_OF_THE_DEVICE,
+    RESET_OR_REBOOT,
+    FIRMWARE_UPDATED,
+    INVALID_FIRMWARE_SIGNATURE,
+    INVALID_FIRMWARE_SIGNING_CERTIFICATE,
+];
 const BASIC_AUTH_PROFILES: [u64; 2] = [1, 2];
 const TLS_FROM_PROFILE: u64 = 2;
 const CLIENT_CERTIFICATE_PROFILE: u64 = 3;

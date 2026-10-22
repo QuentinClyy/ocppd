@@ -3,7 +3,9 @@ mod certificates;
 mod csms_call;
 mod device_model;
 mod driver;
+mod firmware;
 mod local_auth;
+mod log_upload;
 mod metering;
 mod registration;
 mod remote_control;
@@ -31,8 +33,10 @@ use crate::wire::payload;
 use availability::Availability;
 use certificates::Certificates;
 use device_model::{DeviceModel, table};
+use firmware::Firmware;
 use local_auth::cache::Cache;
 use local_auth::list::LocalList;
+use log_upload::LogUpload;
 use registration::Registration;
 use security::STARTUP_OF_THE_DEVICE;
 use serde::Serialize;
@@ -51,6 +55,8 @@ pub struct ChargingStation {
     sessions: Vec<Session>,
     local_list: LocalList,
     certificates: Certificates,
+    firmware: Firmware,
+    log_upload: Option<LogUpload>,
     cache: Cache,
     evses: Vec<Availability>,
     station_availability: Availability,
@@ -85,6 +91,8 @@ impl ChargingStation {
             sessions: (0..connectors).map(|_| Session::default()).collect(),
             local_list: LocalList::default(),
             certificates: Certificates::default(),
+            firmware: Firmware::default(),
+            log_upload: None,
             cache: Cache::default(),
             evses: vec![Availability::default(); connectors],
             station_availability: Availability::default(),
@@ -108,6 +116,8 @@ impl ChargingStation {
             self.transaction_deadline(),
             self.sampling_deadline(),
             self.next_aligned,
+            self.firmware_deadline(),
+            self.log_upload_deadline(),
         ]
         .into_iter()
         .flatten()
@@ -138,6 +148,8 @@ impl ChargingStation {
             Input::Frame(text) => self.receive(&mut out, now, &text),
             Input::Intent(intent) => self.intent(&mut out, now, intent),
         }
+        self.advance_firmware(&mut out, now);
+        self.advance_log_upload(&mut out, now);
         if self.is_accepted() {
             self.report_statuses(&mut out, now);
             self.aligned_tick(&mut out, now);
