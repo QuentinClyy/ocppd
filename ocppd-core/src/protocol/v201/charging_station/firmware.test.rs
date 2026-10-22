@@ -1,5 +1,6 @@
 use crate::api::intent::Intent;
 use crate::api::io::Input;
+use crate::file_transfer::TransferStage;
 use crate::fixtures::v201::firmware::*;
 use crate::fixtures::v201::station::Run;
 use crate::fixtures::x509::authority::Authority;
@@ -57,6 +58,20 @@ fn given_booted_station_when_update_without_signing_certificate_requested_then_r
 }
 
 #[test]
+fn given_failing_signature_check_when_downloaded_then_invalid_signature_reported_per_l01_fr_03_and_tc_l_06()
+ {
+    let mut run = failing(TransferStage::Signature);
+
+    tick(&mut run, 10_000);
+
+    assert_eq!(
+        statuses(&run),
+        vec!["Downloading", "Downloaded", "InvalidSignature"]
+    );
+    assert_eq!(security_events(&run), vec!["InvalidFirmwareSignature"]);
+}
+
+#[test]
 fn given_trusted_signer_when_update_from_an_unreachable_location_requested_then_download_failed_per_l01_fr_30()
  {
     let mut run = Run::accepted(86_400);
@@ -67,6 +82,28 @@ fn given_trusted_signer_when_update_from_an_unreachable_location_requested_then_
 
     assert_eq!(statuses(&run), vec!["DownloadFailed"]);
     assert_eq!(run.station.next_deadline(), Some(86_400_000));
+}
+
+#[test]
+fn given_failing_download_when_download_time_passes_then_download_failed_per_tc_l_07() {
+    let mut run = failing(TransferStage::Download);
+
+    tick(&mut run, 10_000);
+
+    assert_eq!(statuses(&run), vec!["Downloading", "DownloadFailed"]);
+    assert_eq!(run.station.next_deadline(), Some(86_400_000));
+}
+
+#[test]
+fn given_failing_install_when_install_time_passes_then_installation_failed_without_reboot_per_tc_l_08()
+ {
+    let mut run = failing(TransferStage::Install);
+    tick(&mut run, 10_000);
+
+    tick(&mut run, 20_000);
+
+    assert_eq!(statuses(&run).last(), Some(&json!("InstallationFailed")));
+    assert!(!run.closed);
 }
 
 #[test]

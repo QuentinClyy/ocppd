@@ -14,6 +14,9 @@ impl ChargePoint {
         if intent == Intent::PowerCut {
             return self.power_cut(out, now);
         }
+        if let Intent::FailTransfer { stage } = intent {
+            return self.failing.add(stage);
+        }
         let connector = intent.connector();
         let Some(index) = connector.and_then(|connector| self.index_of(connector)) else {
             return self.reject(out, now, connector, "unknown connector");
@@ -25,7 +28,7 @@ impl ChargePoint {
             Intent::Fault { .. } => self.fault(out, now, index),
             Intent::ClearFault { .. } => self.station.connectors[index].repair(),
             Intent::LockFailure { .. } => self.station.connectors[index].lock_broken = true,
-            Intent::Authorize { .. } | Intent::PowerCut => {}
+            Intent::Authorize { .. } | Intent::PowerCut | Intent::FailTransfer { .. } => {}
         }
     }
 

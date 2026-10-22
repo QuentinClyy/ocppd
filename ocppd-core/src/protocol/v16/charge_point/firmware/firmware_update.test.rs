@@ -1,5 +1,6 @@
 use crate::api::intent::{EvSpec, Intent};
 use crate::api::io::Input;
+use crate::file_transfer::TransferStage;
 use crate::fixtures::v16::fake_csms::{Csms, MINUTE};
 use crate::wire::frame::Frame;
 use serde_json::{Value, json};
@@ -150,6 +151,26 @@ fn given_signed_update_without_signature_when_downloaded_then_invalid_signature_
 }
 
 #[test]
+fn given_failing_signature_check_when_downloaded_then_invalid_signature_reported() {
+    let mut csms = Csms::booted();
+    let stage = TransferStage::Signature;
+    csms.intent(0, Intent::FailTransfer { stage });
+    signed_update(&mut csms, 0, json!({}));
+    tick(&mut csms, MINUTE);
+
+    tick(&mut csms, MINUTE + 10_000);
+
+    assert_eq!(
+        signed_statuses(&csms).last(),
+        Some(&json!("InvalidSignature"))
+    );
+    assert_eq!(
+        security_events(&csms),
+        vec![json!("InvalidFirmwareSignature")]
+    );
+}
+
+#[test]
 fn given_booted_charge_point_when_signed_update_without_signing_certificate_then_invalid_certificate_reported()
  {
     let mut csms = Csms::booted();
@@ -219,6 +240,14 @@ fn statuses(csms: &Csms) -> Vec<Value> {
 fn updating(location: &str, retrieve: &str) -> Csms {
     let mut csms = Csms::booted();
     update(&mut csms, 0, location, retrieve);
+    csms
+}
+
+fn failing(stage: TransferStage) -> Csms {
+    let mut csms = Csms::booted();
+    csms.intent(0, Intent::FailTransfer { stage });
+    update(&mut csms, 0, "https://fw.example/v2", RETRIEVE);
+    tick(&mut csms, MINUTE);
     csms
 }
 
@@ -366,4 +395,29 @@ fn given_booted_charge_point_when_update_location_is_not_a_uri_then_property_con
         Frame::CallError { code, .. } => assert_eq!(code, "PropertyConstraintViolation"),
         other => panic!("expected an error, got {other:?}"),
     }
+}
+
+#[test]
+fn given_failing_download_when_the_download_ends_then_download_failed_per_tc_044_2() {
+    let mut csms = failing(TransferStage::Download);
+
+    tick(&mut csms, MINUTE + 10_000);
+
+    assert_eq!(
+        statuses(&csms),
+        vec![json!("Downloading"), json!("DownloadFailed")]
+    );
+    assert_eq!(csms.charge_point.next_deadline(), Some(86_400_000));
+}
+
+#[test]
+fn given_failing_install_when_the_install_ends_then_installation_failed_without_reboot_per_tc_044_3()
+ {
+    let mut csms = failing(TransferStage::Install);
+    tick(&mut csms, MINUTE + 10_000);
+
+    tick(&mut csms, MINUTE + 20_000);
+
+    assert_eq!(statuses(&csms).last(), Some(&json!("InstallationFailed")));
+    assert!(!csms.closed);
 }

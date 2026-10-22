@@ -92,6 +92,7 @@ without one the station does not connect.
 | `{"command":"lock_failure","station":"CP1","connector":1}` | the connector's lock breaks: unlocking answers `UnlockFailed`, and plugging an EV in faults the connector (ConnectorLockFailure; a 2.0.1 station also reports `ConnectorPlugRetentionLock.Problem`) |
 | `{"command":"clear_fault","station":"CP1","connector":1}` | clear the fault and repair the lock |
 | `{"command":"power_cut","station":"CP1"}` | the power fails: transactions stop (reason `PowerLoss`), the station goes down once its outbox is drained and boots again, keeping its state |
+| `{"command":"fail_transfer","station":"CP1","stage":"download"}` | the next firmware download fails (`DownloadFailed`); `"signature"` fails the next signed firmware's check (`InvalidSignature`), `"install"` the next install (`InstallationFailed`), `"upload"` the next diagnostics or log upload |
 
 `plug_in` takes an optional EV, with these defaults:
 `"ev":{"capacity_kwh":60,"soc":0.2,"max_kw":11,"target_soc":1.0}`.
@@ -131,9 +132,10 @@ OCPP 1.6J with the Security Whitepaper (edition 4) is complete. The station
 simulates, it does not transfer:
 
 - UpdateFirmware, SignedUpdateFirmware, GetDiagnostics and GetLog never
-  download or upload anything; `retries`, `retryInterval` and time windows
-  are ignored; the new firmware version is the last segment of the URL, and
-  a firmware signature only has to be present.
+  download or upload anything (`fail_transfer` makes one fail); `retries`,
+  `retryInterval` and time windows are ignored; the new firmware version is the last segment of the URL, and
+  a firmware signature only has to be present (`fail_transfer` makes one
+  invalid).
 - Certificates, the station key and its certificate live in memory (they
   survive a Reset, not a restart). Keys are EC P-256; only self-signed roots
   are installed.
@@ -161,8 +163,11 @@ Management, Smart Charging, Reservation, Advanced Device Management and
 Advanced User Interface. The station simulates as it does for 1.6:
 
 - Nothing is transferred: GetLog and UpdateFirmware only need a valid
-  scheme and take 10 s; retries and time windows are ignored; the new
-  firmware version is the last segment of the location. UpdateFirmware
+  scheme and take 10 s, unless `fail_transfer` makes one fail. A failing
+  GetLog upload is attempted again `retries` times, every `retryInterval`
+  seconds, before its `UploadFailure`; UpdateFirmware retries and time
+  windows are ignored. The new firmware version is the last segment of
+  the location. UpdateFirmware
   needs a signing certificate (an unsigned update is `Rejected`), a
   signature only has to be present, and the signing certificate's
   revocation is not checked.

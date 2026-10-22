@@ -14,6 +14,9 @@ impl ChargingStation {
         if intent == Intent::PowerCut {
             return self.power_cut(out, now);
         }
+        if let Intent::FailTransfer { stage } = intent {
+            return self.failing.add(stage);
+        }
         let evse = intent.connector();
         let index = evse
             .and_then(|evse| evse.checked_sub(1))
@@ -58,7 +61,7 @@ impl ChargingStation {
                 self.lock_repaired(index);
             }
             Intent::LockFailure { .. } => self.station.connectors[index].lock_broken = true,
-            Intent::Authorize { .. } | Intent::PowerCut => {}
+            Intent::Authorize { .. } | Intent::PowerCut | Intent::FailTransfer { .. } => {}
         }
     }
 }

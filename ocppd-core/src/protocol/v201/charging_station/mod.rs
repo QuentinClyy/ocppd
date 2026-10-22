@@ -18,6 +18,7 @@ mod websocket_ping;
 
 use crate::api::event::{Event, Kind, LinkEvent};
 use crate::api::io::{Input, Output};
+use crate::file_transfer::FailingTransfers;
 use crate::protocol::v201::event::EventKind;
 use crate::protocol::v201::messages::availability::ConnectorStatus;
 use crate::protocol::v201::messages::custom_data::without_custom_data;
@@ -81,6 +82,7 @@ pub struct ChargingStation {
     next_ping: Option<u64>,
     certificate_refusal_reported: bool,
     reconnect: bool,
+    failing: FailingTransfers,
 }
 
 impl ChargingStation {
@@ -127,6 +129,7 @@ impl ChargingStation {
             next_ping: None,
             certificate_refusal_reported: false,
             reconnect: false,
+            failing: FailingTransfers::default(),
         })
     }
 

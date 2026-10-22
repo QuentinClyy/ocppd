@@ -3,7 +3,7 @@ use super::security::{
     FIRMWARE_UPDATED, INVALID_FIRMWARE_SIGNATURE, INVALID_FIRMWARE_SIGNING_CERTIFICATE,
 };
 use crate::api::io::Output;
-use crate::file_transfer::{DOWNLOAD_MS, reachable};
+use crate::file_transfer::{DOWNLOAD_MS, TransferStage, reachable};
 use crate::protocol::v201::event::EventKind;
 use crate::protocol::v201::messages::firmware::{
     FirmwareStatus, FirmwareStatusNotificationRequest, UpdateFirmwareRequest,
@@ -96,10 +96,14 @@ impl ChargingStation {
                     }
                 }
                 Stage::Downloading { until } if now >= until => {
+                    if self.failing.take(TransferStage::Download) {
+                        let failed = FirmwareStatus::DownloadFailed;
+                        return self.end_update(out, now, failed, request_id);
+                    }
                     let signed = update.has_signature;
                     let scheduled = update.install_at > now;
                     self.firmware_status(out, now, FirmwareStatus::Downloaded, request_id);
-                    if !signed {
+                    if !signed || self.failing.take(TransferStage::Signature) {
                         let invalid = FirmwareStatus::InvalidSignature;
                         self.end_update(out, now, invalid, request_id);
                         return self.security_event(out, now, INVALID_FIRMWARE_SIGNATURE);
@@ -165,6 +169,7 @@ impl ChargingStation {
         let boot_version = Some(version)
             .filter(|version| !version.is_empty())
             .and_then(|version| CiString::new(version).ok());
+        let boot_version = boot_version.filter(|_| !self.failing.take(TransferStage::Install));
         let Some(boot_version) = boot_version else {
             let failed = FirmwareStatus::InstallationFailed;
             return self.firmware_status(out, now, failed, update.request_id);

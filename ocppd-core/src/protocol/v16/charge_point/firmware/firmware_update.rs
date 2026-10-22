@@ -1,5 +1,5 @@
 use crate::api::io::Output;
-use crate::file_transfer::{DOWNLOAD_MS, reachable};
+use crate::file_transfer::{DOWNLOAD_MS, TransferStage, reachable};
 use crate::protocol::v16::charge_point::ChargePoint;
 use crate::protocol::v16::charge_point::security::security_event::{
     FIRMWARE_UPDATED, INVALID_FIRMWARE_SIGNATURE, INVALID_FIRMWARE_SIGNING_CERTIFICATE,
@@ -96,6 +96,11 @@ impl ChargePoint {
                     }
                 }
                 Stage::Downloading { until } if now >= until => {
+                    if self.failing.take(TransferStage::Download) {
+                        self.firmware_status(out, now, SignedFirmwareStatus::DownloadFailed);
+                        self.firmware = None;
+                        return;
+                    }
                     self.firmware_status(out, now, SignedFirmwareStatus::Downloaded);
                     if !self.verify_signature(out, now) {
                         self.firmware = None;
@@ -173,7 +178,7 @@ impl ChargePoint {
         else {
             return true;
         };
-        if !signed.has_signature {
+        if !signed.has_signature || self.failing.take(TransferStage::Signature) {
             self.firmware_status(out, now, SignedFirmwareStatus::InvalidSignature);
             self.security_event(out, now, INVALID_FIRMWARE_SIGNATURE);
             return false;
@@ -199,6 +204,7 @@ impl ChargePoint {
         let boot_version = Some(&version)
             .filter(|version| !version.is_empty())
             .and_then(|version| CiString::new(version).ok());
+        let boot_version = boot_version.filter(|_| !self.failing.take(TransferStage::Install));
         let Some(boot_version) = boot_version else {
             self.firmware_status(out, now, SignedFirmwareStatus::InstallationFailed);
             self.firmware = None;

@@ -1,5 +1,5 @@
 use crate::api::io::Output;
-use crate::file_transfer::{UPLOAD_MS, reachable};
+use crate::file_transfer::{TransferStage, UPLOAD_MS, reachable};
 use crate::protocol::v16::charge_point::ChargePoint;
 use crate::protocol::v16::event::EventKind;
 use crate::protocol::v16::messages::security::log::{
@@ -59,7 +59,11 @@ impl ChargePoint {
         }
         let request_id = upload.request_id;
         self.log_upload = None;
-        self.log_status(out, now, UploadLogStatus::Uploaded, Some(request_id));
+        let status = match self.failing.take(TransferStage::Upload) {
+            true => UploadLogStatus::UploadFailure,
+            false => UploadLogStatus::Uploaded,
+        };
+        self.log_status(out, now, status, Some(request_id));
     }
 
     pub(crate) fn log_upload_deadline(&self) -> Option<u64> {

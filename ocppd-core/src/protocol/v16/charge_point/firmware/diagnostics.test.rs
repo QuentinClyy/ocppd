@@ -1,4 +1,6 @@
+use crate::api::intent::Intent;
 use crate::api::io::Input;
+use crate::file_transfer::TransferStage;
 use crate::fixtures::v16::fake_csms::Csms;
 use crate::wire::frame::Frame;
 use serde_json::{Value, json};
@@ -56,5 +58,20 @@ fn given_uploading_diagnostics_when_their_status_triggered_then_uploading_report
     assert_eq!(
         statuses(&csms),
         vec![json!("Uploading"), json!("Uploading")]
+    );
+}
+
+#[test]
+fn given_failing_upload_when_the_upload_ends_then_upload_failed_per_tc_045_2() {
+    let mut csms = Csms::booted();
+    let stage = TransferStage::Upload;
+    csms.intent(0, Intent::FailTransfer { stage });
+    get_diagnostics(&mut csms, "ftp://logs.example/upload/");
+
+    csms.input(10_000, Input::Tick);
+
+    assert_eq!(
+        statuses(&csms),
+        vec![json!("Uploading"), json!("UploadFailed")]
     );
 }

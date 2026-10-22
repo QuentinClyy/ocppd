@@ -1,3 +1,4 @@
+use crate::file_transfer::TransferStage;
 use crate::station::charge::Ev;
 use serde::Deserialize;
 
@@ -30,13 +31,16 @@ pub enum Intent {
         connector: u32,
     },
     PowerCut,
+    FailTransfer {
+        stage: TransferStage,
+    },
 }
 
 impl Intent {
     pub fn connector(&self) -> Option<u32> {
         match self {
             Intent::Authorize { connector, .. } => *connector,
-            Intent::PowerCut => None,
+            Intent::PowerCut | Intent::FailTransfer { .. } => None,
             Intent::PlugIn { connector, .. }
             | Intent::Stop { connector }
             | Intent::Unplug { connector }

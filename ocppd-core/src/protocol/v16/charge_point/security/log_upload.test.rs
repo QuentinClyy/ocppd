@@ -1,4 +1,6 @@
+use crate::api::intent::Intent;
 use crate::api::io::Input;
+use crate::file_transfer::TransferStage;
 use crate::fixtures::v16::fake_csms::Csms;
 use crate::fixtures::v16::security::result;
 use serde_json::{Value, json};
@@ -99,5 +101,20 @@ fn given_log_upload_when_log_status_triggered_then_uploading_reported_again() {
             json!({"status": "Uploading", "requestId": 7}),
             json!({"status": "Uploading", "requestId": 7}),
         ]
+    );
+}
+
+#[test]
+fn given_failing_upload_when_the_log_upload_ends_then_upload_failure() {
+    let mut csms = Csms::booted();
+    let stage = TransferStage::Upload;
+    csms.intent(0, Intent::FailTransfer { stage });
+    get_log(&mut csms, 0, 7, "https://logs.example/");
+
+    csms.input(10_000, Input::Tick);
+
+    assert_eq!(
+        statuses(&csms)[1],
+        json!({"status": "UploadFailure", "requestId": 7})
     );
 }

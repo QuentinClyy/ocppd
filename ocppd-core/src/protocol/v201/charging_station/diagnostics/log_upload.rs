@@ -1,5 +1,5 @@
 use crate::api::io::Output;
-use crate::file_transfer::{UPLOAD_MS, reachable};
+use crate::file_transfer::{TransferStage, UPLOAD_MS, reachable};
 use crate::protocol::v201::charging_station::ChargingStation;
 use crate::protocol::v201::event::EventKind;
 use crate::protocol::v201::messages::diagnostics::log::{
@@ -12,6 +12,9 @@ use serde_json::json;
 pub struct LogUpload {
     request_id: i32,
     until: u64,
+    retries: u32,
+    retry_interval_ms: u64,
+    failed: bool,
 }
 
 impl ChargingStation {
@@ -42,8 +45,15 @@ impl ChargingStation {
         };
         let request_id = request.request_id;
         if reachable(request.log.remote_location.as_str()) {
-            let until = now + UPLOAD_MS;
-            self.log_upload = Some(LogUpload { request_id, until });
+            self.log_upload = Some(LogUpload {
+                request_id,
+                until: now + UPLOAD_MS,
+                retries: request.retries.map_or(0, |retries| retries.max(0) as u32),
+                retry_interval_ms: request
+                    .retry_interval
+                    .map_or(0, |seconds| seconds.max(0) as u64 * 1000),
+                failed: false,
+            });
             self.log_status(out, now, UploadLogStatus::Uploading, request_id);
         } else {
             self.log_status(out, now, UploadLogStatus::UploadFailure, request_id);
@@ -60,10 +70,21 @@ impl ChargingStation {
         out: &mut Vec<Output>,
         now: u64,
     ) {
-        let Some(upload) = self.log_upload.take_if(|upload| now >= upload.until) else {
+        let Some(mut upload) = self.log_upload.take_if(|upload| now >= upload.until) else {
             return;
         };
-        self.log_status(out, now, UploadLogStatus::Uploaded, upload.request_id);
+        upload.failed |= self.failing.take(TransferStage::Upload);
+        if upload.failed && upload.retries > 0 {
+            upload.retries -= 1;
+            upload.until += upload.retry_interval_ms.max(UPLOAD_MS);
+            self.log_upload = Some(upload);
+            return;
+        }
+        let status = match upload.failed {
+            true => UploadLogStatus::UploadFailure,
+            false => UploadLogStatus::Uploaded,
+        };
+        self.log_status(out, now, status, upload.request_id);
     }
 
     pub(in crate::protocol::v201::charging_station) fn log_upload_deadline(&self) -> Option<u64> {

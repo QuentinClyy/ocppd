@@ -1,5 +1,6 @@
 use crate::api::intent::{EvSpec, Intent};
 use crate::api::io::Input;
+use crate::file_transfer::TransferStage;
 use crate::fixtures::v201::station::{Run, boot};
 use crate::fixtures::x509::authority::Authority;
 use serde_json::{Value, json};
@@ -110,4 +111,12 @@ pub fn triggered(run: &mut Run) -> Value {
     trigger_status(run);
     run.answer_all(0);
     sent(run, "FirmwareStatusNotification").pop().unwrap()
+}
+
+pub fn failing(stage: TransferStage) -> Run {
+    let mut run = Run::accepted(86_400);
+    run.input(0, Input::Intent(Intent::FailTransfer { stage }));
+    let firmware = secure(&signer(&mut run));
+    update(&mut run, 0, firmware);
+    run
 }

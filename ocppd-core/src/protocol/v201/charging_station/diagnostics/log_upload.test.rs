@@ -1,4 +1,6 @@
+use crate::api::intent::Intent;
 use crate::api::io::Input;
+use crate::file_transfer::TransferStage;
 use crate::fixtures::v201::station::Run;
 use serde_json::{Value, json};
 
@@ -27,6 +29,49 @@ fn trigger_status(run: &mut Run) -> Value {
 fn tick(run: &mut Run, now: u64) {
     run.input(now, Input::Tick);
     run.answer_all(now);
+}
+
+fn failing_with_3_retries_of_a_minute() -> Run {
+    let mut run = Run::accepted(86_400);
+    let stage = TransferStage::Upload;
+    run.input(0, Input::Intent(Intent::FailTransfer { stage }));
+    let request = json!({"logType": "DiagnosticsLog", "requestId": 4, "retries": 3, "retryInterval": 60, "log": {"remoteLocation": "https://logs.example/missing/"}});
+    run.result(0, "GetLog", request);
+    run.answer_all(0);
+    run
+}
+
+#[test]
+fn given_failing_upload_with_3_retries_when_just_before_the_last_attempt_ends_then_only_uploading_per_n01_fr_10()
+ {
+    let mut run = failing_with_3_retries_of_a_minute();
+
+    for now in [10_000, 70_000, 130_000, 189_999] {
+        tick(&mut run, now);
+    }
+
+    assert_eq!(
+        notifications(&run),
+        vec![json!({"status": "Uploading", "requestId": 4})]
+    );
+}
+
+#[test]
+fn given_failing_upload_with_3_retries_when_the_last_attempt_ends_then_one_upload_failure_per_n01_fr_10_and_tc_n_26()
+ {
+    let mut run = failing_with_3_retries_of_a_minute();
+
+    for now in [10_000, 70_000, 130_000, 190_000] {
+        tick(&mut run, now);
+    }
+
+    assert_eq!(
+        notifications(&run),
+        vec![
+            json!({"status": "Uploading", "requestId": 4}),
+            json!({"status": "UploadFailure", "requestId": 4})
+        ]
+    );
 }
 
 #[test]
@@ -113,5 +158,23 @@ fn given_uploading_log_when_log_status_triggered_then_uploading_with_its_request
     assert_eq!(
         notifications(&run).pop().unwrap(),
         json!({"status": "Uploading", "requestId": 3})
+    );
+}
+
+#[test]
+fn given_failing_upload_when_upload_time_passes_then_upload_failure_per_tc_n_26() {
+    let mut run = Run::accepted(86_400);
+    let stage = TransferStage::Upload;
+    run.input(0, Input::Intent(Intent::FailTransfer { stage }));
+    get_log(&mut run, 3, "https://logs.example/");
+
+    tick(&mut run, 10_000);
+
+    assert_eq!(
+        notifications(&run),
+        vec![
+            json!({"status": "Uploading", "requestId": 3}),
+            json!({"status": "UploadFailure", "requestId": 3})
+        ]
     );
 }

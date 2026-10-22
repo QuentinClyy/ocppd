@@ -1,5 +1,5 @@
 use crate::api::io::Output;
-use crate::file_transfer::{UPLOAD_MS, reachable};
+use crate::file_transfer::{TransferStage, UPLOAD_MS, reachable};
 use crate::protocol::v16::charge_point::ChargePoint;
 use crate::protocol::v16::event::EventKind;
 use crate::protocol::v16::messages::firmware::{
@@ -35,7 +35,11 @@ impl ChargePoint {
     pub(crate) fn advance_diagnostics(&mut self, out: &mut Vec<Output>, now: u64) {
         if self.uploading_until.is_some_and(|until| now >= until) {
             self.uploading_until = None;
-            self.diagnostics_status(out, now, DiagnosticsStatus::Uploaded);
+            let status = match self.failing.take(TransferStage::Upload) {
+                true => DiagnosticsStatus::UploadFailed,
+                false => DiagnosticsStatus::Uploaded,
+            };
+            self.diagnostics_status(out, now, status);
         }
     }
 
