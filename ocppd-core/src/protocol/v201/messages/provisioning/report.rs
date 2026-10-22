@@ -1,4 +1,6 @@
-use crate::protocol::v201::messages::datatypes::component::{AttributeType, Component, Variable};
+use crate::protocol::v201::messages::datatypes::component::{
+    AttributeType, Component, ComponentVariable, Variable,
+};
 use crate::protocol::v201::messages::datatypes::status_info::StatusInfo;
 use crate::wire::ci_string::CiString;
 use crate::wire::date_time::DateTime;
@@ -25,6 +27,26 @@ pub struct GetBaseReportResponse {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub status_info: Option<StatusInfo>,
 }
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GetReportRequest {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub component_variable: Option<Vec<ComponentVariable>>,
+    pub request_id: i32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub component_criteria: Option<Vec<ComponentCriterion>>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ComponentCriterion {
+    Active,
+    Available,
+    Enabled,
+    Problem,
+}
+
+pub type GetReportResponse = GetBaseReportResponse;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum GenericDeviceModelStatus {

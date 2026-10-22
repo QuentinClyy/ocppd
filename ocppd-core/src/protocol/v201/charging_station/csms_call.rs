@@ -1,5 +1,5 @@
 use super::ChargingStation;
-use super::device_model::table::ITEMS_PER_GET;
+use super::device_model::table::{ITEMS_PER_GET, ITEMS_PER_REPORT};
 use crate::api::event::LinkEvent;
 use crate::api::io::Output;
 use crate::protocol::v201::event::EventKind;
@@ -13,7 +13,9 @@ use crate::protocol::v201::messages::local_auth::{
     GetLocalListVersionRequest, SendLocalListRequest,
 };
 use crate::protocol::v201::messages::provisioning::network_profile::SetNetworkProfileRequest;
-use crate::protocol::v201::messages::provisioning::report::GetBaseReportRequest;
+use crate::protocol::v201::messages::provisioning::report::{
+    GetBaseReportRequest, GetReportRequest,
+};
 use crate::protocol::v201::messages::provisioning::reset::ResetRequest;
 use crate::protocol::v201::messages::provisioning::variables::{
     GetVariablesRequest, SetVariablesRequest,
@@ -85,6 +87,16 @@ impl ChargingStation {
             }),
             "SetVariables" => answer(payload, |request: SetVariablesRequest| {
                 Ok(self.set_variables(out, now, request))
+            }),
+            "GetReport" => answer(payload, |request: GetReportRequest| {
+                let asked = request.component_variable.as_ref().map_or(0, Vec::len);
+                if asked > ITEMS_PER_REPORT {
+                    return Err((
+                        Violation::Occurrence,
+                        format!("more than {ITEMS_PER_REPORT} component variables"),
+                    ));
+                }
+                Ok(self.get_report(now, request))
             }),
             "GetBaseReport" => answer(payload, |request: GetBaseReportRequest| {
                 Ok(self.get_base_report(now, request))

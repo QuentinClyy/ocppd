@@ -19,6 +19,13 @@ pub struct Evse {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ComponentVariable {
+    pub component: Component,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub variable: Option<Variable>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Variable {
     pub name: CiString<50>,
     #[serde(skip_serializing_if = "Option::is_none")]

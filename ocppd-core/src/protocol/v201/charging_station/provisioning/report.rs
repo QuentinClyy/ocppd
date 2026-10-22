@@ -27,10 +27,22 @@ impl ChargingStation {
             .filter(|entry| included(base, entry))
             .map(report_data)
             .collect();
+        GetBaseReportResponse {
+            status: self.send_report(now, request.request_id, data),
+            status_info: None,
+        }
+    }
+
+    pub(super) fn send_report(
+        &mut self,
+        now: u64,
+        request_id: i32,
+        data: Vec<ReportData>,
+    ) -> GenericDeviceModelStatus {
         let chunks: Vec<&[ReportData]> = data.chunks(ITEMS_PER_REPORT).collect();
         for (seq_no, chunk) in chunks.iter().enumerate() {
             let report = NotifyReportRequest {
-                request_id: request.request_id,
+                request_id,
                 generated_at: DateTime { unix_ms: now },
                 report_data: Some(chunk.to_vec()),
                 tbc: seq_no + 1 < chunks.len(),
@@ -38,13 +50,9 @@ impl ChargingStation {
             };
             self.outbox.push("NotifyReport", 0, json!(report));
         }
-        let status = match chunks.is_empty() {
+        match chunks.is_empty() {
             true => GenericDeviceModelStatus::EmptyResultSet,
             false => GenericDeviceModelStatus::Accepted,
-        };
-        GetBaseReportResponse {
-            status,
-            status_info: None,
         }
     }
 }
@@ -57,7 +65,7 @@ fn included(base: ReportBase, entry: &Entry) -> bool {
     }
 }
 
-fn report_data(entry: &Entry) -> ReportData {
+pub(super) fn report_data(entry: &Entry) -> ReportData {
     let readable = entry.mutability != Mutability::WriteOnly;
     let value = readable
         .then_some(&entry.value)
