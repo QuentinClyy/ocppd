@@ -29,6 +29,7 @@ use crate::wire::payload;
 use availability::Availability;
 use device_model::{DeviceModel, table};
 use diagnostics::log_upload::LogUpload;
+use diagnostics::monitoring::Monitoring;
 use firmware::Firmware;
 use local_auth::cache::Cache;
 use local_auth::list::LocalList;
@@ -71,6 +72,7 @@ pub struct ChargingStation {
     charging_profiles: ChargingProfiles,
     limit_change_at: Option<u64>,
     reservations: Vec<Reservation>,
+    monitoring: Monitoring,
 }
 
 impl ChargingStation {
@@ -112,6 +114,7 @@ impl ChargingStation {
             charging_profiles: ChargingProfiles::default(),
             limit_change_at: None,
             reservations: Vec::new(),
+            monitoring: Monitoring::default(),
         })
     }
 
@@ -173,6 +176,7 @@ impl ChargingStation {
             self.aligned_tick(&mut out, now);
         }
         self.apply_limits(&mut out, now);
+        self.evaluate_monitors(&mut out, now);
         if self.reconnect_due(now) {
             out.push(Output::Close);
         }

@@ -2,6 +2,7 @@ pub mod certificates;
 pub mod charging_profiles;
 pub mod firmware;
 pub mod local_auth;
+pub mod monitors;
 pub mod reliability;
 pub mod remote_control;
 pub mod reports;

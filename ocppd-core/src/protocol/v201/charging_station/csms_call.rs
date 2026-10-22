@@ -1,5 +1,6 @@
 use super::ChargingStation;
 use super::device_model::table::{ITEMS_PER_GET, ITEMS_PER_REPORT};
+use super::diagnostics::monitoring::ITEMS_PER_MONITORING;
 use crate::api::event::LinkEvent;
 use crate::api::io::Output;
 use crate::protocol::v201::event::EventKind;
@@ -8,6 +9,9 @@ use crate::protocol::v201::messages::availability::ChangeAvailabilityRequest;
 use crate::protocol::v201::messages::custom_data::without_custom_data;
 use crate::protocol::v201::messages::diagnostics::customer_information::CustomerInformationRequest;
 use crate::protocol::v201::messages::diagnostics::log::GetLogRequest;
+use crate::protocol::v201::messages::diagnostics::monitoring::{
+    ClearVariableMonitoringRequest, SetVariableMonitoringRequest,
+};
 use crate::protocol::v201::messages::firmware::UpdateFirmwareRequest;
 use crate::protocol::v201::messages::local_auth::{
     GetLocalListVersionRequest, SendLocalListRequest,
@@ -88,6 +92,26 @@ impl ChargingStation {
             "SetVariables" => answer(payload, |request: SetVariablesRequest| {
                 Ok(self.set_variables(out, now, request))
             }),
+            "SetVariableMonitoring" => answer(payload, |request: SetVariableMonitoringRequest| {
+                if request.set_monitoring_data.len() > ITEMS_PER_MONITORING {
+                    return Err((
+                        Violation::Occurrence,
+                        format!("more than {ITEMS_PER_MONITORING} monitors"),
+                    ));
+                }
+                Ok(self.set_variable_monitoring(now, request))
+            }),
+            "ClearVariableMonitoring" => {
+                answer(payload, |request: ClearVariableMonitoringRequest| {
+                    if request.id.len() > ITEMS_PER_MONITORING {
+                        return Err((
+                            Violation::Occurrence,
+                            format!("more than {ITEMS_PER_MONITORING} ids"),
+                        ));
+                    }
+                    Ok(self.clear_variable_monitoring(request))
+                })
+            }
             "GetReport" => answer(payload, |request: GetReportRequest| {
                 let asked = request.component_variable.as_ref().map_or(0, Vec::len);
                 if asked > ITEMS_PER_REPORT {

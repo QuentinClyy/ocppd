@@ -32,7 +32,7 @@ pub const CONNECTOR_STATUSES: &str = "Available,Occupied,Reserved,Unavailable,Fa
 pub const ITEMS_PER_GET: usize = 50;
 pub const ITEMS_PER_REPORT: usize = 100;
 const ITEMS_PER_SET: usize = 50;
-const BYTES_PER_MESSAGE: &str = "65000";
+pub const BYTES_PER_MESSAGE: &str = "65000";
 
 pub fn entries(station: &Station) -> Result<Vec<Entry>, TooLong> {
     use DataType::{Boolean, DateTime, Integer, MemberList, SequenceList};
@@ -267,6 +267,7 @@ pub fn entries(station: &Station) -> Result<Vec<Entry>, TooLong> {
     ];
     rows.extend(super::authorization::rows());
     rows.extend(super::security::rows());
+    rows.extend(super::monitoring::rows());
     rows.extend(super::reservation::rows());
     rows.extend(super::smart_charging::rows());
     rows.extend(super::physical::rows(station));

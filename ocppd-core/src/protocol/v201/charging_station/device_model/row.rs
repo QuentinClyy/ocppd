@@ -91,7 +91,7 @@ impl<'a> Row<'a> {
                 min_limit: self.min,
                 max_limit: self.max,
                 values_list: text(self.values)?,
-                supports_monitoring: false,
+                supports_monitoring: true,
             },
         })
     }

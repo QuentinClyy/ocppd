@@ -129,6 +129,10 @@ impl ChargingStation {
         let date_time = DateTime { unix_ms: now }.to_string();
         self.device_model
             .set_value(CLOCK_CTRLR, None, DATE_TIME, date_time);
+        self.refresh_state();
+    }
+
+    pub(in crate::protocol::v201::charging_station) fn refresh_state(&mut self) {
         let certificates = self.certificate_count().to_string();
         self.device_model
             .set_value(SECURITY_CTRLR, None, CERTIFICATE_ENTRIES, certificates);

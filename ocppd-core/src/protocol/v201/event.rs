@@ -86,6 +86,11 @@ pub enum EventKind {
     ChargingProfilesCleared {
         count: usize,
     },
+    MonitorTriggered {
+        monitor_id: i32,
+        actual_value: String,
+        cleared: bool,
+    },
     Reserved {
         #[serde(skip_serializing_if = "Option::is_none")]
         evse: Option<u32>,
