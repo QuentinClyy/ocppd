@@ -4,6 +4,7 @@ use super::charge::{self, Charging, Ev, Sample};
 pub struct Connector {
     pub register_wh: f64,
     pub plugged: Option<Plugged>,
+    pub faulted: bool,
 }
 
 #[derive(Debug, Clone, PartialEq)]

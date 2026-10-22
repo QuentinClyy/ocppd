@@ -19,6 +19,8 @@ impl ChargePoint {
             Intent::PlugIn { ev, .. } => self.plug_in(out, now, index, ev),
             Intent::Stop { .. } => self.stop_by_driver(out, now, index),
             Intent::Unplug { .. } => self.unplug(out, now, index),
+            Intent::Fault { .. } => self.fault(out, now, index),
+            Intent::ClearFault { .. } => self.clear_fault(index),
             Intent::Authorize { .. } => {}
         }
     }

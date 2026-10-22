@@ -45,6 +45,8 @@ impl ChargingStation {
                 self.sessions[index].authorization = Authorization::None;
                 self.settle(out, now, index, TriggerReason::StopAuthorized);
             }
+            Intent::Fault { .. } => self.fault(out, now, index),
+            Intent::ClearFault { .. } => self.station.connectors[index].faulted = false,
             Intent::Authorize { .. } => {}
         }
     }

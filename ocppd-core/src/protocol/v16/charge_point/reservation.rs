@@ -26,6 +26,9 @@ impl ChargePoint {
         let Some(index) = self.index_of(request.connector_id) else {
             return ReservationStatus::Rejected;
         };
+        if self.faulted(index) {
+            return ReservationStatus::Faulted;
+        }
         if self.unavailable(index) {
             return ReservationStatus::Unavailable;
         }

@@ -48,12 +48,16 @@ impl ChargingStation {
             id_token: request.id_token,
             group: request.group_id_token.map(|group| group.id_token),
         };
-        let mut targets = (0..self.sessions.len()).filter(|&index| reservation.fits(index));
-        let targeted = targets.clone().next().is_some();
-        if !setting("Enabled") || !targeted {
+        let evses = 0..self.sessions.len();
+        let targets: Vec<usize> = evses.filter(|&index| reservation.fits(index)).collect();
+        if !setting("Enabled") || targets.is_empty() {
             return response(ReserveNowStatus::Rejected);
         }
-        if !targets.any(|index| self.operative(index)) {
+        let connectors = &self.station.connectors;
+        if targets.iter().all(|&index| connectors[index].faulted) {
+            return response(ReserveNowStatus::Faulted);
+        }
+        if !targets.iter().any(|&index| self.operative(index)) {
             return response(ReserveNowStatus::Unavailable);
         }
         if !self.has_room_for(&reservation) {

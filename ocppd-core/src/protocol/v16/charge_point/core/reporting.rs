@@ -137,11 +137,14 @@ impl ChargePoint {
     }
 
     pub(crate) fn unavailable(&self, index: usize) -> bool {
-        self.inoperative[0] || self.inoperative[index + 1]
+        self.inoperative[0] || self.inoperative[index + 1] || self.faulted(index)
     }
 
     pub(crate) fn status(&self, index: usize, now: u64) -> ChargePointStatus {
         let connector = &self.station.connectors[index];
+        if self.faulted(index) {
+            return ChargePointStatus::Faulted;
+        }
         let in_transaction = matches!(
             self.transactions[index],
             Transaction::Authorizing { .. }

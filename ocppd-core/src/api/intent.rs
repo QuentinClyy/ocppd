@@ -20,6 +20,12 @@ pub enum Intent {
     Unplug {
         connector: u32,
     },
+    Fault {
+        connector: u32,
+    },
+    ClearFault {
+        connector: u32,
+    },
 }
 
 impl Intent {
@@ -28,7 +34,9 @@ impl Intent {
             Intent::Authorize { connector, .. } => *connector,
             Intent::PlugIn { connector, .. }
             | Intent::Stop { connector }
-            | Intent::Unplug { connector } => Some(*connector),
+            | Intent::Unplug { connector }
+            | Intent::Fault { connector }
+            | Intent::ClearFault { connector } => Some(*connector),
         }
     }
 }

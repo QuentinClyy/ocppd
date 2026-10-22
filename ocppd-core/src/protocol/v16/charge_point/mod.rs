@@ -1,6 +1,7 @@
 mod configuration;
 mod core;
 mod csms_call;
+mod fault;
 mod firmware;
 mod local_auth;
 mod remote_trigger;
@@ -255,7 +256,10 @@ impl ChargePoint {
     pub(super) fn status_notification(&mut self, connector_id: u32, status: ChargePointStatus) {
         let request = StatusNotificationRequest {
             connector_id,
-            error_code: ChargePointErrorCode::NoError,
+            error_code: match status {
+                ChargePointStatus::Faulted => ChargePointErrorCode::InternalError,
+                _ => ChargePointErrorCode::NoError,
+            },
             info: None,
             status,
             timestamp: None,

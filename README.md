@@ -88,6 +88,8 @@ without one the station does not connect.
 | `{"command":"authorize","station":"CP1","id_tag":"TAG1"}` | present a card; starts a transaction once accepted and plugged in (an optional `"connector":1` picks the connector) |
 | `{"command":"stop","station":"CP1","connector":1}` | stop the transaction locally |
 | `{"command":"unplug","station":"CP1","connector":1}` | unplug the EV; stops a running transaction |
+| `{"command":"fault","station":"CP1","connector":1}` | the connector reports `Faulted`, stops its transaction and refuses new ones and reservations |
+| `{"command":"clear_fault","station":"CP1","connector":1}` | clear the fault |
 
 `plug_in` takes an optional EV, with these defaults:
 `"ev":{"capacity_kwh":60,"soc":0.2,"max_kw":11,"target_soc":1.0}`.
@@ -169,8 +171,8 @@ Advanced User Interface. The station simulates as it does for 1.6:
 - Everything lives in memory (device model values, certificates and the
   station key, charging profiles, reservations, monitors, display messages,
   the cache and the local list): a Reset keeps it, a restart does not.
-- One connector per EVSE, every connector `cType2`; no cable lock, no
-  faults, no main meter, no signed meter values.
+- One connector per EVSE, every connector `cType2`; no cable lock, no main
+  meter, no signed meter values.
 - What the EV driver sees is the event stream: display messages are kept,
   reported and expired, but no screen is simulated (no cycling by
   priority, no state or start-time gating, no language choice); costs and

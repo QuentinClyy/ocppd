@@ -7,6 +7,7 @@ use crate::protocol::v201::messages::availability::{
     ChangeAvailabilityRequest, ChangeAvailabilityResponse, ChangeAvailabilityStatus,
     OperationalStatus,
 };
+use crate::protocol::v201::messages::transactions::{StoppedReason, TriggerReason};
 
 #[derive(Clone, Copy, PartialEq)]
 pub struct Availability {
@@ -109,7 +110,15 @@ impl ChargingStation {
     }
 
     pub(super) fn operative(&self, index: usize) -> bool {
-        self.station_availability.operative && self.evses[index].operative
+        self.station_availability.operative
+            && self.evses[index].operative
+            && !self.station.connectors[index].faulted
+    }
+
+    pub(super) fn fault(&mut self, out: &mut Vec<Output>, now: u64, index: usize) {
+        self.station.connectors[index].faulted = true;
+        let trigger = TriggerReason::AbnormalCondition;
+        self.end_transaction(out, now, index, trigger, StoppedReason::Other);
     }
 }
 
