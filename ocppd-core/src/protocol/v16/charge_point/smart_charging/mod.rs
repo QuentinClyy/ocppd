@@ -1,6 +1,5 @@
 pub(super) mod charging_profiles;
 pub(super) mod composite;
-pub(super) mod schedule;
 
 use crate::api::io::Output;
 use crate::protocol::v16::charge_point::ChargePoint;

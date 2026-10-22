@@ -1,6 +1,7 @@
 pub mod api;
 pub mod file_transfer;
 pub mod protocol;
+pub mod smart_charging;
 pub mod station;
 pub mod wire;
 pub mod x509;

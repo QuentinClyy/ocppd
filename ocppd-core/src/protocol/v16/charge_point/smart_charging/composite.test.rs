@@ -200,6 +200,19 @@ fn given_daily_profile_when_two_days_requested_then_repeated_daily() {
 }
 
 #[test]
+fn given_weekly_profile_when_eight_days_requested_then_repeated_after_seven_days() {
+    let mut csms = Csms::booted();
+    set(&mut csms, 0, recurring("Weekly"));
+
+    let schedule = periods(&mut csms, 0, 0, 8 * 86_400);
+
+    assert_eq!(
+        schedule,
+        vec![(0, 16.0), (3600, 8.0), (604_800, 16.0), (608_400, 8.0)]
+    );
+}
+
+#[test]
 fn given_profile_valid_to_half_an_hour_when_an_hour_requested_then_it_ends_at_valid_to() {
     let mut csms = Csms::booted();
     let mut max = profile(1, "ChargePointMaxProfile", 0, amps(&[(0, 16.0)]));

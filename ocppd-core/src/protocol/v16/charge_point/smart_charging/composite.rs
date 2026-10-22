@@ -1,4 +1,3 @@
-use super::schedule;
 use crate::api::io::Output;
 use crate::protocol::v16::charge_point::ChargePoint;
 use crate::protocol::v16::charge_point::transaction::Transaction;
@@ -19,7 +18,7 @@ impl ChargePoint {
             let profiles = self.charging_profiles.stacked(connector, purpose);
             profiles
                 .into_iter()
-                .find_map(|profile| schedule::limit_w(profile, at, started, &self.station))
+                .find_map(|schedule| schedule.limit_w(at, started, &self.station))
         };
         let mut limit = self.station.limit_w();
         if let Some(max) = purpose_limit(0, ChargingProfilePurpose::ChargePointMaxProfile) {
@@ -63,7 +62,7 @@ impl ChargePoint {
         let started = self.transaction_start(connector);
         self.charging_profiles
             .for_connector(connector)
-            .filter_map(|profile| schedule::next_change(profile, at, started))
+            .filter_map(|schedule| schedule.next_change(at, started))
             .min()
     }
 

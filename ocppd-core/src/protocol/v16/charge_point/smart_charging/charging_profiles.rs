@@ -1,11 +1,13 @@
 use crate::protocol::v16::messages::datatypes::charging_profile::{
-    ChargingProfile, ChargingProfilePurpose,
+    ChargingProfile, ChargingProfileKind, ChargingProfilePurpose, ChargingRateUnit, RecurrencyKind,
 };
 use crate::protocol::v16::messages::smart_charging::ClearChargingProfileRequest;
+use crate::smart_charging::schedule::{DAY_MS, Kind, Period, Schedule, Unit};
 
 pub struct Installed {
     pub connector: u32,
     pub profile: ChargingProfile,
+    pub schedule: Schedule,
 }
 
 #[derive(Default)]
@@ -29,7 +31,12 @@ impl ChargingProfiles {
             return false;
         }
         self.0.retain(|installed| !replaced(installed));
-        self.0.push(Installed { connector, profile });
+        let schedule = schedule(&profile);
+        self.0.push(Installed {
+            connector,
+            profile,
+            schedule,
+        });
         true
     }
 
@@ -54,27 +61,25 @@ impl ChargingProfiles {
         before - self.0.len()
     }
 
-    pub fn stacked(
-        &self,
-        connector: u32,
-        purpose: ChargingProfilePurpose,
-    ) -> Vec<&ChargingProfile> {
-        let mut profiles: Vec<_> = self
+    pub fn stacked(&self, connector: u32, purpose: ChargingProfilePurpose) -> Vec<&Schedule> {
+        let mut installed: Vec<_> = self
             .0
             .iter()
             .filter(|installed| installed.connector == connector)
-            .map(|installed| &installed.profile)
-            .filter(|profile| profile.charging_profile_purpose == purpose)
+            .filter(|installed| installed.profile.charging_profile_purpose == purpose)
             .collect();
-        profiles.sort_by_key(|profile| std::cmp::Reverse(profile.stack_level));
-        profiles
+        installed.sort_by_key(|installed| std::cmp::Reverse(installed.profile.stack_level));
+        installed
+            .into_iter()
+            .map(|installed| &installed.schedule)
+            .collect()
     }
 
-    pub fn for_connector(&self, connector: u32) -> impl Iterator<Item = &ChargingProfile> {
+    pub fn for_connector(&self, connector: u32) -> impl Iterator<Item = &Schedule> {
         self.0
             .iter()
             .filter(move |installed| installed.connector == 0 || installed.connector == connector)
-            .map(|installed| &installed.profile)
+            .map(|installed| &installed.schedule)
     }
 
     pub fn end_transaction(&mut self, connector: u32) {
@@ -83,6 +88,44 @@ impl ChargingProfiles {
                 || installed.profile.charging_profile_purpose != ChargingProfilePurpose::TxProfile
         });
     }
+}
+
+fn schedule(profile: &ChargingProfile) -> Schedule {
+    let schedule = &profile.charging_schedule;
+    let kind = match profile.charging_profile_kind {
+        ChargingProfileKind::Absolute => Kind::Absolute,
+        ChargingProfileKind::Relative => Kind::Relative,
+        ChargingProfileKind::Recurring => Kind::Recurring {
+            cycle_ms: profile.recurrency_kind.map(|recurrency| match recurrency {
+                RecurrencyKind::Daily => DAY_MS,
+                RecurrencyKind::Weekly => 7 * DAY_MS,
+            }),
+        },
+    };
+    let unit = match schedule.charging_rate_unit {
+        ChargingRateUnit::W => Unit::Watts,
+        ChargingRateUnit::A => Unit::Amps,
+    };
+    let periods = schedule.charging_schedule_period.iter();
+    Schedule {
+        valid_from: profile.valid_from.map(|from| from.unix_ms),
+        valid_to: profile.valid_to.map(|to| to.unix_ms),
+        kind,
+        start: schedule.start_schedule.map(|start| start.unix_ms),
+        duration_ms: schedule.duration.map(ms),
+        unit,
+        periods: periods
+            .map(|period| Period {
+                start_ms: ms(period.start_period),
+                limit: period.limit,
+                phases: period.number_phases,
+            })
+            .collect(),
+    }
+}
+
+fn ms(seconds: u32) -> u64 {
+    u64::from(seconds) * 1000
 }
 
 #[cfg(test)]
