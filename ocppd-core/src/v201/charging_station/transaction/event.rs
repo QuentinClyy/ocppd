@@ -3,6 +3,7 @@ use crate::api::io::Output;
 use crate::v201::charging_station::ChargingStation;
 use crate::v201::event::EventKind;
 use crate::v201::messages::datatypes::component::Evse;
+use crate::v201::messages::datatypes::meter_value::MeterValue;
 use crate::v201::messages::transactions::{
     StoppedReason, TransactionEventRequest, TransactionEventType, TransactionInfo, TriggerReason,
 };
@@ -12,13 +13,14 @@ use serde_json::json;
 const CONNECTOR_ID: u32 = 1;
 
 impl ChargingStation {
-    pub(super) fn send_transaction_event(
+    pub(in crate::v201::charging_station) fn send_transaction_event(
         &mut self,
         out: &mut Vec<Output>,
         now: u64,
         index: usize,
         event_type: TransactionEventType,
         trigger_reason: TriggerReason,
+        meter_value: Vec<MeterValue>,
     ) {
         let charging_state = self.charging_state(now, index);
         let session = &mut self.sessions[index];
@@ -37,7 +39,7 @@ impl ChargingStation {
         let evse = index as u32 + 1;
         let request = TransactionEventRequest {
             event_type,
-            meter_value: None,
+            meter_value: (!meter_value.is_empty()).then_some(meter_value),
             timestamp: DateTime { unix_ms: now },
             trigger_reason,
             seq_no: transaction.seq_no,

@@ -88,6 +88,22 @@ fn given_authorized_id_token_without_ev_when_connection_timeout_expires_then_end
 }
 
 #[test]
+fn given_charging_ev_when_its_battery_is_full_then_suspended_by_the_ev_per_e01_fr_19() {
+    let mut run = Run::accepted(86_400);
+    configure(&mut run, "SampledDataCtrlr.TxUpdatedInterval", "0");
+    charging(&mut run, 0);
+    let full = run.station.next_deadline().unwrap();
+
+    run.input(full, Input::Tick);
+    run.answer_all(full);
+
+    assert_eq!(
+        summaries(&run).pop().unwrap(),
+        s("Updated", "ChargingStateChanged", json!("SuspendedEV"))
+    );
+}
+
+#[test]
 fn given_presented_id_token_when_blocked_then_no_transaction() {
     let mut run = Run::accepted(300);
     swipe(&mut run, 0, "TAG1");

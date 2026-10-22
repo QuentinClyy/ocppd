@@ -1,6 +1,7 @@
 mod csms_call;
 mod device_model;
 mod driver;
+mod metering;
 mod registration;
 mod report;
 mod reset;
@@ -39,6 +40,7 @@ pub struct ChargingStation {
     sessions: Vec<Session>,
     device_model: DeviceModel,
     resetting: bool,
+    next_aligned: Option<u64>,
     boot_request: BootNotificationRequest,
     registration: Registration,
 }
@@ -65,6 +67,7 @@ impl ChargingStation {
             sessions: (0..connectors).map(|_| Session::default()).collect(),
             device_model,
             resetting: false,
+            next_aligned: None,
             boot_request,
             registration: Registration::Offline,
         })
@@ -79,6 +82,8 @@ impl ChargingStation {
             self.registration_deadline(),
             self.outbox.deadline(self.is_accepted()),
             self.transaction_deadline(),
+            self.sampling_deadline(),
+            self.next_aligned,
         ]
         .into_iter()
         .flatten()
@@ -105,6 +110,7 @@ impl ChargingStation {
         }
         if self.is_accepted() {
             self.report_statuses(&mut out, now);
+            self.aligned_tick(&mut out, now);
         }
         if self.reset_due(now) {
             self.rebooted();

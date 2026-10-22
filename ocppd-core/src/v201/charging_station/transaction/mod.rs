@@ -1,10 +1,12 @@
 pub(super) mod authorize;
-mod event;
+pub(super) mod event;
+mod sampling;
 
 use super::ChargingStation;
 use super::device_model::table::{TX_CTRLR, TX_START_POINT, TX_STOP_POINT};
 use crate::api::io::Output;
 use crate::v201::messages::datatypes::id_token::IdToken;
+use crate::v201::messages::datatypes::meter_value::MeterValue;
 use crate::v201::messages::transactions::{ChargingState, TransactionEventType, TriggerReason};
 use crate::wire::ci_string::CiString;
 
@@ -31,6 +33,10 @@ pub struct Transaction {
     pub charging_state: ChargingState,
     pub id_token_sent: bool,
     reached: Vec<TxPoint>,
+    last_periodic: u64,
+    last_ended_sample: u64,
+    last_clock_sample: u64,
+    ended_samples: Vec<MeterValue>,
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -61,21 +67,20 @@ impl ChargingStation {
                 .iter()
                 .any(|point| valid.contains(point));
             if starts {
-                let id = transaction_id(now, index);
                 self.sessions[index].transaction = Some(Transaction {
-                    id,
+                    id: transaction_id(now, index),
                     seq_no: 0,
                     charging_state: state,
                     id_token_sent: false,
                     reached: valid,
+                    last_periodic: now,
+                    last_ended_sample: now,
+                    last_clock_sample: now,
+                    ended_samples: self.ended_sample(now, index, false),
                 });
-                self.send_transaction_event(
-                    out,
-                    now,
-                    index,
-                    TransactionEventType::Started,
-                    trigger,
-                );
+                let begin = self.started_sample(now, index);
+                let started = TransactionEventType::Started;
+                self.send_transaction_event(out, now, index, started, trigger, begin);
             }
             return;
         };
@@ -90,7 +95,9 @@ impl ChargingStation {
             .iter()
             .any(|point| reached.contains(point) && !valid.contains(point));
         if lost {
-            self.send_transaction_event(out, now, index, TransactionEventType::Ended, trigger);
+            let samples = self.ended_samples(now, index);
+            let ended = TransactionEventType::Ended;
+            self.send_transaction_event(out, now, index, ended, trigger, samples);
             self.sessions[index] = Session::default();
             self.apply_charging(now, index);
             return;
@@ -103,7 +110,8 @@ impl ChargingStation {
             return;
         };
         if state != transaction.charging_state || (authorized && !transaction.id_token_sent) {
-            self.send_transaction_event(out, now, index, TransactionEventType::Updated, trigger);
+            let updated = TransactionEventType::Updated;
+            self.send_transaction_event(out, now, index, updated, trigger, Vec::new());
         }
     }
 
@@ -167,6 +175,7 @@ impl ChargingStation {
             if changed {
                 self.settle(out, now, index, TriggerReason::ChargingStateChanged);
             }
+            self.sample_transaction(out, now, index);
         }
     }
 

@@ -1,3 +1,4 @@
+mod physical;
 mod row;
 pub(super) mod shortcut;
 pub(super) mod table;
