@@ -1,4 +1,5 @@
 mod alert;
+mod report;
 
 use crate::protocol::v201::charging_station::ChargingStation;
 use crate::protocol::v201::charging_station::device_model::Missing;
@@ -6,15 +7,18 @@ use crate::protocol::v201::messages::datatypes::component::{Component, Variable}
 use crate::protocol::v201::messages::datatypes::generic_status::GenericStatus;
 use crate::protocol::v201::messages::diagnostics::monitoring::{
     ClearMonitoringResult, ClearMonitoringStatus, ClearVariableMonitoringRequest,
-    ClearVariableMonitoringResponse, MonitorType, SetMonitoringData, SetMonitoringLevelRequest,
+    ClearVariableMonitoringResponse, MonitorType, MonitoringBase, SetMonitoringBaseRequest,
+    SetMonitoringBaseResponse, SetMonitoringData, SetMonitoringLevelRequest,
     SetMonitoringLevelResponse, SetMonitoringResult, SetMonitoringStatus,
     SetVariableMonitoringRequest, SetVariableMonitoringResponse,
 };
-use crate::protocol::v201::messages::provisioning::report::DataType;
+use crate::protocol::v201::messages::provisioning::report::{DataType, GenericDeviceModelStatus};
 
 pub const MONITORING_CTRLR: &str = "MonitoringCtrlr";
 pub const OFFLINE_QUEUING_SEVERITY: &str = "OfflineQueuingSeverity";
 pub const ACTIVE_MONITORING_LEVEL: &str = "ActiveMonitoringLevel";
+pub const ACTIVE_MONITORING_BASE: &str = "ActiveMonitoringBase";
+pub const MONITORING_BASES: &str = "All,FactoryDefault,HardWiredOnly";
 pub const ITEMS_PER_MONITORING: usize = 50;
 pub const HIGHEST_SEVERITY: u32 = 9;
 const SHORTEST_PERIOD_S: f64 = 1.0;
@@ -94,6 +98,30 @@ impl ChargingStation {
         }
         SetMonitoringLevelResponse {
             status,
+            status_info: None,
+        }
+    }
+
+    pub(in crate::protocol::v201::charging_station) fn set_monitoring_base(
+        &mut self,
+        request: SetMonitoringBaseRequest,
+    ) -> SetMonitoringBaseResponse {
+        let base = match request.monitoring_base {
+            MonitoringBase::All => "All",
+            MonitoringBase::FactoryDefault => "FactoryDefault",
+            MonitoringBase::HardWiredOnly => "HardWiredOnly",
+        };
+        if request.monitoring_base != MonitoringBase::All {
+            self.monitoring.monitors.clear();
+        }
+        self.device_model.set_value(
+            MONITORING_CTRLR,
+            None,
+            ACTIVE_MONITORING_BASE,
+            base.to_owned(),
+        );
+        SetMonitoringBaseResponse {
+            status: GenericDeviceModelStatus::Accepted,
             status_info: None,
         }
     }

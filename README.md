@@ -102,6 +102,11 @@ One process, measured against `cargo run --release --example sink_csms
 | 10 000 | 221 MB | under 5 s | aligned heartbeats every 10 s: about 0.01 core |
 | 10 000 charging | 250 MB | | MeterValues every 10 s, 1 200 calls/s: 0.11 core |
 | 20 000 | 446 MB | 15 s | |
+| 1 000 OCPP 2.0.1 | 55 MB | under 1 s | |
+| 10 000 OCPP 2.0.1 | 472 MB | 4 s | heartbeats every 10 s: 0.05 core |
+
+A 2.0.1 station takes about twice the memory of a 1.6 one: each keeps its
+own device model of about 80 variables.
 
 The ceiling is the ephemeral port range: one CSMS address takes at most
 28 232 connections (`net.ipv4.ip_local_port_range` 32768–60999); further

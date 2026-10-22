@@ -10,8 +10,10 @@ use crate::protocol::v201::messages::custom_data::without_custom_data;
 use crate::protocol::v201::messages::diagnostics::customer_information::CustomerInformationRequest;
 use crate::protocol::v201::messages::diagnostics::log::GetLogRequest;
 use crate::protocol::v201::messages::diagnostics::monitoring::{
-    ClearVariableMonitoringRequest, SetMonitoringLevelRequest, SetVariableMonitoringRequest,
+    ClearVariableMonitoringRequest, SetMonitoringBaseRequest, SetMonitoringLevelRequest,
+    SetVariableMonitoringRequest,
 };
+use crate::protocol::v201::messages::diagnostics::monitoring_report::GetMonitoringReportRequest;
 use crate::protocol::v201::messages::firmware::UpdateFirmwareRequest;
 use crate::protocol::v201::messages::local_auth::{
     GetLocalListVersionRequest, SendLocalListRequest,
@@ -112,6 +114,19 @@ impl ChargingStation {
                     Ok(self.clear_variable_monitoring(request))
                 })
             }
+            "SetMonitoringBase" => answer(payload, |request: SetMonitoringBaseRequest| {
+                Ok(self.set_monitoring_base(request))
+            }),
+            "GetMonitoringReport" => answer(payload, |request: GetMonitoringReportRequest| {
+                let asked = request.component_variable.as_ref().map_or(0, Vec::len);
+                if asked > ITEMS_PER_REPORT {
+                    return Err((
+                        Violation::Occurrence,
+                        format!("more than {ITEMS_PER_REPORT} component variables"),
+                    ));
+                }
+                Ok(self.get_monitoring_report(now, request))
+            }),
             "SetMonitoringLevel" => answer(payload, |request: SetMonitoringLevelRequest| {
                 Ok(self.set_monitoring_level(request))
             }),

@@ -1,6 +1,7 @@
 use crate::protocol::v201::messages::datatypes::component::{Component, Variable};
 use crate::protocol::v201::messages::datatypes::generic_status::GenericStatus;
 use crate::protocol::v201::messages::datatypes::status_info::StatusInfo;
+use crate::protocol::v201::messages::provisioning::report::GetBaseReportResponse;
 use crate::wire::ci_string::CiString;
 use crate::wire::date_time::DateTime;
 use serde::{Deserialize, Serialize};
@@ -146,3 +147,18 @@ pub struct SetMonitoringLevelResponse {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub status_info: Option<StatusInfo>,
 }
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SetMonitoringBaseRequest {
+    pub monitoring_base: MonitoringBase,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum MonitoringBase {
+    All,
+    FactoryDefault,
+    HardWiredOnly,
+}
+
+pub type SetMonitoringBaseResponse = GetBaseReportResponse;

@@ -1,7 +1,9 @@
 use super::report::report_data;
 use crate::protocol::v201::charging_station::ChargingStation;
 use crate::protocol::v201::charging_station::device_model::Entry;
-use crate::protocol::v201::messages::datatypes::component::{Component, ComponentVariable};
+use crate::protocol::v201::messages::datatypes::component::{
+    Component, ComponentVariable, Variable,
+};
 use crate::protocol::v201::messages::provisioning::report::{
     ComponentCriterion, GetReportRequest, GetReportResponse, ReportData,
 };
@@ -17,11 +19,13 @@ impl ChargingStation {
         let wanted = |entry: &&Entry| {
             let variables = request.component_variable.as_ref();
             let criteria = request.component_criteria.as_ref();
-            variables.is_none_or(|variables| variables.iter().any(|wanted| selects(wanted, entry)))
-                && criteria.is_none_or(|criteria| {
-                    let mut criteria = criteria.iter();
-                    criteria.any(|&criterion| meets(entries, &entry.component, criterion))
-                })
+            variables.is_none_or(|variables| {
+                let mut variables = variables.iter();
+                variables.any(|wanted| selects(wanted, &entry.component, &entry.variable))
+            }) && criteria.is_none_or(|criteria| {
+                let mut criteria = criteria.iter();
+                criteria.any(|&criterion| meets(entries, &entry.component, criterion))
+            })
         };
         let data: Vec<ReportData> = entries.iter().filter(wanted).map(report_data).collect();
         GetReportResponse {
@@ -31,9 +35,13 @@ impl ChargingStation {
     }
 }
 
-fn selects(wanted: &ComponentVariable, entry: &Entry) -> bool {
-    let (component, variable) = (&wanted.component, &entry.variable);
-    let evse = match (component.evse, entry.component.evse) {
+pub(in crate::protocol::v201::charging_station) fn selects(
+    wanted: &ComponentVariable,
+    found: &Component,
+    variable: &Variable,
+) -> bool {
+    let component = &wanted.component;
+    let evse = match (component.evse, found.evse) {
         (None, _) => true,
         (Some(wanted), Some(evse)) => {
             wanted.id == evse.id
@@ -43,7 +51,7 @@ fn selects(wanted: &ComponentVariable, entry: &Entry) -> bool {
         }
         (Some(_), None) => false,
     };
-    let instance = match (&component.instance, &entry.component.instance) {
+    let instance = match (&component.instance, &found.instance) {
         (None, _) => true,
         (Some(wanted), Some(instance)) => wanted.matches(instance),
         (Some(_), None) => false,
@@ -56,7 +64,7 @@ fn selects(wanted: &ComponentVariable, entry: &Entry) -> bool {
                 (Some(_), None) => false,
             }
     });
-    component.name.matches(&entry.component.name) && evse && instance && variable
+    component.name.matches(&found.name) && evse && instance && variable
 }
 
 fn meets(entries: &[Entry], component: &Component, criterion: ComponentCriterion) -> bool {

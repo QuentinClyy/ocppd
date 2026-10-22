@@ -1,13 +1,13 @@
 use super::row::{Row, row};
 use super::table::BYTES_PER_MESSAGE;
 use crate::protocol::v201::charging_station::diagnostics::monitoring::{
-    ACTIVE_MONITORING_LEVEL, HIGHEST_SEVERITY, ITEMS_PER_MONITORING, MONITORING_CTRLR,
-    OFFLINE_QUEUING_SEVERITY,
+    ACTIVE_MONITORING_BASE, ACTIVE_MONITORING_LEVEL, HIGHEST_SEVERITY, ITEMS_PER_MONITORING,
+    MONITORING_BASES, MONITORING_CTRLR, OFFLINE_QUEUING_SEVERITY,
 };
 use crate::protocol::v201::messages::provisioning::report::{DataType, Mutability};
 
 pub fn rows() -> Vec<Row<'static>> {
-    use DataType::{Boolean, Integer};
+    use DataType::{Boolean, Integer, OptionList};
     use Mutability::{ReadOnly, ReadWrite};
     let items = ITEMS_PER_MONITORING.to_string();
     let highest = HIGHEST_SEVERITY.to_string();
@@ -56,5 +56,13 @@ pub fn rows() -> Vec<Row<'static>> {
         )
         .min(0.0)
         .max(9.0),
+        row(
+            MONITORING_CTRLR,
+            ACTIVE_MONITORING_BASE,
+            "All",
+            ReadOnly,
+            OptionList,
+        )
+        .values(MONITORING_BASES),
     ]
 }

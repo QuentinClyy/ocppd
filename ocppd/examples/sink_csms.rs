@@ -42,7 +42,7 @@ async fn report(calls: Arc<AtomicU64>, open: Arc<AtomicU64>) {
 }
 
 async fn serve(tcp: TcpStream, interval: u32, calls: Arc<AtomicU64>, open: Arc<AtomicU64>) {
-    let Ok(mut socket) = tokio_tungstenite::accept_hdr_async(tcp, ocpp16).await else {
+    let Ok(mut socket) = tokio_tungstenite::accept_hdr_async(tcp, echo_protocol).await else {
         return;
     };
     open.fetch_add(1, Ordering::Relaxed);
@@ -89,8 +89,11 @@ fn response(action: &str, interval: u32, transaction_id: i32) -> Value {
 }
 
 #[allow(clippy::result_large_err)]
-fn ocpp16(_: &Request, mut response: Response) -> Result<Response, ErrorResponse> {
-    let protocol = HeaderValue::from_static("ocpp1.6");
+fn echo_protocol(request: &Request, mut response: Response) -> Result<Response, ErrorResponse> {
+    let asked = request.headers().get("Sec-WebSocket-Protocol");
+    let protocol = asked
+        .cloned()
+        .unwrap_or(HeaderValue::from_static("ocpp1.6"));
     response
         .headers_mut()
         .insert("Sec-WebSocket-Protocol", protocol);
