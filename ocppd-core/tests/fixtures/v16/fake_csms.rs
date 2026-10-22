@@ -1,11 +1,11 @@
 use crate::api::intent::{EvSpec, Intent};
 use crate::api::io::{Input, Output};
 use crate::fixtures::v16::raw::v16_kind;
+use crate::protocol::v16::charge_point::ChargePoint;
+use crate::protocol::v16::event::EventKind;
+use crate::protocol::v16::messages::core::status::ChargePointStatus;
 use crate::station::Station;
 use crate::station::connector::Connector;
-use crate::v16::charge_point::ChargePoint;
-use crate::v16::event::EventKind;
-use crate::v16::messages::core::status::ChargePointStatus;
 use crate::wire::frame::Frame;
 use serde_json::{Value, json};
 

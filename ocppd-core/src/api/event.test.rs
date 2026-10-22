@@ -1,6 +1,6 @@
 use super::*;
-use crate::v16::event::EventKind;
-use crate::v16::messages::core::boot::RegistrationStatus;
+use crate::protocol::v16::event::EventKind;
+use crate::protocol::v16::messages::core::boot::RegistrationStatus;
 use serde_json::{Value, json};
 
 fn at_5(kind: EventKind) -> Event {

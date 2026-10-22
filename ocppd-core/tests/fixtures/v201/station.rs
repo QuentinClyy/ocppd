@@ -1,9 +1,9 @@
 use crate::api::event::Kind;
 use crate::api::io::{Input, Output};
+use crate::protocol::v201::charging_station::ChargingStation;
+use crate::protocol::v201::event::EventKind;
 use crate::station::Station;
 use crate::station::connector::Connector;
-use crate::v201::charging_station::ChargingStation;
-use crate::v201::event::EventKind;
 use crate::wire::frame::Frame;
 use serde_json::{Value, json};
 
