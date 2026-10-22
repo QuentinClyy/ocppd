@@ -18,10 +18,9 @@ use crate::v201::messages::custom_data::without_custom_data;
 use crate::v201::messages::provisioning::boot::{
     BootNotificationRequest, BootReason, ChargingStationInfo,
 };
-use crate::v201::messages::transactions::TransactionEventResponse;
 use crate::wire::ci_string::{CiString, TooLong};
 use crate::wire::frame::{self, Frame};
-use crate::wire::outbox::{Call, Outbox};
+use crate::wire::outbox::{Call, Outbox, Sent};
 use crate::wire::payload;
 use device_model::{DeviceModel, table};
 use registration::Registration;
@@ -37,6 +36,7 @@ pub struct ChargingStation {
     outbox: Outbox,
     reported: Vec<Option<ConnectorStatus>>,
     resend_statuses: bool,
+    offline_since: Option<u64>,
     sessions: Vec<Session>,
     device_model: DeviceModel,
     resetting: bool,
@@ -64,6 +64,7 @@ impl ChargingStation {
             outbox: Outbox::new(&TRANSACTION_MESSAGES),
             reported: vec![None; connectors],
             resend_statuses: false,
+            offline_since: None,
             sessions: (0..connectors).map(|_| Session::default()).collect(),
             device_model,
             resetting: false,
@@ -96,12 +97,14 @@ impl ChargingStation {
             Input::Connected => {
                 self.emit(&mut out, now, EventKind::Link(LinkEvent::Connected));
                 self.connected(now);
+                self.back_online(now);
             }
             Input::Disconnected => {
                 self.disconnected();
                 self.outbox
                     .keep(|action, _| TRANSACTION_MESSAGES.contains(&action));
-                self.resend_statuses = true;
+                self.mark_queued_offline();
+                self.offline_since = Some(now);
                 self.emit(&mut out, now, EventKind::Link(LinkEvent::Disconnected));
             }
             Input::Tick => self.tick(&mut out, now),
@@ -129,7 +132,7 @@ impl ChargingStation {
             let action = sent.call.action.clone();
             let kind = LinkEvent::CallTimedOut { action };
             self.emit(out, now, EventKind::Link(kind));
-            self.call_failed(now, &sent.call);
+            self.call_failed(out, now, sent);
         }
         self.registration_tick(now);
         self.transaction_tick(out, now);
@@ -159,7 +162,7 @@ impl ChargingStation {
                     let action = sent.call.action.clone();
                     let kind = LinkEvent::CallFailed { action, code };
                     self.emit(out, now, EventKind::Link(kind));
-                    self.call_failed(now, &sent.call);
+                    self.call_failed(out, now, sent);
                 }
                 None => self.emit(out, now, EventKind::Link(LinkEvent::UnknownResponse { id })),
             },
@@ -170,17 +173,16 @@ impl ChargingStation {
         match call.action.as_str() {
             "BootNotification" => self.booted(out, now, payload),
             "Authorize" => self.authorize_reply(out, now, call, payload),
-            "TransactionEvent" => {
-                self.decode::<TransactionEventResponse>(out, now, "TransactionEvent", payload);
-            }
+            "TransactionEvent" => self.transaction_reply(out, now, call, payload),
             _ => {}
         }
     }
 
-    fn call_failed(&mut self, now: u64, call: &Call) {
-        match call.action.as_str() {
+    fn call_failed(&mut self, out: &mut Vec<Output>, now: u64, sent: Sent) {
+        match sent.call.action.as_str() {
             "BootNotification" => self.boot_failed(now),
-            "Authorize" => self.authorize_failed(call),
+            "Authorize" => self.authorize_failed(&sent.call),
+            "TransactionEvent" => self.retry_transaction_event(out, now, sent),
             _ => {}
         }
     }

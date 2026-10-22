@@ -118,6 +118,12 @@ impl Run {
         self.input(now, Input::Frame(json!([3, id, payload]).to_string()));
     }
 
+    pub fn fail(&mut self, now: u64) {
+        let id = self.pending.take().expect("no pending call");
+        let error = json!([4, id, "InternalError", "", {}]);
+        self.input(now, Input::Frame(error.to_string()));
+    }
+
     pub fn answer_all(&mut self, now: u64) {
         for _ in 0..MAX_ANSWERS {
             if self.pending.is_none() {

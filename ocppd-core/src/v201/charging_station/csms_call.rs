@@ -7,6 +7,7 @@ use crate::v201::messages::custom_data::without_custom_data;
 use crate::v201::messages::provisioning::report::GetBaseReportRequest;
 use crate::v201::messages::provisioning::reset::ResetRequest;
 use crate::v201::messages::provisioning::variables::{GetVariablesRequest, SetVariablesRequest};
+use crate::v201::messages::transactions::GetTransactionStatusRequest;
 use crate::wire::frame::Frame;
 use crate::wire::payload::{self, Violation};
 use serde::Serialize;
@@ -63,6 +64,9 @@ impl ChargingStation {
             }),
             "GetBaseReport" => answer(payload, |request: GetBaseReportRequest| {
                 Ok(self.get_base_report(now, request))
+            }),
+            "GetTransactionStatus" => answer(payload, |request: GetTransactionStatusRequest| {
+                Ok(self.transaction_status(request))
             }),
             "Reset" => answer(payload, |request: ResetRequest| {
                 Ok(self.reset(out, now, request))

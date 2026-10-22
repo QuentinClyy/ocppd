@@ -3,7 +3,10 @@ use super::registration::Registration;
 use crate::api::io::Output;
 use crate::v201::event::EventKind;
 use crate::v201::messages::provisioning::boot::BootReason;
-use crate::v201::messages::provisioning::reset::{ResetRequest, ResetResponse, ResetStatus};
+use crate::v201::messages::provisioning::reset::{
+    ResetRequest, ResetResponse, ResetStatus, ResetType,
+};
+use crate::v201::messages::transactions::{StoppedReason, TriggerReason};
 
 impl ChargingStation {
     pub(super) fn reset(
@@ -12,23 +15,35 @@ impl ChargingStation {
         now: u64,
         request: ResetRequest,
     ) -> ResetResponse {
-        let status = match request.evse_id {
-            Some(_) => ResetStatus::Rejected,
-            None => {
-                self.resetting = true;
-                let reset_type = request.kind;
-                self.emit(out, now, EventKind::Reset { reset_type });
-                ResetStatus::Accepted
+        if request.evse_id.is_some() {
+            return response(ResetStatus::Rejected);
+        }
+        let reset_type = request.kind;
+        self.emit(out, now, EventKind::Reset { reset_type });
+        self.resetting = true;
+        let running = self
+            .sessions
+            .iter()
+            .any(|session| session.transaction.is_some());
+        match (reset_type, running) {
+            (ResetType::OnIdle, true) => response(ResetStatus::Scheduled),
+            (ResetType::Immediate, true) => {
+                for index in 0..self.sessions.len() {
+                    let trigger = TriggerReason::ResetCommand;
+                    self.end_transaction(out, now, index, trigger, StoppedReason::ImmediateReset);
+                }
+                response(ResetStatus::Accepted)
             }
-        };
-        ResetResponse {
-            status,
-            status_info: None,
+            (_, false) => response(ResetStatus::Accepted),
         }
     }
 
     pub(super) fn reset_due(&self, now: u64) -> bool {
-        self.resetting && self.outbox.is_drained(now)
+        let idle = self
+            .sessions
+            .iter()
+            .all(|session| session.transaction.is_none());
+        self.resetting && idle && self.outbox.is_drained(now)
     }
 
     pub(super) fn rebooted(&mut self) {
@@ -38,6 +53,13 @@ impl ChargingStation {
         self.outbox
             .keep(|action, _| super::TRANSACTION_MESSAGES.contains(&action));
         self.resend_statuses = true;
+    }
+}
+
+fn response(status: ResetStatus) -> ResetResponse {
+    ResetResponse {
+        status,
+        status_info: None,
     }
 }
 

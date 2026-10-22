@@ -1,5 +1,6 @@
 pub(super) mod authorize;
 pub(super) mod event;
+mod reliability;
 mod sampling;
 
 use super::ChargingStation;
@@ -7,13 +8,17 @@ use super::device_model::table::{TX_CTRLR, TX_START_POINT, TX_STOP_POINT};
 use crate::api::io::Output;
 use crate::v201::messages::datatypes::id_token::IdToken;
 use crate::v201::messages::datatypes::meter_value::MeterValue;
-use crate::v201::messages::transactions::{ChargingState, TransactionEventType, TriggerReason};
+use crate::v201::messages::transactions::{
+    ChargingState, StoppedReason, TransactionEventType, TriggerReason,
+};
 use crate::wire::ci_string::CiString;
 
 #[derive(Default)]
 pub struct Session {
     pub authorization: Authorization,
     pub transaction: Option<Transaction>,
+    pub checking: Option<IdToken>,
+    pub suspended: bool,
 }
 
 #[derive(Default, Clone, PartialEq)]
@@ -23,6 +28,7 @@ pub enum Authorization {
     Pending(IdToken),
     Authorized {
         id_token: IdToken,
+        group: Option<CiString<36>>,
         at: u64,
     },
 }
@@ -32,6 +38,7 @@ pub struct Transaction {
     pub seq_no: u32,
     pub charging_state: ChargingState,
     pub id_token_sent: bool,
+    pub stop_reason: Option<StoppedReason>,
     reached: Vec<TxPoint>,
     last_periodic: u64,
     last_ended_sample: u64,
@@ -72,6 +79,7 @@ impl ChargingStation {
                     seq_no: 0,
                     charging_state: state,
                     id_token_sent: false,
+                    stop_reason: None,
                     reached: valid,
                     last_periodic: now,
                     last_ended_sample: now,
@@ -95,12 +103,7 @@ impl ChargingStation {
             .iter()
             .any(|point| reached.contains(point) && !valid.contains(point));
         if lost {
-            let samples = self.ended_samples(now, index);
-            let ended = TransactionEventType::Ended;
-            self.send_transaction_event(out, now, index, ended, trigger, samples);
-            self.sessions[index] = Session::default();
-            self.apply_charging(now, index);
-            return;
+            return self.end_transaction(out, now, index, trigger, stopped_reason(trigger));
         }
         let authorized = matches!(
             self.sessions[index].authorization,
@@ -115,6 +118,27 @@ impl ChargingStation {
         }
     }
 
+    pub(super) fn end_transaction(
+        &mut self,
+        out: &mut Vec<Output>,
+        now: u64,
+        index: usize,
+        trigger: TriggerReason,
+        reason: StoppedReason,
+    ) {
+        let Some(transaction) = &mut self.sessions[index].transaction else {
+            return;
+        };
+        transaction.stop_reason = Some(reason);
+        self.sessions[index].authorization = Authorization::None;
+        self.apply_charging(now, index);
+        let samples = self.ended_samples(now, index);
+        let ended = TransactionEventType::Ended;
+        self.send_transaction_event(out, now, index, ended, trigger, samples);
+        self.sessions[index] = Session::default();
+        self.apply_charging(now, index);
+    }
+
     pub(super) fn charging_state(&self, now: u64, index: usize) -> ChargingState {
         let connector = &self.station.connectors[index];
         let authorized = matches!(
@@ -124,6 +148,7 @@ impl ChargingStation {
         match (connector.plugged.is_some(), authorized) {
             (false, _) => ChargingState::Idle,
             (true, false) => ChargingState::EvConnected,
+            (true, true) if self.sessions[index].suspended => ChargingState::SuspendedEvse,
             (true, true) if connector.finish_time().is_some_and(|at| at <= now) => {
                 ChargingState::SuspendedEv
             }
@@ -184,6 +209,7 @@ impl ChargingStation {
             self.sessions[index].authorization,
             Authorization::Authorized { .. }
         );
+        let suspended = self.sessions[index].suspended;
         let limit_w = self.station.limit_w();
         let connector = &mut self.station.connectors[index];
         let plugged = connector.plugged.is_some();
@@ -191,7 +217,8 @@ impl ChargingStation {
             .plugged
             .as_ref()
             .is_some_and(|plugged| plugged.charging.is_some());
-        match (plugged && authorized, charging) {
+        let allowed = plugged && authorized && !suspended;
+        match (allowed, charging) {
             (true, false) => connector.start_charging(now, limit_w),
             (false, true) => connector.stop_charging(now),
             _ => {}
@@ -245,6 +272,18 @@ fn transaction_id(now: u64, index: usize) -> CiString<36> {
     let evse = index as u32 + 1;
     let id = format!("{now:x}-{evse}");
     CiString::new(&id).unwrap_or_else(|_| unreachable!("16 hex digits, a dash and a u32 fit in 36"))
+}
+
+fn stopped_reason(trigger: TriggerReason) -> StoppedReason {
+    match trigger {
+        TriggerReason::StopAuthorized => StoppedReason::Local,
+        TriggerReason::EvCommunicationLost => StoppedReason::EvDisconnected,
+        TriggerReason::EvConnectTimeout => StoppedReason::Timeout,
+        TriggerReason::Deauthorized => StoppedReason::DeAuthorized,
+        TriggerReason::RemoteStop => StoppedReason::Remote,
+        TriggerReason::ResetCommand => StoppedReason::ImmediateReset,
+        _ => StoppedReason::Other,
+    }
 }
 
 #[cfg(test)]

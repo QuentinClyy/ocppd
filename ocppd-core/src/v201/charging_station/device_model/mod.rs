@@ -70,13 +70,22 @@ impl DeviceModel {
     }
 
     pub fn value(&self, component: &str, variable: &str) -> Option<&str> {
+        self.instance_value(component, variable, None)
+    }
+
+    pub fn instance_value(
+        &self,
+        component: &str,
+        variable: &str,
+        instance: Option<&str>,
+    ) -> Option<&str> {
         self.entries
             .iter()
             .find(|entry| {
                 entry.component.evse.is_none()
                     && entry.component.name.as_str() == component
                     && entry.variable.name.as_str() == variable
-                    && entry.variable.instance.is_none()
+                    && entry.variable.instance.as_ref().map(CiString::as_str) == instance
             })
             .map(|entry| entry.value.as_str())
     }

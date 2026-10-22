@@ -13,6 +13,8 @@ pub const DEVICE_DATA_CTRLR: &str = "DeviceDataCtrlr";
 pub const ITEMS_PER_MESSAGE: &str = "ItemsPerMessage";
 pub const AVAILABILITY_STATE: &str = "AvailabilityState";
 pub const TX_CTRLR: &str = "TxCtrlr";
+pub const AUTH_CTRLR: &str = "AuthCtrlr";
+pub const MASTER_PASS_GROUP_ID: &str = "MasterPassGroupId";
 pub const TX_START_POINT: &str = "TxStartPoint";
 pub const TX_STOP_POINT: &str = "TxStopPoint";
 pub const STOP_TX_ON_EV_SIDE_DISCONNECT: &str = "StopTxOnEVSideDisconnect";
@@ -186,6 +188,13 @@ pub fn entries(station: &Station) -> Result<Vec<Entry>, TooLong> {
         )
         .values(TX_POINTS),
         row(TX_CTRLR, "StopTxOnInvalidId", "true", ReadWrite, Boolean),
+        row(
+            AUTH_CTRLR,
+            MASTER_PASS_GROUP_ID,
+            "",
+            ReadWrite,
+            DataType::String,
+        ),
         row(
             SAMPLED_DATA_CTRLR,
             "TxStartedMeasurands",

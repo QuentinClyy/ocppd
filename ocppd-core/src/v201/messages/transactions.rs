@@ -129,3 +129,18 @@ pub struct TransactionEventResponse {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub updated_personal_message: Option<MessageContent>,
 }
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GetTransactionStatusRequest {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub transaction_id: Option<CiString<36>>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GetTransactionStatusResponse {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ongoing_indicator: Option<bool>,
+    pub messages_in_queue: bool,
+}

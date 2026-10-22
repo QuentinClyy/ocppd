@@ -122,6 +122,14 @@ impl Outbox {
         });
     }
 
+    pub fn holds(&self, held: impl Fn(&str, &Value) -> bool) -> bool {
+        let pending = self.pending.iter().map(|pending| &pending.sent);
+        let queued = self.queue.iter().map(|queued| &queued.sent);
+        pending
+            .chain(queued)
+            .any(|sent| held(&sent.call.action, &sent.payload))
+    }
+
     pub fn queued_payloads(
         &mut self,
         connector_id: u32,

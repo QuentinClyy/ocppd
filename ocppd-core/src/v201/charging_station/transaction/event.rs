@@ -5,7 +5,7 @@ use crate::v201::event::EventKind;
 use crate::v201::messages::datatypes::component::Evse;
 use crate::v201::messages::datatypes::meter_value::MeterValue;
 use crate::v201::messages::transactions::{
-    StoppedReason, TransactionEventRequest, TransactionEventType, TransactionInfo, TriggerReason,
+    TransactionEventRequest, TransactionEventType, TransactionInfo, TriggerReason,
 };
 use crate::wire::date_time::DateTime;
 use serde_json::json;
@@ -23,6 +23,7 @@ impl ChargingStation {
         meter_value: Vec<MeterValue>,
     ) {
         let charging_state = self.charging_state(now, index);
+        let online = self.is_accepted();
         let session = &mut self.sessions[index];
         let id_token = match &session.authorization {
             Authorization::Authorized { id_token, .. } => Some(id_token.clone()),
@@ -43,7 +44,7 @@ impl ChargingStation {
             timestamp: DateTime { unix_ms: now },
             trigger_reason,
             seq_no: transaction.seq_no,
-            offline: None,
+            offline: (!online).then_some(true),
             number_of_phases_used: None,
             cable_max_current: None,
             reservation_id: None,
@@ -52,7 +53,7 @@ impl ChargingStation {
                 charging_state: (event_type == TransactionEventType::Started || state_changed)
                     .then_some(charging_state),
                 time_spent_charging: None,
-                stopped_reason: ended.then(|| stopped_reason(trigger_reason)),
+                stopped_reason: transaction.stop_reason.filter(|_| ended),
                 remote_start_id: None,
             },
             evse: Some(Evse {
@@ -71,17 +72,5 @@ impl ChargingStation {
             trigger_reason,
         };
         self.emit(out, now, kind);
-    }
-}
-
-fn stopped_reason(trigger: TriggerReason) -> StoppedReason {
-    match trigger {
-        TriggerReason::StopAuthorized => StoppedReason::Local,
-        TriggerReason::EvCommunicationLost => StoppedReason::EvDisconnected,
-        TriggerReason::EvConnectTimeout => StoppedReason::Timeout,
-        TriggerReason::Deauthorized => StoppedReason::DeAuthorized,
-        TriggerReason::RemoteStop => StoppedReason::Remote,
-        TriggerReason::ResetCommand => StoppedReason::ImmediateReset,
-        _ => StoppedReason::Other,
     }
 }

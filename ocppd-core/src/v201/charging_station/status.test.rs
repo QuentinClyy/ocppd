@@ -14,6 +14,14 @@ fn statuses(run: &Run) -> Vec<ConnectorStatus> {
         .collect()
 }
 
+fn evses_reported(run: &Run) -> Vec<serde_json::Value> {
+    run.calls
+        .iter()
+        .filter(|(_, action, _)| action == "StatusNotification")
+        .map(|(_, _, payload)| payload["evseId"].clone())
+        .collect()
+}
+
 fn plugged_in(run: &mut Run, now: u64) {
     let ev = EvSpec::default();
     run.input(now, Input::Intent(Intent::PlugIn { connector: 1, ev }));
@@ -46,4 +54,41 @@ fn given_occupied_connector_when_ev_unplugged_then_available_reported_per_g01_fr
         statuses(&run),
         vec![ConnectorStatus::Occupied, ConnectorStatus::Available]
     );
+}
+
+#[test]
+fn given_nothing_changed_when_short_outage_ends_then_nothing_reported_per_b04_fr_02_and_tc_b_52() {
+    let mut run = Run::accepted(300);
+    run.input(1_000, Input::Disconnected);
+
+    run.input(2_000, Input::Connected);
+
+    assert!(run.actions().is_empty());
+}
+
+#[test]
+fn given_two_evses_when_long_outage_ends_then_every_connector_reported_without_status_changes_per_b04_fr_01_and_tc_b_51()
+ {
+    let mut run = Run::accepted_with(2, 300);
+    run.input(1_000, Input::Disconnected);
+
+    run.input(62_000, Input::Connected);
+    run.answer_all(62_000);
+
+    assert_eq!(evses_reported(&run), vec![1, 2]);
+    assert!(statuses(&run).is_empty(), "not status changes");
+}
+
+#[test]
+fn given_ev_plugged_during_a_short_outage_when_it_ends_then_only_that_connector_reported_per_b04_fr_02()
+ {
+    let mut run = Run::accepted_with(2, 300);
+    run.input(1_000, Input::Disconnected);
+    let ev = EvSpec::default();
+    run.input(2_000, Input::Intent(Intent::PlugIn { connector: 2, ev }));
+
+    run.input(3_000, Input::Connected);
+    run.answer_all(3_000);
+
+    assert_eq!(evses_reported(&run), vec![2]);
 }
