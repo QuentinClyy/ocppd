@@ -71,6 +71,9 @@ pub enum EventKind {
         status: UploadLogStatus,
         request_id: i32,
     },
+    CustomerDataCleared {
+        id_tag: String,
+    },
     SecurityEvent {
         #[serde(rename = "type")]
         event_type: String,

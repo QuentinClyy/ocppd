@@ -9,6 +9,7 @@ use crate::v201::messages::certificates::{
     DeleteCertificateRequest, GetInstalledCertificateIdsRequest, InstallCertificateRequest,
 };
 use crate::v201::messages::custom_data::without_custom_data;
+use crate::v201::messages::diagnostics::customer_information::CustomerInformationRequest;
 use crate::v201::messages::diagnostics::log::GetLogRequest;
 use crate::v201::messages::firmware::UpdateFirmwareRequest;
 use crate::v201::messages::local_auth::{GetLocalListVersionRequest, SendLocalListRequest};
@@ -126,6 +127,9 @@ impl ChargingStation {
             }),
             "GetLog" => answer(payload, |request: GetLogRequest| {
                 Ok(self.get_log(out, now, request))
+            }),
+            "CustomerInformation" => answer(payload, |request: CustomerInformationRequest| {
+                Ok(self.customer_information(out, now, request))
             }),
             "Reset" => answer(payload, |request: ResetRequest| {
                 Ok(self.reset(out, now, request))

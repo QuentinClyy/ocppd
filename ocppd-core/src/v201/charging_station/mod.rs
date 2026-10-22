@@ -1,6 +1,7 @@
 mod availability;
 mod certificates;
 mod csms_call;
+mod customer_information;
 mod device_model;
 mod driver;
 mod firmware;
