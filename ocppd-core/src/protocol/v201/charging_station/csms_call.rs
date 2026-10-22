@@ -28,6 +28,7 @@ use crate::protocol::v201::messages::security::certificates::{
 };
 use crate::protocol::v201::messages::smart_charging::SetChargingProfileRequest;
 use crate::protocol::v201::messages::smart_charging::clear::ClearChargingProfileRequest;
+use crate::protocol::v201::messages::smart_charging::composite::GetCompositeScheduleRequest;
 use crate::protocol::v201::messages::smart_charging::report::GetChargingProfilesRequest;
 use crate::protocol::v201::messages::transactions::GetTransactionStatusRequest;
 use crate::wire::frame::Frame;
@@ -154,6 +155,9 @@ impl ChargingStation {
             }),
             "ClearChargingProfile" => answer(payload, |request: ClearChargingProfileRequest| {
                 Ok(self.clear_charging_profile(out, now, request))
+            }),
+            "GetCompositeSchedule" => answer(payload, |request: GetCompositeScheduleRequest| {
+                Ok(self.composite_schedule(now, request))
             }),
             "Reset" => answer(payload, |request: ResetRequest| {
                 Ok(self.reset(out, now, request))

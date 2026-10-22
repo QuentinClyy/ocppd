@@ -1,4 +1,5 @@
 mod clear;
+mod composite;
 mod limit;
 pub(super) mod profiles;
 mod report;
@@ -50,6 +51,46 @@ impl ChargingStation {
         self.count_profiles();
         self.emit(out, now, kind);
         response(ChargingProfileStatus::Accepted, None)
+    }
+
+    pub(in crate::protocol::v201::charging_station) fn remote_start_refusal(
+        &self,
+        profile: &ChargingProfile,
+    ) -> Option<&'static str> {
+        let purpose = profile.charging_profile_purpose;
+        if purpose != ChargingProfilePurpose::TxProfile || profile.transaction_id.is_some() {
+            return Some("InvalidProfile");
+        }
+        self.invalid_schedule(profile).then_some("InvalidSchedule")
+    }
+
+    pub(in crate::protocol::v201::charging_station) fn attach_remote_profile(
+        &mut self,
+        out: &mut Vec<Output>,
+        now: u64,
+        index: usize,
+    ) {
+        let session = &mut self.sessions[index];
+        let Some(transaction) = &session.transaction else {
+            return;
+        };
+        let Some(mut profile) = session.remote_profile.take() else {
+            return;
+        };
+        profile.transaction_id = Some(transaction.id.clone());
+        let Some(schedule) = profiles::schedule(&profile) else {
+            return;
+        };
+        let evse = index as u32 + 1;
+        let kind = EventKind::ChargingProfileSet {
+            evse,
+            charging_profile_id: profile.id,
+        };
+        let accepted_with_the_remote_start = usize::MAX;
+        self.charging_profiles
+            .install(evse, profile, schedule, accepted_with_the_remote_start);
+        self.count_profiles();
+        self.emit(out, now, kind);
     }
 
     pub(in crate::protocol::v201::charging_station) fn count_profiles(&mut self) {
@@ -125,3 +166,7 @@ fn response(status: ChargingProfileStatus, reason: Option<&str>) -> SetChargingP
         status_info,
     }
 }
+
+#[cfg(test)]
+#[path = "mod.test.rs"]
+mod tests;

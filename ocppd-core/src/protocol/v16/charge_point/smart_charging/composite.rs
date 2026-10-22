@@ -3,12 +3,14 @@ use crate::protocol::v16::charge_point::ChargePoint;
 use crate::protocol::v16::charge_point::transaction::Transaction;
 use crate::protocol::v16::event::EventKind;
 use crate::protocol::v16::messages::datatypes::charging_profile::{
-    ChargingProfilePurpose, ChargingRateUnit, ChargingSchedule, ChargingSchedulePeriod, tenths_down,
+    ChargingProfilePurpose, ChargingRateUnit, ChargingSchedule, ChargingSchedulePeriod,
 };
 use crate::protocol::v16::messages::datatypes::generic_status::GenericStatus;
 use crate::protocol::v16::messages::smart_charging::{
     GetCompositeScheduleRequest, GetCompositeScheduleResponse,
 };
+use crate::smart_charging::composite;
+use crate::smart_charging::schedule::Unit;
 use crate::wire::date_time::DateTime;
 
 impl ChargePoint {
@@ -82,19 +84,23 @@ impl ChargePoint {
         }
         let unit = request.charging_rate_unit.unwrap_or(ChargingRateUnit::W);
         let end = now + u64::from(request.duration) * 1000;
-        let mut periods: Vec<ChargingSchedulePeriod> = Vec::new();
-        let mut at = now;
-        while at < end {
-            let limit = tenths_down(self.in_unit(self.composite_limit_w(connector, at), unit));
-            if periods.last().is_none_or(|last| last.limit != limit) {
-                periods.push(ChargingSchedulePeriod {
-                    start_period: ((at - now) / 1000) as u32,
-                    limit,
-                    number_phases: None,
-                });
-            }
-            at = self.next_limit_change(connector, at).unwrap_or(end);
-        }
+        let sampling = match unit {
+            ChargingRateUnit::W => Unit::Watts,
+            ChargingRateUnit::A => Unit::Amps,
+        };
+        let periods = composite::periods(
+            &self.station,
+            sampling,
+            now,
+            end,
+            |at| self.composite_limit_w(connector, at),
+            |at| self.next_limit_change(connector, at),
+        );
+        let periods = periods.into_iter().map(|period| ChargingSchedulePeriod {
+            start_period: period.start_s,
+            limit: period.limit,
+            number_phases: None,
+        });
         GetCompositeScheduleResponse {
             status: GenericStatus::Accepted,
             connector_id: Some(connector),
@@ -103,7 +109,7 @@ impl ChargePoint {
                 duration: Some(request.duration),
                 start_schedule: Some(DateTime { unix_ms: now }),
                 charging_rate_unit: unit,
-                charging_schedule_period: periods,
+                charging_schedule_period: periods.collect(),
                 min_charging_rate: None,
             }),
         }
@@ -114,16 +120,6 @@ impl ChargePoint {
         match self.transactions[index] {
             Transaction::Active { start, .. } => Some(start),
             _ => None,
-        }
-    }
-
-    fn in_unit(&self, watts: f64, unit: ChargingRateUnit) -> f64 {
-        match unit {
-            ChargingRateUnit::W => watts.round(),
-            ChargingRateUnit::A => {
-                let amps = watts / (self.station.voltage_v * f64::from(self.station.phases));
-                (amps * 10.0).round() / 10.0
-            }
         }
     }
 }

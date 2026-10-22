@@ -6,12 +6,14 @@ use super::transaction::Authorization;
 use crate::api::io::Output;
 use crate::protocol::v201::event::EventKind;
 use crate::protocol::v201::messages::datatypes::id_token::IdTokenType;
+use crate::protocol::v201::messages::datatypes::status_info::StatusInfo;
 use crate::protocol::v201::messages::remote_control::{
     RequestStartStopStatus, RequestStartTransactionRequest, RequestStartTransactionResponse,
     RequestStopTransactionRequest, RequestStopTransactionResponse, UnlockConnectorRequest,
     UnlockConnectorResponse, UnlockStatus,
 };
 use crate::protocol::v201::messages::transactions::TriggerReason;
+use crate::wire::ci_string::CiString;
 
 impl ChargingStation {
     pub(super) fn request_start(
@@ -31,6 +33,19 @@ impl ChargingStation {
         if !self.is_accepted() || !self.operative(index) {
             return rejected;
         }
+        let refusal = request.charging_profile.as_ref().and_then(|profile| {
+            let reason = self.remote_start_refusal(profile)?;
+            Some(StatusInfo {
+                reason_code: CiString::new(reason).ok()?,
+                additional_info: None,
+            })
+        });
+        if refusal.is_some() {
+            return RequestStartTransactionResponse {
+                status_info: refusal,
+                ..rejected
+            };
+        }
         let id_token = request.id_token;
         let check_first = self.device_model.value(AUTH_CTRLR, "AuthorizeRemoteStart")
             == Some("true")
@@ -46,6 +61,7 @@ impl ChargingStation {
         self.emit(out, now, kind);
         let session = &mut self.sessions[index];
         session.remote_start_id = Some(request.remote_start_id);
+        session.remote_profile = request.charging_profile;
         let transaction_id = session
             .transaction
             .as_ref()
@@ -61,6 +77,7 @@ impl ChargingStation {
                 self.settle(out, now, index, TriggerReason::RemoteStart);
             }
         }
+        self.attach_remote_profile(out, now, index);
         RequestStartTransactionResponse {
             status: RequestStartStopStatus::Accepted,
             status_info: None,

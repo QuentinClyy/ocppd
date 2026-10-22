@@ -6,6 +6,7 @@ mod sampling;
 use super::ChargingStation;
 use super::device_model::table::{TX_CTRLR, TX_START_POINT, TX_STOP_POINT};
 use crate::api::io::Output;
+use crate::protocol::v201::messages::datatypes::charging_profile::ChargingProfile;
 use crate::protocol::v201::messages::datatypes::id_token::IdToken;
 use crate::protocol::v201::messages::datatypes::meter_value::MeterValue;
 use crate::protocol::v201::messages::transactions::{
@@ -20,6 +21,7 @@ pub struct Session {
     pub checking: Option<IdToken>,
     pub suspended: bool,
     pub remote_start_id: Option<i32>,
+    pub remote_profile: Option<ChargingProfile>,
 }
 
 #[derive(Default, Clone, PartialEq)]
@@ -90,6 +92,7 @@ impl ChargingStation {
                     last_clock_sample: now,
                     ended_samples: self.ended_sample(now, index, false),
                 });
+                self.attach_remote_profile(out, now, index);
                 let begin = self.started_sample(now, index);
                 let started = TransactionEventType::Started;
                 self.send_transaction_event(out, now, index, started, trigger, begin);

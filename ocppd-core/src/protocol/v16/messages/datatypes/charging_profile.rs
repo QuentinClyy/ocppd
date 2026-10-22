@@ -73,10 +73,6 @@ pub enum ChargingRateUnit {
     W,
 }
 
-pub fn tenths_down(rate: f64) -> f64 {
-    (rate * 10.0 + 1e-9).floor() / 10.0
-}
-
 fn is_tenths(rate: f64) -> bool {
     let scaled = rate * 10.0;
     (scaled - scaled.round()).abs() < 1e-6

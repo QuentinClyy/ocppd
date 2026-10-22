@@ -19,6 +19,7 @@ pub enum Kind {
     Recurring { cycle_ms: Option<u64> },
 }
 
+#[derive(Clone, Copy)]
 pub enum Unit {
     Watts,
     Amps,

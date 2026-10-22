@@ -1,4 +1,5 @@
 pub mod clear;
+pub mod composite;
 pub mod report;
 
 use crate::protocol::v201::messages::datatypes::charging_profile::ChargingProfile;
