@@ -1,6 +1,10 @@
 use crate::protocol::v201::messages::datatypes::charging_profile::{
     ChargingProfile, ChargingProfileKind, ChargingProfilePurpose, ChargingRateUnit, RecurrencyKind,
 };
+use crate::protocol::v201::messages::smart_charging::clear::ClearChargingProfileRequest;
+use crate::protocol::v201::messages::smart_charging::report::{
+    ChargingLimitSource, ChargingProfileCriterion,
+};
 use crate::smart_charging::schedule::{DAY_MS, Kind, Period, Schedule, Unit};
 
 struct Installed {
@@ -82,6 +86,59 @@ impl ChargingProfiles {
                 || installed.profile.charging_profile_purpose != ChargingProfilePurpose::TxProfile
         });
         before != self.0.len()
+    }
+
+    pub fn matching(
+        &self,
+        evse: Option<u32>,
+        criterion: &ChargingProfileCriterion,
+    ) -> Vec<(u32, &ChargingProfile)> {
+        let ours = criterion
+            .charging_limit_source
+            .as_ref()
+            .is_none_or(|sources| sources.contains(&ChargingLimitSource::Cso));
+        let matches = |installed: &&Installed| {
+            let profile = &installed.profile;
+            let fields = match &criterion.charging_profile_id {
+                Some(ids) => ids.contains(&profile.id),
+                None => {
+                    criterion
+                        .charging_profile_purpose
+                        .is_none_or(|purpose| purpose == profile.charging_profile_purpose)
+                        && criterion
+                            .stack_level
+                            .is_none_or(|level| level == profile.stack_level)
+                }
+            };
+            ours && evse.is_none_or(|evse| evse == installed.evse) && fields
+        };
+        self.0
+            .iter()
+            .filter(matches)
+            .map(|installed| (installed.evse, &installed.profile))
+            .collect()
+    }
+
+    pub fn clear(&mut self, request: &ClearChargingProfileRequest) -> usize {
+        let matches = |installed: &Installed| {
+            let profile = &installed.profile;
+            if let Some(id) = request.charging_profile_id {
+                return profile.id == id;
+            }
+            let Some(criteria) = &request.charging_profile_criteria else {
+                return true;
+            };
+            criteria.evse_id.is_none_or(|evse| evse == installed.evse)
+                && criteria
+                    .charging_profile_purpose
+                    .is_none_or(|purpose| purpose == profile.charging_profile_purpose)
+                && criteria
+                    .stack_level
+                    .is_none_or(|level| level == profile.stack_level)
+        };
+        let before = self.0.len();
+        self.0.retain(|installed| !matches(installed));
+        before - self.0.len()
     }
 
     pub fn len(&self) -> usize {

@@ -1,5 +1,7 @@
+mod clear;
 mod limit;
 pub(super) mod profiles;
+mod report;
 
 use crate::api::io::Output;
 use crate::protocol::v201::charging_station::ChargingStation;

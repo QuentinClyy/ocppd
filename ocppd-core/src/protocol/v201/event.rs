@@ -83,6 +83,9 @@ pub enum EventKind {
         evse: u32,
         limit_w: f64,
     },
+    ChargingProfilesCleared {
+        count: usize,
+    },
     NetworkProfileSet {
         slot: usize,
         security_profile: u64,

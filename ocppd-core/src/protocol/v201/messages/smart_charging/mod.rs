@@ -1,3 +1,6 @@
+pub mod clear;
+pub mod report;
+
 use crate::protocol::v201::messages::datatypes::charging_profile::ChargingProfile;
 use crate::protocol::v201::messages::datatypes::status_info::StatusInfo;
 use serde::{Deserialize, Serialize};
