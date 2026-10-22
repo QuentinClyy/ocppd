@@ -207,3 +207,34 @@ fn given_configured_offline_threshold_when_read_after_boot_then_configured_value
 
     assert_eq!(result["attributeValue"], "120");
 }
+
+#[test]
+fn given_booted_station_when_required_variables_read_then_all_exist() {
+    let mut run = Run::accepted(300);
+    let required = [
+        ("OCPPCommCtrlr", "WebSocketPingInterval", None),
+        ("SmartChargingCtrlr", "Entries", Some("ChargingProfiles")),
+        ("SmartChargingCtrlr", "LimitChangeSignificance", None),
+        (
+            "MonitoringCtrlr",
+            "BytesPerMessage",
+            Some("SetVariableMonitoring"),
+        ),
+    ];
+    let data: Vec<_> = required
+        .iter()
+        .map(|(component, variable, instance)| {
+            let mut variable = json!({"name": variable});
+            if let Some(instance) = instance {
+                variable["instance"] = json!(instance);
+            }
+            json!({"component": {"name": component}, "variable": variable})
+        })
+        .collect();
+
+    let response = run.result(0, "GetVariables", json!({"getVariableData": data}));
+
+    for result in response["getVariableResult"].as_array().unwrap() {
+        assert_eq!(result["attributeStatus"], "Accepted", "{result}");
+    }
+}

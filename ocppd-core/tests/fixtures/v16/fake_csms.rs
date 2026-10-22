@@ -97,6 +97,7 @@ impl Csms {
                 }
                 Output::Send(reply) => self.replies.push(reply),
                 Output::Close => self.closed = true,
+                Output::Ping => {}
                 Output::Emit(event) => self.events.push(v16_kind(event)),
             }
         }

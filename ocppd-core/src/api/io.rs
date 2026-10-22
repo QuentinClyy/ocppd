@@ -16,5 +16,6 @@ pub enum Input {
 pub enum Output {
     Send(Frame),
     Emit(Event),
+    Ping,
     Close,
 }

@@ -17,6 +17,7 @@ pub struct Run {
     pub events: Vec<EventKind>,
     pub replies: Vec<Frame>,
     pub closed: bool,
+    pub pings: usize,
 }
 
 impl Run {
@@ -40,6 +41,7 @@ impl Run {
             events: Vec::new(),
             replies: Vec::new(),
             closed: false,
+            pings: 0,
         }
     }
 
@@ -74,6 +76,7 @@ impl Run {
                     other => panic!("a 2.0.1 station emitted {other:?}"),
                 },
                 Output::Close => self.closed = true,
+                Output::Ping => self.pings += 1,
             }
         }
     }

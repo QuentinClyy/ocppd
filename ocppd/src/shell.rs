@@ -177,6 +177,12 @@ async fn execute(
                 }
             }
             (Output::Send(frame), None) => eprintln!("frame dropped while offline: {frame:?}"),
+            (Output::Ping, Some(open)) => {
+                if let Err(err) = open.send(Message::Ping(Vec::new().into())).await {
+                    return Some(err.to_string());
+                }
+            }
+            (Output::Ping, None) => {}
             (Output::Close, Some(open)) => {
                 return Some(match open.close(None).await {
                     Ok(()) => "closed by the station".into(),

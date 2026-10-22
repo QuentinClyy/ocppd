@@ -14,6 +14,7 @@ mod security;
 mod smart_charging;
 mod tariff_cost;
 mod transaction;
+mod websocket_ping;
 
 use crate::api::event::{Event, Kind, LinkEvent};
 use crate::api::io::{Input, Output};
@@ -77,6 +78,7 @@ pub struct ChargingStation {
     reservations: Vec<Reservation>,
     monitoring: Monitoring,
     display_messages: Vec<MessageInfo>,
+    next_ping: Option<u64>,
 }
 
 impl ChargingStation {
@@ -120,6 +122,7 @@ impl ChargingStation {
             reservations: Vec::new(),
             monitoring: Monitoring::default(),
             display_messages: Vec::new(),
+            next_ping: None,
         })
     }
 
@@ -141,6 +144,7 @@ impl ChargingStation {
             self.reservation_deadline(),
             self.monitoring_deadline(),
             self.display_deadline(),
+            self.ping_deadline(),
         ]
         .into_iter()
         .flatten()
@@ -185,6 +189,7 @@ impl ChargingStation {
         }
         self.apply_limits(&mut out, now);
         self.evaluate_monitors(&mut out, now);
+        self.ping_tick(&mut out, now);
         if self.reconnect_due(now) {
             out.push(Output::Close);
         }

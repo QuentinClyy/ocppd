@@ -7,6 +7,7 @@ use crate::protocol::v201::charging_station::provisioning::network_profile::{
     ACTIVE_NETWORK_PROFILE, NETWORK_CONFIGURATION_PRIORITY, NETWORK_PROFILE_CONNECTION_ATTEMPTS,
     SLOTS,
 };
+use crate::protocol::v201::charging_station::websocket_ping::WEB_SOCKET_PING_INTERVAL;
 use crate::protocol::v201::messages::provisioning::report::{DataType, Mutability};
 use crate::station::Station;
 use crate::wire::ci_string::TooLong;
@@ -108,6 +109,15 @@ pub fn entries(station: &Station) -> Result<Vec<Entry>, TooLong> {
             Boolean,
         ),
         row(OCPP_COMM_CTRLR, "ResetRetries", "0", ReadWrite, Integer).min(0.0),
+        row(
+            OCPP_COMM_CTRLR,
+            WEB_SOCKET_PING_INTERVAL,
+            "0",
+            ReadWrite,
+            Integer,
+        )
+        .unit("s")
+        .min(0.0),
         row(OCPP_COMM_CTRLR, HEARTBEAT_INTERVAL, "0", ReadWrite, Integer)
             .unit("s")
             .min(0.0),
