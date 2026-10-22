@@ -20,6 +20,7 @@ pub const ADDITIONAL_ROOT_CERTIFICATE_CHECK: &str = "AdditionalRootCertificateCh
 #[derive(Default)]
 pub struct Certificates {
     installed: Vec<Installed>,
+    on_fallback: bool,
 }
 
 struct Installed {
@@ -112,18 +113,36 @@ impl ChargingStation {
     }
 
     pub fn csms_roots(&self) -> Vec<Vec<u8>> {
+        let on_fallback = self.certificates.on_fallback;
         self.certificates
             .installed
             .iter()
             .filter(|installed| installed.kind == InstallCertificateUse::CsmsRootCertificate)
+            .filter(|installed| installed.fallback == on_fallback)
             .filter_map(|installed| installed.certificate.to_pem().ok())
             .collect()
     }
 
-    pub(in crate::protocol::v201::charging_station) fn drop_fallback_roots(&mut self) {
-        self.certificates
+    pub(in crate::protocol::v201::charging_station) fn csms_root_refused(&mut self) {
+        let certificates = &mut self.certificates;
+        let has_fallback = certificates
             .installed
-            .retain(|installed| !installed.fallback);
+            .iter()
+            .any(|installed| installed.fallback);
+        certificates.on_fallback = has_fallback && !certificates.on_fallback;
+    }
+
+    pub(in crate::protocol::v201::charging_station) fn settle_csms_roots(&mut self) {
+        let certificates = &mut self.certificates;
+        let kept = certificates.on_fallback;
+        certificates.installed.retain(|installed| {
+            installed.kind != InstallCertificateUse::CsmsRootCertificate
+                || installed.fallback == kept
+        });
+        for installed in &mut certificates.installed {
+            installed.fallback = false;
+        }
+        certificates.on_fallback = false;
     }
 
     pub(in crate::protocol::v201::charging_station) fn trusted_firmware_signer(

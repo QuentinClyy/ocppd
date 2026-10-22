@@ -25,3 +25,21 @@ fn given_jitter_when_backing_off_then_within_half_and_one_and_a_half_of_the_plai
         );
     }
 }
+
+#[test]
+fn given_tls_verify_failure_when_classified_then_csms_certificate() {
+    let refused = "TLS error: native-tls error: error:0A000086:SSL routines:tls_post_process_server_certificate:certificate verify failed:../ssl/statem/statem_clnt.c:2124: (unable to get local issuer certificate)";
+
+    let kind = failure(refused);
+
+    assert_eq!(kind, ConnectFailure::CsmsCertificate);
+}
+
+#[test]
+fn given_refused_tcp_connection_when_classified_then_other() {
+    let closed = "IO error: Connection refused (os error 111)";
+
+    let kind = failure(closed);
+
+    assert_eq!(kind, ConnectFailure::Other);
+}

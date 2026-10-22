@@ -79,6 +79,7 @@ pub struct ChargingStation {
     monitoring: Monitoring,
     display_messages: Vec<MessageInfo>,
     next_ping: Option<u64>,
+    certificate_refusal_reported: bool,
 }
 
 impl ChargingStation {
@@ -123,6 +124,7 @@ impl ChargingStation {
             monitoring: Monitoring::default(),
             display_messages: Vec::new(),
             next_ping: None,
+            certificate_refusal_reported: false,
         })
     }
 
@@ -156,12 +158,13 @@ impl ChargingStation {
         match input {
             Input::Connected => {
                 self.emit(&mut out, now, EventKind::Link(LinkEvent::Connected));
+                self.certificate_refusal_reported = false;
                 if self.network_connected() {
                     self.registration = Registration::Offline;
                 }
                 self.connected(now);
                 self.back_online(now);
-                self.drop_fallback_roots();
+                self.settle_csms_roots();
                 if !self.startup_reported {
                     self.startup_reported = true;
                     self.security_event(&mut out, now, STARTUP_OF_THE_DEVICE);
@@ -174,7 +177,10 @@ impl ChargingStation {
                 self.offline_since = Some(now);
                 self.emit(&mut out, now, EventKind::Link(LinkEvent::Disconnected));
             }
-            Input::ConnectFailed => self.connect_failed(),
+            Input::ConnectFailed(failure) => {
+                self.connect_failed();
+                self.certificate_refused(&mut out, now, failure);
+            }
             Input::Tick => self.tick(&mut out, now),
             Input::Frame(text) => self.receive(&mut out, now, &text),
             Input::Intent(intent) => self.intent(&mut out, now, intent),

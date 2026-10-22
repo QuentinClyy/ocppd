@@ -5,11 +5,17 @@ use crate::wire::frame::Frame;
 #[derive(Debug, Clone, PartialEq)]
 pub enum Input {
     Connected,
-    ConnectFailed,
+    ConnectFailed(ConnectFailure),
     Disconnected,
     Tick,
     Frame(String),
     Intent(Intent),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum ConnectFailure {
+    CsmsCertificate,
+    Other,
 }
 
 #[derive(Debug, Clone, PartialEq)]

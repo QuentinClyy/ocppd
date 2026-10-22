@@ -1,6 +1,7 @@
+use crate::api::io::{ConnectFailure, Input};
 use crate::fixtures::v16::fake_csms::Csms;
 use crate::fixtures::v16::security::{KEY, result, security_events};
-use serde_json::json;
+use serde_json::{Value, json};
 
 fn reset(kind: &str) -> Csms {
     let mut csms = Csms::booted();
@@ -14,6 +15,28 @@ fn booted_again(csms: &mut Csms) {
         1_000,
         json!({"status": "Accepted", "currentTime": "2026-10-20T00:00:00Z", "interval": 300}),
     );
+}
+
+fn refused_certificate_events(csms: &Csms) -> Vec<Value> {
+    let events = csms.sent("SecurityEventNotification").into_iter();
+    events
+        .filter(|event| event["type"] == "InvalidCentralSystemCertificate")
+        .collect()
+}
+
+fn outage(csms: &mut Csms, start: u64, failure: ConnectFailure) {
+    csms.disconnect(start);
+    csms.input(start + 1_000, Input::ConnectFailed(failure));
+    csms.reconnect(start + 10_000);
+}
+
+fn refused_twice_offline() -> Csms {
+    let mut csms = Csms::booted();
+    csms.disconnect(1_000);
+    let refused = Input::ConnectFailed(ConnectFailure::CsmsCertificate);
+    csms.input(2_000, refused.clone());
+    csms.input(9_000, refused);
+    csms
 }
 
 #[test]
@@ -67,4 +90,43 @@ fn given_booted_charge_point_when_plainly_reconnected_then_no_startup_event() {
     csms.reconnect(2_000);
 
     assert!(security_events(&csms).is_empty());
+}
+
+#[test]
+fn given_refused_csms_certificates_offline_when_still_offline_then_nothing_reported() {
+    let csms = refused_twice_offline();
+
+    let events = refused_certificate_events(&csms);
+
+    assert!(events.is_empty(), "offline");
+}
+
+#[test]
+fn given_refused_csms_certificates_offline_when_back_online_then_reported_once_per_tc_078() {
+    let mut csms = refused_twice_offline();
+
+    csms.reconnect(20_000);
+
+    let events = refused_certificate_events(&csms);
+    assert_eq!(events.len(), 1, "once per outage");
+    assert_eq!(events[0]["timestamp"], "1970-01-01T00:00:02Z");
+}
+
+#[test]
+fn given_booted_charge_point_when_outage_with_other_failures_then_no_certificate_event() {
+    let mut csms = Csms::booted();
+
+    outage(&mut csms, 1_000, ConnectFailure::Other);
+
+    assert!(refused_certificate_events(&csms).is_empty());
+}
+
+#[test]
+fn given_reported_refused_certificate_when_another_outage_refuses_it_then_reported_again() {
+    let mut csms = Csms::booted();
+    outage(&mut csms, 1_000, ConnectFailure::CsmsCertificate);
+
+    outage(&mut csms, 30_000, ConnectFailure::CsmsCertificate);
+
+    assert_eq!(refused_certificate_events(&csms).len(), 2);
 }

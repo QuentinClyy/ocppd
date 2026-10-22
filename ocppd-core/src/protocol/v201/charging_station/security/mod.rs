@@ -2,7 +2,7 @@ pub(super) mod certificates;
 pub(super) mod client_certificate;
 
 use super::ChargingStation;
-use crate::api::io::Output;
+use crate::api::io::{ConnectFailure, Output};
 use crate::protocol::v201::event::EventKind;
 use crate::protocol::v201::messages::security::SecurityEventNotificationRequest;
 use crate::wire::ci_string::CiString;
@@ -23,13 +23,15 @@ pub const FIRMWARE_UPDATED: &str = "FirmwareUpdated";
 pub const INVALID_FIRMWARE_SIGNATURE: &str = "InvalidFirmwareSignature";
 pub const INVALID_FIRMWARE_SIGNING_CERTIFICATE: &str = "InvalidFirmwareSigningCertificate";
 pub const INVALID_CHARGING_STATION_CERTIFICATE: &str = "InvalidChargingStationCertificate";
-const CRITICAL: [&str; 6] = [
+pub const INVALID_CSMS_CERTIFICATE: &str = "InvalidCsmsCertificate";
+const CRITICAL: [&str; 7] = [
     STARTUP_OF_THE_DEVICE,
     RESET_OR_REBOOT,
     FIRMWARE_UPDATED,
     INVALID_FIRMWARE_SIGNATURE,
     INVALID_FIRMWARE_SIGNING_CERTIFICATE,
     INVALID_CHARGING_STATION_CERTIFICATE,
+    INVALID_CSMS_CERTIFICATE,
 ];
 const BASIC_AUTH_PROFILES: [u64; 2] = [1, 2];
 const TLS_FROM_PROFILE: u64 = 2;
@@ -51,6 +53,23 @@ impl ChargingStation {
             self.outbox
                 .push("SecurityEventNotification", 0, json!(request));
         }
+    }
+
+    pub(super) fn certificate_refused(
+        &mut self,
+        out: &mut Vec<Output>,
+        now: u64,
+        failure: ConnectFailure,
+    ) {
+        if failure != ConnectFailure::CsmsCertificate {
+            return;
+        }
+        self.csms_root_refused();
+        if self.certificate_refusal_reported {
+            return;
+        }
+        self.certificate_refusal_reported = true;
+        self.security_event(out, now, INVALID_CSMS_CERTIFICATE);
     }
 
     pub fn basic_auth_password(&self) -> Option<Vec<u8>> {

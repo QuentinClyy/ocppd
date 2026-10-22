@@ -4,7 +4,7 @@ use crate::tls;
 use futures_util::{SinkExt, StreamExt};
 use ocppd_core::api::event::Event;
 use ocppd_core::api::intent::Intent;
-use ocppd_core::api::io::{Input, Output};
+use ocppd_core::api::io::{ConnectFailure, Input, Output};
 use ocppd_core::station::jitter::fraction;
 use ocppd_core::wire::frame;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
@@ -21,6 +21,7 @@ use tokio_tungstenite::{MaybeTlsStream, WebSocketStream, connect_async_tls_with_
 const RECONNECT_DELAY: Duration = Duration::from_secs(5);
 const MAX_RECONNECT_DELAY: Duration = Duration::from_secs(300);
 const READ_BUFFER_BYTES: usize = 4 * 1024;
+const CERTIFICATE_REFUSED: &str = "certificate verify failed";
 
 type Socket = WebSocketStream<MaybeTlsStream<TcpStream>>;
 
@@ -69,7 +70,7 @@ pub async fn run(
                     Err(err) => {
                         eprintln!("{}: connect to {target} failed: {err}", link.id);
                         link.schedule_reconnect();
-                        Input::ConnectFailed
+                        Input::ConnectFailed(failure(&err))
                     }
                 }
             }
@@ -91,6 +92,13 @@ impl Link {
     fn schedule_reconnect(&mut self) {
         self.failures += 1;
         self.reconnect_at = Instant::now() + backoff(&self.id, self.failures, self.jitter);
+    }
+}
+
+fn failure(err: &str) -> ConnectFailure {
+    match err.contains(CERTIFICATE_REFUSED) {
+        true => ConnectFailure::CsmsCertificate,
+        false => ConnectFailure::Other,
     }
 }
 

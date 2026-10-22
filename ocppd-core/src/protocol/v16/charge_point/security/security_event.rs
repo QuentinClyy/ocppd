@@ -1,4 +1,4 @@
-use crate::api::io::Output;
+use crate::api::io::{ConnectFailure, Output};
 use crate::protocol::v16::charge_point::ChargePoint;
 use crate::protocol::v16::event::EventKind;
 use crate::protocol::v16::messages::security::security_event::SecurityEventNotificationRequest;
@@ -13,15 +13,30 @@ pub const INVALID_FIRMWARE_SIGNATURE: &str = "InvalidFirmwareSignature";
 pub const INVALID_FIRMWARE_SIGNING_CERTIFICATE: &str = "InvalidFirmwareSigningCertificate";
 pub const INVALID_CHARGE_POINT_CERTIFICATE: &str = "InvalidChargePointCertificate";
 pub const RECONFIGURATION_OF_SECURITY_PARAMETERS: &str = "ReconfigurationOfSecurityParameters";
-const CRITICAL: [&str; 5] = [
+pub const INVALID_CENTRAL_SYSTEM_CERTIFICATE: &str = "InvalidCentralSystemCertificate";
+const CRITICAL: [&str; 6] = [
     STARTUP_OF_THE_DEVICE,
     RESET_OR_REBOOT,
     FIRMWARE_UPDATED,
     INVALID_FIRMWARE_SIGNING_CERTIFICATE,
     INVALID_CHARGE_POINT_CERTIFICATE,
+    INVALID_CENTRAL_SYSTEM_CERTIFICATE,
 ];
 
 impl ChargePoint {
+    pub(crate) fn certificate_refused(
+        &mut self,
+        out: &mut Vec<Output>,
+        now: u64,
+        failure: ConnectFailure,
+    ) {
+        if failure != ConnectFailure::CsmsCertificate || self.certificate_refusal_reported {
+            return;
+        }
+        self.certificate_refusal_reported = true;
+        self.security_event(out, now, INVALID_CENTRAL_SYSTEM_CERTIFICATE);
+    }
+
     pub(crate) fn security_event(&mut self, out: &mut Vec<Output>, now: u64, kind: &'static str) {
         let Ok(name) = CiString::new(kind) else {
             return;

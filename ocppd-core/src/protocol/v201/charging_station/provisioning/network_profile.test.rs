@@ -1,4 +1,4 @@
-use crate::api::io::Input;
+use crate::api::io::{ConnectFailure, Input};
 use crate::fixtures::v201::station::{Run, boot};
 use crate::fixtures::x509::authority::Authority;
 use serde_json::{Value, json};
@@ -71,6 +71,12 @@ fn upgrade_set() -> Run {
     set_profile(&mut run, 1, profile(NEW_URL, 2));
     set_priority(&mut run, "1,0");
     run
+}
+
+fn fail(run: &mut Run, times: usize) {
+    for _ in 0..times {
+        run.input(0, Input::ConnectFailed(ConnectFailure::Other));
+    }
 }
 
 #[test]
@@ -199,6 +205,36 @@ fn given_new_priority_when_rebooted_then_first_entry_used_per_b10_fr_04() {
 }
 
 #[test]
+fn given_two_entries_when_first_fails_twice_then_still_tried_per_b10_fr_03() {
+    let mut run = second_profile("0", "0,1");
+    run.input(1_000, Input::Disconnected);
+
+    fail(&mut run, 2);
+
+    assert_eq!(run.station.csms_url().unwrap(), SPAWN_URL);
+}
+
+#[test]
+fn given_two_entries_when_first_fails_its_attempts_then_second_tried_per_b10_fr_03() {
+    let mut run = second_profile("0", "0,1");
+    run.input(1_000, Input::Disconnected);
+
+    fail(&mut run, 3);
+
+    assert_eq!(run.station.csms_url().unwrap(), "ws://new.example/ocpp");
+}
+
+#[test]
+fn given_two_entries_when_both_fail_their_attempts_then_first_tried_again_per_b10_fr_08() {
+    let mut run = second_profile("0", "0,1");
+    run.input(1_000, Input::Disconnected);
+
+    fail(&mut run, 6);
+
+    assert_eq!(run.station.csms_url().unwrap(), SPAWN_URL);
+}
+
+#[test]
 fn given_two_entries_when_reconnected_on_the_same_profile_then_no_boot_per_b10_fr_10() {
     let mut run = second_profile("0", "0,1");
     run.input(1_000, Input::Disconnected);
@@ -211,6 +247,17 @@ fn given_two_entries_when_reconnected_on_the_same_profile_then_no_boot_per_b10_f
             .iter()
             .all(|action| action != "BootNotification")
     );
+}
+
+#[test]
+fn given_two_entries_when_connected_on_the_other_profile_then_boots_again_per_b10_fr_10() {
+    let mut run = second_profile("0", "0,1");
+    run.input(3_000, Input::Disconnected);
+    fail(&mut run, 3);
+
+    run.input(4_000, Input::Connected);
+
+    assert_eq!(run.last_call().1, "BootNotification");
 }
 
 #[test]
@@ -242,4 +289,16 @@ fn given_higher_profile_prioritized_when_rebooted_then_upgraded_and_lower_slots_
         variable(&mut run, "OCPPCommCtrlr", "NetworkConfigurationPriority"),
         "1"
     );
+}
+
+#[test]
+fn given_upgraded_profile_when_connections_keep_failing_then_never_back_to_the_lower_profile_per_a05_fr_06()
+ {
+    let mut run = upgrade_set();
+    reboot(&mut run, 1_000);
+    run.input(2_000, Input::Disconnected);
+
+    fail(&mut run, 6);
+
+    assert_eq!(run.station.csms_url().unwrap(), NEW_URL);
 }

@@ -1,4 +1,4 @@
-use crate::api::io::Input;
+use crate::api::io::{ConnectFailure, Input};
 use crate::fixtures::v201::station::{Run, boot};
 use crate::protocol::v201::event::EventKind;
 use serde_json::{Value, json};
@@ -34,6 +34,21 @@ fn booted_new() -> Run {
     run.answer(0, boot("Accepted", 86_400));
     run.answer_all(0);
     run
+}
+
+fn refused_certificate_events(run: &Run) -> Vec<Value> {
+    run.calls
+        .iter()
+        .map(|(_, _, payload)| payload.clone())
+        .filter(|payload| payload["type"] == "InvalidCsmsCertificate")
+        .collect()
+}
+
+fn outage(run: &mut Run, start: u64, failure: ConnectFailure) {
+    run.input(start, Input::Disconnected);
+    run.input(start + 1_000, Input::ConnectFailed(failure));
+    run.input(start + 10_000, Input::Connected);
+    run.answer_all(start + 10_000);
 }
 
 fn profile(run: &mut Run, profile: &str) {
@@ -197,4 +212,40 @@ fn given_new_station_when_out_of_range_or_read_only_variables_configured_then_al
     ];
 
     assert_eq!(accepted, [false, false, false]);
+}
+
+#[test]
+fn given_outage_with_refused_csms_certificates_when_back_online_then_reported_once_per_tc_a_05() {
+    let mut run = Run::accepted(86_400);
+    run.input(1_000, Input::Disconnected);
+    let refused = Input::ConnectFailed(ConnectFailure::CsmsCertificate);
+    run.input(2_000, refused.clone());
+    run.input(9_000, refused);
+    run.input(10_000, Input::ConnectFailed(ConnectFailure::Other));
+
+    run.input(20_000, Input::Connected);
+    run.answer_all(20_000);
+
+    let events = refused_certificate_events(&run);
+    assert_eq!(events.len(), 1, "once per outage");
+    assert_eq!(events[0]["timestamp"], "1970-01-01T00:00:02Z");
+}
+
+#[test]
+fn given_booted_station_when_outage_with_other_failures_then_no_certificate_event() {
+    let mut run = Run::accepted(86_400);
+
+    outage(&mut run, 1_000, ConnectFailure::Other);
+
+    assert!(refused_certificate_events(&run).is_empty());
+}
+
+#[test]
+fn given_reported_refused_certificate_when_another_outage_refuses_it_then_reported_again() {
+    let mut run = Run::accepted(86_400);
+    outage(&mut run, 1_000, ConnectFailure::CsmsCertificate);
+
+    outage(&mut run, 30_000, ConnectFailure::CsmsCertificate);
+
+    assert_eq!(refused_certificate_events(&run).len(), 2);
 }

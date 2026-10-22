@@ -65,7 +65,9 @@ certificate is trusted through the system store, or `SSL_CERT_FILE` (a PEM
 file that then replaces the system store), plus any root the CSMS installed
 with InstallCertificate. A 2.0.1 station also takes
 `SecurityCtrlr.AdditionalRootCertificateCheck`: a new CSMS root must then be
-signed by the current one, which stays trusted until the next connection.
+signed by the current one, which stays as a fallback: the station connects
+with the new root, tries the old one when the CSMS certificate is refused,
+and keeps whichever root connected.
 A 2.0.1 station keeps its spawn CSMS url and security profile as network profile
 slot 0. The CSMS can set slot 1 with SetNetworkProfile and change
 `OCPPCommCtrlr.NetworkConfigurationPriority`; after a reboot the station
@@ -188,6 +190,5 @@ Open protocol gaps:
   a Relative schedule counts from the transaction start.
 - SetNetworkProfile never answers `Failed`, and
   AllowSecurityProfileDowngrade is not offered.
-- A TLS failure raises no security event.
 - The clock is the host's, not the CSMS's `currentTime`.
 - `BytesPerMessage` limits are reported but not enforced.

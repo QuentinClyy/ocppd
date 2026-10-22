@@ -65,6 +65,7 @@ pub struct ChargePoint {
     reconnect_requested: bool,
     boot_request: BootNotificationRequest,
     registration: Registration,
+    certificate_refusal_reported: bool,
 }
 
 impl ChargePoint {
@@ -106,6 +107,7 @@ impl ChargePoint {
             reconnect_requested: false,
             boot_request,
             registration: Registration::Offline,
+            certificate_refusal_reported: false,
         })
     }
 
@@ -135,6 +137,7 @@ impl ChargePoint {
         match input {
             Input::Connected => {
                 self.emit(&mut out, now, EventKind::Link(LinkEvent::Connected));
+                self.certificate_refusal_reported = false;
                 self.connected(now);
                 if !self.startup_reported {
                     self.startup_reported = true;
@@ -148,7 +151,7 @@ impl ChargePoint {
                 self.connection_lost();
                 self.emit(&mut out, now, EventKind::Link(LinkEvent::Disconnected));
             }
-            Input::ConnectFailed => {}
+            Input::ConnectFailed(failure) => self.certificate_refused(&mut out, now, failure),
             Input::Tick => self.tick(&mut out, now),
             Input::Frame(text) => self.receive(&mut out, now, &text),
             Input::Intent(intent) => self.intent(&mut out, now, intent),
