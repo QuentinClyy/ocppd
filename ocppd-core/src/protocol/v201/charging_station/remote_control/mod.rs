@@ -53,6 +53,10 @@ impl ChargingStation {
                 id_token.kind,
                 IdTokenType::Central | IdTokenType::NoAuthorization
             );
+        let group = request.group_id_token.map(|group| group.id_token);
+        if !self.reservation_allows(index, &id_token, group.as_ref()) {
+            return rejected;
+        }
         let kind = EventKind::RemoteStart {
             evse: index as u32 + 1,
             id_tag: id_token.id_token.as_str().to_owned(),
@@ -69,9 +73,10 @@ impl ChargingStation {
         match check_first {
             true => self.authorize_remote(index, id_token),
             false => {
-                session.authorization = Authorization::Authorized {
+                self.claim_reservation(out, now, index, &id_token, group.as_ref());
+                self.sessions[index].authorization = Authorization::Authorized {
                     id_token,
-                    group: request.group_id_token.map(|group| group.id_token),
+                    group,
                     at: now,
                 };
                 self.settle(out, now, index, TriggerReason::RemoteStart);

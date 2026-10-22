@@ -8,6 +8,7 @@ mod local_auth;
 mod metering;
 mod provisioning;
 mod remote_control;
+mod reservation;
 mod security;
 mod smart_charging;
 mod transaction;
@@ -33,6 +34,7 @@ use local_auth::cache::Cache;
 use local_auth::list::LocalList;
 use provisioning::network_profile::NetworkProfiles;
 use provisioning::registration::Registration;
+use reservation::Reservation;
 use security::STARTUP_OF_THE_DEVICE;
 use security::certificates::Certificates;
 use security::client_certificate::ClientCertificates;
@@ -68,6 +70,7 @@ pub struct ChargingStation {
     network: NetworkProfiles,
     charging_profiles: ChargingProfiles,
     limit_change_at: Option<u64>,
+    reservations: Vec<Reservation>,
 }
 
 impl ChargingStation {
@@ -108,6 +111,7 @@ impl ChargingStation {
             network: NetworkProfiles::default(),
             charging_profiles: ChargingProfiles::default(),
             limit_change_at: None,
+            reservations: Vec::new(),
         })
     }
 
@@ -126,6 +130,7 @@ impl ChargingStation {
             self.log_upload_deadline(),
             self.client_certificate_deadline(),
             self.limit_change_at,
+            self.reservation_deadline(),
         ]
         .into_iter()
         .flatten()
@@ -162,6 +167,7 @@ impl ChargingStation {
         }
         self.advance_firmware(&mut out, now);
         self.advance_log_upload(&mut out, now);
+        self.reservations_tick(&mut out, now);
         if self.is_accepted() {
             self.report_statuses(&mut out, now);
             self.aligned_tick(&mut out, now);

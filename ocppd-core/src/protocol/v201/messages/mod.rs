@@ -8,6 +8,7 @@ pub mod local_auth;
 pub mod meter_values;
 pub mod provisioning;
 pub mod remote_control;
+pub mod reservation;
 pub mod security;
 pub mod smart_charging;
 pub mod transactions;

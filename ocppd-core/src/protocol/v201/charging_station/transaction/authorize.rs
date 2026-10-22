@@ -75,6 +75,9 @@ impl ChargingStation {
                     if self.is_master_pass(group.as_ref()) {
                         return self.stop_all(out, now);
                     }
+                    if !self.claim_reservation(out, now, index, &id_token, group.as_ref()) {
+                        return self.reject(out, now, evse, "evse reserved for another id");
+                    }
                     self.sessions[index].authorization = Authorization::Authorized {
                         id_token,
                         group,
@@ -147,6 +150,12 @@ impl ChargingStation {
             return self.stop_all(out, now);
         }
         if starting {
+            let accepted =
+                accepted && self.claim_reservation(out, now, index, &id_token, group.as_ref());
+            if status == Some(AuthorizationStatus::Accepted) && !accepted {
+                let evse = Some(call.connector_id);
+                self.reject(out, now, evse, "evse reserved for another id");
+            }
             self.sessions[index].authorization = match accepted {
                 true => Authorization::Authorized {
                     id_token,

@@ -86,6 +86,17 @@ pub enum EventKind {
     ChargingProfilesCleared {
         count: usize,
     },
+    Reserved {
+        evse: u32,
+        reservation_id: i32,
+        id_tag: String,
+        expires: u64,
+    },
+    ReservationEnded {
+        evse: u32,
+        reservation_id: i32,
+        reason: ReservationEnd,
+    },
     NetworkProfileSet {
         slot: usize,
         security_profile: u64,
@@ -96,4 +107,13 @@ pub enum EventKind {
     },
     #[serde(untagged)]
     Link(LinkEvent),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ReservationEnd {
+    Used,
+    Expired,
+    Cancelled,
+    Removed,
 }

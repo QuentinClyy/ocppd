@@ -1,5 +1,6 @@
 mod authorization;
 mod physical;
+mod reservation;
 mod row;
 mod security;
 pub(super) mod shortcut;

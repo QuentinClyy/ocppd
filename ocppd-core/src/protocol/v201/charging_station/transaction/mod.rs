@@ -22,6 +22,7 @@ pub struct Session {
     pub suspended: bool,
     pub remote_start_id: Option<i32>,
     pub remote_profile: Option<ChargingProfile>,
+    pub reservation_id: Option<i32>,
 }
 
 #[derive(Default, Clone, PartialEq)]

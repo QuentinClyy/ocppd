@@ -22,6 +22,7 @@ use crate::protocol::v201::messages::remote_control::{
     RequestStartTransactionRequest, RequestStopTransactionRequest, TriggerMessageRequest,
     TriggerMessageResponse, UnlockConnectorRequest,
 };
+use crate::protocol::v201::messages::reservation::{CancelReservationRequest, ReserveNowRequest};
 use crate::protocol::v201::messages::security::certificates::{
     CertificateSignedRequest, DeleteCertificateRequest, GetInstalledCertificateIdsRequest,
     InstallCertificateRequest,
@@ -158,6 +159,12 @@ impl ChargingStation {
             }),
             "GetCompositeSchedule" => answer(payload, |request: GetCompositeScheduleRequest| {
                 Ok(self.composite_schedule(now, request))
+            }),
+            "ReserveNow" => answer(payload, |request: ReserveNowRequest| {
+                Ok(self.reserve_now(out, now, request))
+            }),
+            "CancelReservation" => answer(payload, |request: CancelReservationRequest| {
+                Ok(self.cancel_reservation(out, now, request))
             }),
             "Reset" => answer(payload, |request: ResetRequest| {
                 Ok(self.reset(out, now, request))

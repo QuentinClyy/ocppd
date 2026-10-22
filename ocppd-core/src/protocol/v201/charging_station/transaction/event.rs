@@ -33,6 +33,7 @@ impl ChargingStation {
             return;
         };
         let remote_start_id = session.remote_start_id.take();
+        let reservation_id = session.reservation_id.take();
         let send_id_token = id_token.filter(|_| !transaction.id_token_sent);
         transaction.id_token_sent |= send_id_token.is_some();
         let state_changed = charging_state != transaction.charging_state;
@@ -48,7 +49,7 @@ impl ChargingStation {
             offline: (!online).then_some(true),
             number_of_phases_used: None,
             cable_max_current: None,
-            reservation_id: None,
+            reservation_id,
             transaction_info: TransactionInfo {
                 transaction_id: transaction.id.clone(),
                 charging_state: (event_type == TransactionEventType::Started
