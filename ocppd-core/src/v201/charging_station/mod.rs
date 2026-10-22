@@ -1,12 +1,15 @@
+mod availability;
 mod csms_call;
 mod device_model;
 mod driver;
 mod metering;
 mod registration;
+mod remote_control;
 mod report;
 mod reset;
 mod status;
 mod transaction;
+mod trigger;
 mod variables;
 
 use crate::api::event::{Event, Kind, LinkEvent};
@@ -22,6 +25,7 @@ use crate::wire::ci_string::{CiString, TooLong};
 use crate::wire::frame::{self, Frame};
 use crate::wire::outbox::{Call, Outbox, Sent};
 use crate::wire::payload;
+use availability::Availability;
 use device_model::{DeviceModel, table};
 use registration::Registration;
 use serde::Serialize;
@@ -38,6 +42,8 @@ pub struct ChargingStation {
     resend_statuses: bool,
     offline_since: Option<u64>,
     sessions: Vec<Session>,
+    evses: Vec<Availability>,
+    station_availability: Availability,
     device_model: DeviceModel,
     resetting: bool,
     next_aligned: Option<u64>,
@@ -66,6 +72,8 @@ impl ChargingStation {
             resend_statuses: false,
             offline_since: None,
             sessions: (0..connectors).map(|_| Session::default()).collect(),
+            evses: vec![Availability::default(); connectors],
+            station_availability: Availability::default(),
             device_model,
             resetting: false,
             next_aligned: None,

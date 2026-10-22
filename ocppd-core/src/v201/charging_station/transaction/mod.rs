@@ -19,6 +19,7 @@ pub struct Session {
     pub transaction: Option<Transaction>,
     pub checking: Option<IdToken>,
     pub suspended: bool,
+    pub remote_start_id: Option<i32>,
 }
 
 #[derive(Default, Clone, PartialEq)]
@@ -73,6 +74,7 @@ impl ChargingStation {
                 .points(TX_START_POINT)
                 .iter()
                 .any(|point| valid.contains(point));
+            let starts = starts && self.operative(index);
             if starts {
                 self.sessions[index].transaction = Some(Transaction {
                     id: transaction_id(now, index),
@@ -137,6 +139,7 @@ impl ChargingStation {
         self.send_transaction_event(out, now, index, ended, trigger, samples);
         self.sessions[index] = Session::default();
         self.apply_charging(now, index);
+        self.apply_scheduled_availability(out, now);
     }
 
     pub(super) fn charging_state(&self, now: u64, index: usize) -> ChargingState {
@@ -209,7 +212,7 @@ impl ChargingStation {
             self.sessions[index].authorization,
             Authorization::Authorized { .. }
         );
-        let suspended = self.sessions[index].suspended;
+        let suspended = self.sessions[index].suspended || !self.operative(index);
         let limit_w = self.station.limit_w();
         let connector = &mut self.station.connectors[index];
         let plugged = connector.plugged.is_some();

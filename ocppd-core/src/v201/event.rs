@@ -37,6 +37,19 @@ pub enum EventKind {
         event_type: TransactionEventType,
         trigger_reason: TriggerReason,
     },
+    RemoteStart {
+        evse: u32,
+        id_tag: String,
+        remote_start_id: i32,
+    },
+    ConnectorUnlocked {
+        evse: u32,
+    },
+    AvailabilityChanged {
+        #[serde(skip_serializing_if = "Option::is_none")]
+        evse: Option<u32>,
+        operative: bool,
+    },
     #[serde(untagged)]
     Link(LinkEvent),
 }

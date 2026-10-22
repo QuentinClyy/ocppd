@@ -32,6 +32,7 @@ impl ChargingStation {
         let Some(transaction) = &mut session.transaction else {
             return;
         };
+        let remote_start_id = session.remote_start_id.take();
         let send_id_token = id_token.filter(|_| !transaction.id_token_sent);
         transaction.id_token_sent |= send_id_token.is_some();
         let state_changed = charging_state != transaction.charging_state;
@@ -50,11 +51,13 @@ impl ChargingStation {
             reservation_id: None,
             transaction_info: TransactionInfo {
                 transaction_id: transaction.id.clone(),
-                charging_state: (event_type == TransactionEventType::Started || state_changed)
+                charging_state: (event_type == TransactionEventType::Started
+                    || state_changed
+                    || trigger_reason == TriggerReason::Trigger)
                     .then_some(charging_state),
                 time_spent_charging: None,
                 stopped_reason: transaction.stop_reason.filter(|_| ended),
-                remote_start_id: None,
+                remote_start_id,
             },
             evse: Some(Evse {
                 id: evse,

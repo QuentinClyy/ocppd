@@ -33,6 +33,9 @@ impl ChargingStation {
             id_token,
         };
         let evse = Some(index as u32 + 1);
+        if !self.operative(index) {
+            return self.reject(out, now, evse, "connector unavailable");
+        }
         let session = &mut self.sessions[index];
         match &session.authorization {
             Authorization::Authorized {
@@ -101,7 +104,11 @@ impl ChargingStation {
                 },
                 false => Authorization::None,
             };
-            return self.settle(out, now, index, TriggerReason::Authorized);
+            let trigger = match self.sessions[index].remote_start_id {
+                Some(_) => TriggerReason::RemoteStart,
+                None => TriggerReason::Authorized,
+            };
+            return self.settle(out, now, index, trigger);
         }
         let same_group = match &self.sessions[index].authorization {
             Authorization::Authorized {
@@ -122,6 +129,15 @@ impl ChargingStation {
             session.authorization = Authorization::None;
         }
         session.checking = None;
+    }
+
+    pub(in crate::v201::charging_station) fn authorize_remote(
+        &mut self,
+        index: usize,
+        id_token: IdToken,
+    ) {
+        self.sessions[index].authorization = Authorization::Pending(id_token.clone());
+        self.send_authorize(index, id_token);
     }
 
     fn send_authorize(&mut self, index: usize, id_token: IdToken) {

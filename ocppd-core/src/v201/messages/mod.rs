@@ -4,4 +4,5 @@ pub mod custom_data;
 pub mod datatypes;
 pub mod meter_values;
 pub mod provisioning;
+pub mod remote_control;
 pub mod transactions;

@@ -196,6 +196,13 @@ pub fn entries(station: &Station) -> Result<Vec<Entry>, TooLong> {
             DataType::String,
         ),
         row(
+            AUTH_CTRLR,
+            "AuthorizeRemoteStart",
+            "false",
+            ReadWrite,
+            Boolean,
+        ),
+        row(
             SAMPLED_DATA_CTRLR,
             "TxStartedMeasurands",
             ENERGY,

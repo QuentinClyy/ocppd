@@ -1,3 +1,4 @@
+pub mod charging_profile;
 pub mod component;
 pub mod id_token;
 pub mod meter_value;

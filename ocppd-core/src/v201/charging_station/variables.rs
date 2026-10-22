@@ -88,6 +88,16 @@ impl ChargingStation {
         let date_time = DateTime { unix_ms: now }.to_string();
         self.device_model
             .set_value(CLOCK_CTRLR, None, DATE_TIME, date_time);
+        let station = match self.station_availability.operative {
+            true => "Available",
+            false => "Unavailable",
+        };
+        self.device_model.set_value(
+            "ChargingStation",
+            None,
+            AVAILABILITY_STATE,
+            station.to_owned(),
+        );
         for index in 0..self.station.connectors.len() {
             let state = format!("{:?}", self.connector_status(index));
             let id = index as u32 + 1;
@@ -100,6 +110,9 @@ impl ChargingStation {
     }
 
     pub(super) fn connector_status(&self, index: usize) -> ConnectorStatus {
+        if !self.operative(index) {
+            return ConnectorStatus::Unavailable;
+        }
         match self.station.connectors[index].plugged {
             Some(_) => ConnectorStatus::Occupied,
             None => ConnectorStatus::Available,

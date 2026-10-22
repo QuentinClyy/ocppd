@@ -3,10 +3,15 @@ use super::device_model::table::ITEMS_PER_GET;
 use crate::api::event::LinkEvent;
 use crate::api::io::Output;
 use crate::v201::event::EventKind;
+use crate::v201::messages::availability::ChangeAvailabilityRequest;
 use crate::v201::messages::custom_data::without_custom_data;
 use crate::v201::messages::provisioning::report::GetBaseReportRequest;
 use crate::v201::messages::provisioning::reset::ResetRequest;
 use crate::v201::messages::provisioning::variables::{GetVariablesRequest, SetVariablesRequest};
+use crate::v201::messages::remote_control::{
+    RequestStartTransactionRequest, RequestStopTransactionRequest, TriggerMessageRequest,
+    TriggerMessageResponse, UnlockConnectorRequest,
+};
 use crate::v201::messages::transactions::GetTransactionStatusRequest;
 use crate::wire::frame::Frame;
 use crate::wire::payload::{self, Violation};
@@ -67,6 +72,29 @@ impl ChargingStation {
             }),
             "GetTransactionStatus" => answer(payload, |request: GetTransactionStatusRequest| {
                 Ok(self.transaction_status(request))
+            }),
+            "RequestStartTransaction" => {
+                answer(payload, |request: RequestStartTransactionRequest| {
+                    Ok(self.request_start(out, now, request))
+                })
+            }
+            "RequestStopTransaction" => {
+                answer(payload, |request: RequestStopTransactionRequest| {
+                    Ok(self.request_stop(out, now, request))
+                })
+            }
+            "UnlockConnector" => answer(payload, |request: UnlockConnectorRequest| {
+                Ok(self.unlock_connector(out, now, request))
+            }),
+            "TriggerMessage" => answer(payload, |request: TriggerMessageRequest| {
+                let status = self.trigger_message(out, now, request);
+                Ok(TriggerMessageResponse {
+                    status,
+                    status_info: None,
+                })
+            }),
+            "ChangeAvailability" => answer(payload, |request: ChangeAvailabilityRequest| {
+                Ok(self.change_availability(out, now, request))
             }),
             "Reset" => answer(payload, |request: ResetRequest| {
                 Ok(self.reset(out, now, request))

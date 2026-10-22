@@ -1,3 +1,5 @@
+use crate::v201::messages::datatypes::component::Evse;
+use crate::v201::messages::datatypes::status_info::StatusInfo;
 use crate::wire::date_time::DateTime;
 use serde::{Deserialize, Serialize};
 
@@ -29,4 +31,33 @@ pub enum ConnectorStatus {
     Reserved,
     Unavailable,
     Faulted,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ChangeAvailabilityRequest {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub evse: Option<Evse>,
+    pub operational_status: OperationalStatus,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum OperationalStatus {
+    Inoperative,
+    Operative,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ChangeAvailabilityResponse {
+    pub status: ChangeAvailabilityStatus,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub status_info: Option<StatusInfo>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ChangeAvailabilityStatus {
+    Accepted,
+    Rejected,
+    Scheduled,
 }

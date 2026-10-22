@@ -210,6 +210,37 @@ fn given_pending_boot_when_get_base_report_then_notify_report_sent_per_b02_fr_02
 }
 
 #[test]
+fn given_pending_boot_when_heartbeat_triggered_then_heartbeat_sent_per_b02_fr_02_and_tc_b_02() {
+    let mut run = booted_as("Pending", 300);
+    let trigger = json!({"requestedMessage": "Heartbeat"});
+
+    run.result(0, "TriggerMessage", trigger);
+
+    assert_eq!(run.last_call().1, "Heartbeat");
+}
+
+#[test]
+fn given_pending_boot_after_instructed_messages_when_time_passes_then_nothing_else_is_sent_per_b02_fr_02()
+ {
+    let mut run = booted_as("Pending", 300);
+    let base = json!({"requestId": 1, "reportBase": "SummaryInventory"});
+    run.result(0, "GetBaseReport", base);
+    run.answer_all(0);
+    let trigger = json!({"requestedMessage": "Heartbeat"});
+    run.result(0, "TriggerMessage", trigger);
+    run.answer_all(0);
+
+    run.input(10_000, Input::Tick);
+
+    let sent: Vec<_> = run
+        .actions()
+        .into_iter()
+        .filter(|action| action != "NotifyReport")
+        .collect();
+    assert_eq!(sent, vec!["BootNotification", "Heartbeat"]);
+}
+
+#[test]
 fn given_rejected_boot_when_csms_call_then_security_error_and_nothing_sent_per_b03_fr_08_and_tc_b_30()
  {
     let mut run = booted_as("Rejected", 300);
