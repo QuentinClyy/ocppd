@@ -104,6 +104,7 @@ impl ChargingStation {
             let secret = data.variable.name.as_str() == BASIC_AUTH_PASSWORD;
             if changed && secret {
                 self.security_event(out, now, RECONFIGURATION_OF_SECURITY_PARAMETERS);
+                self.reconnect = true;
             } else if changed {
                 let kind = EventKind::VariableChanged {
                     component: data.component.name.as_str().to_owned(),

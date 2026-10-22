@@ -91,6 +91,7 @@ without one the station does not connect.
 | `{"command":"fault","station":"CP1","connector":1}` | the connector reports `Faulted`, stops its transaction and refuses new ones and reservations |
 | `{"command":"lock_failure","station":"CP1","connector":1}` | the connector's lock breaks: unlocking answers `UnlockFailed`, and plugging an EV in faults the connector (ConnectorLockFailure; a 2.0.1 station also reports `ConnectorPlugRetentionLock.Problem`) |
 | `{"command":"clear_fault","station":"CP1","connector":1}` | clear the fault and repair the lock |
+| `{"command":"power_cut","station":"CP1"}` | the power fails: transactions stop (reason `PowerLoss`), the station goes down once its outbox is drained and boots again, keeping its state |
 
 `plug_in` takes an optional EV, with these defaults:
 `"ev":{"capacity_kwh":60,"soc":0.2,"max_kw":11,"target_soc":1.0}`.

@@ -106,14 +106,7 @@ impl ChargePoint {
             ResetType::Soft => Reason::SoftReset,
             ResetType::Hard => Reason::HardReset,
         };
-        for index in 0..self.transactions.len() {
-            match self.transactions[index] {
-                Transaction::Authorizing { .. } | Transaction::Starting { .. } => {
-                    self.transactions[index] = Transaction::Idle
-                }
-                _ => self.stop(out, now, index, reason),
-            }
-        }
+        self.stop_all(out, now, reason);
         self.emit(
             out,
             now,
@@ -122,9 +115,25 @@ impl ChargePoint {
             },
         );
         self.security_event(out, now, RESET_OR_REBOOT);
-        self.held = None;
         self.resetting = Some(request.kind);
         GenericStatus::Accepted
+    }
+
+    pub(crate) fn power_cut(&mut self, out: &mut Vec<Output>, now: u64) {
+        self.stop_all(out, now, Reason::PowerLoss);
+        self.resetting = Some(ResetType::Soft);
+    }
+
+    fn stop_all(&mut self, out: &mut Vec<Output>, now: u64, reason: Reason) {
+        for index in 0..self.transactions.len() {
+            match self.transactions[index] {
+                Transaction::Authorizing { .. } | Transaction::Starting { .. } => {
+                    self.transactions[index] = Transaction::Idle
+                }
+                _ => self.stop(out, now, index, reason),
+            }
+        }
+        self.held = None;
     }
 
     pub(crate) fn reset_due(&self, now: u64) -> bool {

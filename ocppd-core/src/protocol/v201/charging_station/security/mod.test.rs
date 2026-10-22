@@ -154,6 +154,21 @@ fn given_password_set_when_read_then_rejected_as_write_only_per_b06_fr_09() {
 }
 
 #[test]
+fn given_profile_1_when_new_password_set_then_reconnects_with_it_per_a01_and_tc_a_09() {
+    let mut run = Run::accepted(86_400);
+    profile(&mut run, "1");
+
+    let status = set_password(&mut run, PASSWORD);
+
+    assert_eq!(status, "Accepted");
+    assert!(run.closed);
+    assert_eq!(
+        run.station.basic_auth_password(),
+        Some(PASSWORD.as_bytes().to_vec())
+    );
+}
+
+#[test]
 fn given_password_on_profile_0_when_connecting_then_no_basic_auth_per_a00_fr_202() {
     let mut run = Run::new(1);
     run.station.set_basic_auth_password(PASSWORD);

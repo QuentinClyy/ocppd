@@ -26,7 +26,6 @@ pub struct ClientCertificates {
     pending: Option<Pending>,
     installed: Option<Identity>,
     renewal_requested: bool,
-    reconnect: bool,
 }
 
 struct Pending {
@@ -120,7 +119,7 @@ impl ChargingStation {
         let certificates = &mut self.client_certificate;
         certificates.installed = Some(Identity { key, chain });
         certificates.renewal_requested = false;
-        certificates.reconnect = true;
+        self.reconnect = true;
         self.emit(out, now, EventKind::ChargingStationCertificateInstalled);
         response(CertificateSignedStatus::Accepted)
     }
@@ -164,14 +163,6 @@ impl ChargingStation {
         pending.wait_s *= 2;
         let csr = pending.csr.clone();
         self.send_sign_certificate(csr);
-    }
-
-    pub(in crate::protocol::v201::charging_station) fn reconnect_due(&mut self, now: u64) -> bool {
-        let due = self.client_certificate.reconnect && self.outbox.is_drained(now);
-        if due {
-            self.client_certificate.reconnect = false;
-        }
-        due
     }
 
     fn owns(&self, chain: &[X509]) -> bool {

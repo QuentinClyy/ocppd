@@ -1,6 +1,6 @@
 use crate::api::intent::{EvSpec, Intent};
 use crate::api::io::Input;
-use crate::fixtures::v201::station::Run;
+use crate::fixtures::v201::station::{Run, boot};
 use crate::protocol::v201::event::EventKind;
 use crate::protocol::v201::messages::provisioning::reset::ResetType;
 use serde_json::{Value, json};
@@ -18,6 +18,27 @@ fn plug_in(run: &mut Run, now: u64) {
 fn unplug(run: &mut Run, now: u64) {
     run.input(now, Input::Intent(Intent::Unplug { connector: 1 }));
     run.answer_all(now);
+}
+
+fn power_cut(run: &mut Run, now: u64) {
+    run.input(now, Input::Intent(Intent::PowerCut));
+    run.answer_all(now);
+}
+
+fn power_returns(run: &mut Run, now: u64) -> Value {
+    run.reconnect(now);
+    let boot_request = run.boot_request();
+    run.answer(now, boot("Accepted", 300));
+    run.answer_all(now);
+    boot_request
+}
+
+fn sent(run: &Run, action: &str) -> Vec<Value> {
+    run.calls
+        .iter()
+        .filter(|(_, sent, _)| sent == action)
+        .map(|(_, _, payload)| payload.clone())
+        .collect()
 }
 
 #[test]
@@ -73,4 +94,72 @@ fn given_scheduled_reset_when_ev_unplugged_then_reboots_per_tc_b_21() {
     unplug(&mut run, 1_000);
 
     assert!(run.closed, "reboots once idle");
+}
+
+#[test]
+fn given_scheduled_reset_done_when_reconnected_then_boots_with_scheduled_reset_per_tc_b_21() {
+    let mut run = Run::accepted(300);
+    plug_in(&mut run, 0);
+    reset(&mut run, 0, json!({"type": "OnIdle"}));
+    unplug(&mut run, 1_000);
+
+    run.reconnect(2_000);
+
+    assert_eq!(run.boot_request()["reason"], "ScheduledReset");
+}
+
+#[test]
+fn given_plugged_ev_when_power_cut_then_transaction_ends_by_power_loss_and_station_goes_down() {
+    let mut run = Run::accepted(300);
+    plug_in(&mut run, 0);
+
+    power_cut(&mut run, 1_000);
+
+    assert!(run.closed, "down once the outbox is drained");
+    let ended = sent(&run, "TransactionEvent").pop().unwrap();
+    assert_eq!(ended["eventType"], "Ended");
+    assert_eq!(ended["transactionInfo"]["stoppedReason"], "PowerLoss");
+}
+
+#[test]
+fn given_power_cut_when_power_returns_then_boots_with_power_up_and_reports_startup_only() {
+    let mut run = Run::accepted(300);
+    plug_in(&mut run, 0);
+    power_cut(&mut run, 1_000);
+
+    let boot_request = power_returns(&mut run, 2_000);
+
+    assert_eq!(boot_request["reason"], "PowerUp");
+    let types: Vec<_> = sent(&run, "SecurityEventNotification")
+        .into_iter()
+        .map(|payload| payload["type"].clone())
+        .collect();
+    assert!(!types.contains(&json!("ResetOrReboot")), "{types:?}");
+    assert!(types.contains(&json!("StartupOfTheDevice")), "{types:?}");
+}
+
+#[test]
+fn given_inoperative_station_cut_from_power_when_power_returns_then_still_unavailable() {
+    let mut run = Run::accepted(300);
+    let inoperative = json!({"operationalStatus": "Inoperative"});
+    run.result(0, "ChangeAvailability", inoperative);
+    run.answer_all(0);
+    power_cut(&mut run, 1_000);
+
+    power_returns(&mut run, 2_000);
+
+    let last = sent(&run, "StatusNotification").pop().unwrap();
+    assert_eq!(last["connectorStatus"], "Unavailable");
+}
+
+#[test]
+fn given_power_came_back_and_reset_immediate_when_reconnected_then_boots_with_remote_reset() {
+    let mut run = Run::accepted(300);
+    power_cut(&mut run, 1_000);
+    power_returns(&mut run, 2_000);
+    reset(&mut run, 5_000, json!({"type": "Immediate"}));
+
+    run.reconnect(6_000);
+
+    assert_eq!(run.boot_request()["reason"], "RemoteReset");
 }

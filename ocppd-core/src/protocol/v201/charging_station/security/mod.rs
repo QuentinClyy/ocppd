@@ -81,6 +81,14 @@ impl ChargingStation {
             .filter(|password| !password.is_empty() && BASIC_AUTH_PROFILES.contains(&profile))
     }
 
+    pub(in crate::protocol::v201::charging_station) fn reconnect_due(&mut self, now: u64) -> bool {
+        let due = self.reconnect && self.outbox.is_drained(now);
+        if due {
+            self.reconnect = false;
+        }
+        due
+    }
+
     pub fn requires_tls(&self) -> bool {
         self.connecting_security_profile() >= TLS_FROM_PROFILE
     }

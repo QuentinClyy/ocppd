@@ -9,6 +9,7 @@ use crate::protocol::v201::messages::firmware::{
     FirmwareStatus, FirmwareStatusNotificationRequest, UpdateFirmwareRequest,
     UpdateFirmwareResponse, UpdateFirmwareStatus,
 };
+use crate::protocol::v201::messages::provisioning::boot::BootReason;
 use crate::wire::ci_string::CiString;
 use serde_json::json;
 
@@ -138,10 +139,6 @@ impl ChargingStation {
         }
     }
 
-    pub(super) fn rebooting_for_firmware(&self) -> bool {
-        self.firmware.rebooting_for.is_some()
-    }
-
     pub(super) fn installed_after_reboot(&mut self, out: &mut Vec<Output>, now: u64) {
         let Some(request_id) = self.firmware.rebooting_for.take() else {
             return;
@@ -177,7 +174,7 @@ impl ChargingStation {
         self.firmware.rebooting_for = Some(update.request_id);
         self.boot_request.charging_station.firmware_version = Some(boot_version);
         self.station.firmware_version = version.to_owned();
-        self.resetting = true;
+        self.reboot = Some(BootReason::FirmwareUpdate);
     }
 
     fn end_update(

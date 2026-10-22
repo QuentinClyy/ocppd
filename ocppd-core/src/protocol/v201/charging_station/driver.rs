@@ -11,6 +11,9 @@ impl ChargingStation {
         if let Intent::Authorize { connector, id_tag } = &intent {
             return self.present_id_token(out, now, *connector, id_tag);
         }
+        if intent == Intent::PowerCut {
+            return self.power_cut(out, now);
+        }
         let evse = intent.connector();
         let index = evse
             .and_then(|evse| evse.checked_sub(1))
@@ -55,7 +58,7 @@ impl ChargingStation {
                 self.lock_repaired(index);
             }
             Intent::LockFailure { .. } => self.station.connectors[index].lock_broken = true,
-            Intent::Authorize { .. } => {}
+            Intent::Authorize { .. } | Intent::PowerCut => {}
         }
     }
 }

@@ -67,7 +67,7 @@ pub struct ChargingStation {
     evses: Vec<Availability>,
     station_availability: Availability,
     device_model: DeviceModel,
-    resetting: bool,
+    reboot: Option<BootReason>,
     startup_reported: bool,
     next_aligned: Option<u64>,
     boot_request: BootNotificationRequest,
@@ -80,6 +80,7 @@ pub struct ChargingStation {
     display_messages: Vec<MessageInfo>,
     next_ping: Option<u64>,
     certificate_refusal_reported: bool,
+    reconnect: bool,
 }
 
 impl ChargingStation {
@@ -112,7 +113,7 @@ impl ChargingStation {
             evses: vec![Availability::default(); connectors],
             station_availability: Availability::default(),
             device_model,
-            resetting: false,
+            reboot: None,
             startup_reported: false,
             next_aligned: None,
             boot_request,
@@ -125,6 +126,7 @@ impl ChargingStation {
             display_messages: Vec::new(),
             next_ping: None,
             certificate_refusal_reported: false,
+            reconnect: false,
         })
     }
 
@@ -171,6 +173,7 @@ impl ChargingStation {
                 }
             }
             Input::Disconnected => {
+                self.reconnect = false;
                 self.disconnected();
                 self.outbox.keep(|action, _| kept_offline(action));
                 self.mark_queued_offline();

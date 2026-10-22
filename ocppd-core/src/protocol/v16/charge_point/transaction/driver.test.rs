@@ -177,3 +177,75 @@ fn given_offline_with_plugged_ev_when_unlisted_tag_swiped_then_rejected_as_offli
 
     assert_eq!(offline.events, intent_rejected(Some(1), "offline"));
 }
+
+fn power_returns(csms: &mut Csms, now: u64) {
+    csms.input(now, Input::Disconnected);
+    csms.input(now + MINUTE, Input::Connected);
+    csms.answer(
+        now + MINUTE,
+        json!({"status": "Accepted", "currentTime": "1970-01-01T00:02:00Z", "interval": 300}),
+    );
+}
+
+#[test]
+fn given_charging_ev_when_power_cut_then_stopped_as_power_loss_and_down_once_drained_per_tc_032_1()
+{
+    let mut csms = Csms::charging(0, EvSpec::default());
+
+    csms.intent(MINUTE, Intent::PowerCut);
+
+    assert!(csms.closed, "down once the outbox is drained");
+    assert_eq!(csms.sent("StopTransaction")[0]["reason"], "PowerLoss");
+}
+
+#[test]
+fn given_power_cut_while_charging_when_power_returns_then_finishing_reported_before_and_booted_again_with_the_ev_plugged_per_tc_032_1()
+ {
+    let mut csms = Csms::charging(0, EvSpec::default());
+    csms.intent(MINUTE, Intent::PowerCut);
+
+    power_returns(&mut csms, MINUTE);
+
+    let order: Vec<(String, String)> = csms
+        .sent
+        .iter()
+        .map(|(action, payload)| {
+            (
+                action.clone(),
+                payload["status"].as_str().unwrap_or("").to_owned(),
+            )
+        })
+        .collect();
+    let finishing = order
+        .iter()
+        .position(|(action, status)| action == "StatusNotification" && status == "Finishing");
+    let boot = order
+        .iter()
+        .position(|(action, _)| action == "BootNotification");
+    assert!(
+        finishing < boot && finishing.is_some(),
+        "Finishing before going down: {order:?}"
+    );
+    assert_eq!(csms.sent("BootNotification").len(), 1, "booted again");
+    let after_boot = *csms.statuses().last().unwrap();
+    assert!(
+        matches!(
+            after_boot,
+            ChargePointStatus::Finishing | ChargePointStatus::Preparing
+        ),
+        "EV still plugged: {after_boot:?}"
+    );
+}
+
+#[test]
+fn given_inoperative_station_cut_from_power_when_power_returns_then_still_unavailable_per_tc_034() {
+    let mut csms = Csms::booted();
+    let inoperative = json!({"connectorId": 0, "type": "Inoperative"});
+    csms.call(0, "ChangeAvailability", inoperative);
+    csms.intent(MINUTE, Intent::PowerCut);
+
+    power_returns(&mut csms, MINUTE);
+
+    let last = csms.sent("StatusNotification").pop().unwrap();
+    assert_eq!(last["status"], "Unavailable");
+}
