@@ -1,4 +1,3 @@
-use super::hash_data::{hash_data, same};
 use crate::api::io::Output;
 use crate::v16::charge_point::ChargePoint;
 use crate::v16::charge_point::configuration::CERTIFICATE_STORE_MAX_LENGTH;
@@ -9,9 +8,10 @@ use crate::v16::messages::security::certificates::{
     GetInstalledCertificateStatus, HashAlgorithm, InstallCertificateRequest,
     InstallCertificateResponse, InstallCertificateStatus,
 };
-use openssl::asn1::Asn1Time;
+use crate::wire::ci_string::CiString;
+use crate::x509::certificate::self_signed_root;
+use crate::x509::hash::{self, Digest};
 use openssl::x509::{X509, X509Ref};
-use std::cmp::Ordering;
 
 #[derive(Default)]
 pub struct Certificates {
@@ -36,10 +36,11 @@ impl ChargePoint {
             .configuration
             .number(CERTIFICATE_STORE_MAX_LENGTH)
             .unwrap_or(0) as usize;
-        let installed = root(request.certificate.as_str(), now).and_then(|certificate| {
-            self.certificates
-                .install(certificate_type, certificate, max)
-        });
+        let installed =
+            self_signed_root(request.certificate.as_str(), now).and_then(|certificate| {
+                self.certificates
+                    .install(certificate_type, certificate, max)
+            });
         let status = match installed {
             Some(()) => InstallCertificateStatus::Accepted,
             None => InstallCertificateStatus::Rejected,
@@ -134,21 +135,26 @@ impl Certificates {
     }
 }
 
-fn root(pem: &str, now: u64) -> Option<X509> {
-    let certificate = X509::from_pem(pem.as_bytes()).ok()?;
-    let key = certificate.public_key().ok()?;
-    let self_signed = certificate.verify(&key).ok()?;
-    Some(certificate).filter(|certificate| self_signed && valid_at(certificate, now))
+fn hash_data(root: &X509Ref, algorithm: HashAlgorithm) -> Option<CertificateHashData> {
+    let digest = match algorithm {
+        HashAlgorithm::Sha256 => Digest::Sha256,
+        HashAlgorithm::Sha384 => Digest::Sha384,
+        HashAlgorithm::Sha512 => Digest::Sha512,
+    };
+    let data = hash::hash_data(root, digest)?;
+    Some(CertificateHashData {
+        hash_algorithm: algorithm,
+        issuer_name_hash: CiString::new(&data.issuer_name_hash).ok()?,
+        issuer_key_hash: CiString::new(&data.issuer_key_hash).ok()?,
+        serial_number: CiString::new(&data.serial_number).ok()?,
+    })
 }
 
-pub(super) fn valid_at(certificate: &X509Ref, now: u64) -> bool {
-    let Ok(now) = Asn1Time::from_unix((now / 1000) as i64) else {
-        return false;
-    };
-    let started = certificate.not_before().compare(&now);
-    let unexpired = certificate.not_after().compare(&now);
-    started.is_ok_and(|order| order != Ordering::Greater)
-        && unexpired.is_ok_and(|order| order != Ordering::Less)
+fn same(left: &CertificateHashData, right: &CertificateHashData) -> bool {
+    left.hash_algorithm == right.hash_algorithm
+        && left.issuer_name_hash.matches(&right.issuer_name_hash)
+        && left.issuer_key_hash.matches(&right.issuer_key_hash)
+        && left.serial_number.matches(&right.serial_number)
 }
 
 #[cfg(test)]

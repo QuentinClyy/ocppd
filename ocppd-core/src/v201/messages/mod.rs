@@ -1,5 +1,6 @@
 pub mod authorization;
 pub mod availability;
+pub mod certificates;
 pub mod custom_data;
 pub mod datatypes;
 pub mod local_auth;

@@ -1,3 +1,4 @@
+use crate::v201::messages::certificates::HashAlgorithm;
 use crate::v201::messages::datatypes::id_token::{IdToken, IdTokenInfo};
 use crate::v201::messages::datatypes::status_info::StatusInfo;
 use crate::wire::ci_string::CiString;
@@ -25,16 +26,6 @@ pub struct OcspRequestData {
     pub serial_number: CiString<40>,
     #[serde(rename = "responderURL")]
     pub responder_url: CiString<512>,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum HashAlgorithm {
-    #[serde(rename = "SHA256")]
-    Sha256,
-    #[serde(rename = "SHA384")]
-    Sha384,
-    #[serde(rename = "SHA512")]
-    Sha512,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

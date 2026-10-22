@@ -58,7 +58,10 @@ profiles 1 and 2. A 2.0.1 station takes `SecurityCtrlr.SecurityProfile` and
 `SecurityCtrlr.BasicAuthPassword` (16 to 40 characters, sent as is) instead. From profile 2 the CSMS url must be `wss://`. The CSMS
 certificate is trusted through the system store, or `SSL_CERT_FILE` (a PEM
 file that then replaces the system store), plus any root the CSMS installed
-with InstallCertificate. Profile 3 presents the charge point certificate
+with InstallCertificate. A 2.0.1 station also takes
+`SecurityCtrlr.AdditionalRootCertificateCheck`: a new CSMS root must then be
+signed by the current one, which stays trusted until the next connection.
+Profile 3 presents the charge point certificate
 the CSMS signed after an ExtendedTriggerMessage(SignChargePointCertificate);
 without one the station does not connect.
 

@@ -1,5 +1,6 @@
 use crate::api::event::LinkEvent;
 use crate::v201::messages::availability::ConnectorStatus;
+use crate::v201::messages::certificates::InstallCertificateUse;
 use crate::v201::messages::datatypes::id_token::AuthorizationStatus;
 use crate::v201::messages::provisioning::boot::RegistrationStatus;
 use crate::v201::messages::provisioning::reset::ResetType;
@@ -53,6 +54,12 @@ pub enum EventKind {
     LocalListUpdated {
         version: i32,
         entries: usize,
+    },
+    CertificateInstalled {
+        certificate_type: InstallCertificateUse,
+    },
+    CertificateDeleted {
+        certificate_type: InstallCertificateUse,
     },
     SecurityEvent {
         #[serde(rename = "type")]

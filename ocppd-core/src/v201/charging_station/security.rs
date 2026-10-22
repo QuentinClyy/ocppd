@@ -9,6 +9,7 @@ use serde_json::json;
 pub const SECURITY_CTRLR: &str = "SecurityCtrlr";
 pub const SECURITY_PROFILE: &str = "SecurityProfile";
 pub const BASIC_AUTH_PASSWORD: &str = "BasicAuthPassword";
+pub const CERTIFICATE_ENTRIES: &str = "CertificateEntries";
 pub const STARTUP_OF_THE_DEVICE: &str = "StartupOfTheDevice";
 pub const RESET_OR_REBOOT: &str = "ResetOrReboot";
 pub const RECONFIGURATION_OF_SECURITY_PARAMETERS: &str = "ReconfigurationOfSecurityParameters";

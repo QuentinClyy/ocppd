@@ -1,4 +1,5 @@
 mod availability;
+mod certificates;
 mod csms_call;
 mod device_model;
 mod driver;
@@ -28,6 +29,7 @@ use crate::wire::frame::{self, Frame};
 use crate::wire::outbox::{Call, Outbox, Sent};
 use crate::wire::payload;
 use availability::Availability;
+use certificates::Certificates;
 use device_model::{DeviceModel, table};
 use local_auth::cache::Cache;
 use local_auth::list::LocalList;
@@ -48,6 +50,7 @@ pub struct ChargingStation {
     offline_since: Option<u64>,
     sessions: Vec<Session>,
     local_list: LocalList,
+    certificates: Certificates,
     cache: Cache,
     evses: Vec<Availability>,
     station_availability: Availability,
@@ -81,6 +84,7 @@ impl ChargingStation {
             offline_since: None,
             sessions: (0..connectors).map(|_| Session::default()).collect(),
             local_list: LocalList::default(),
+            certificates: Certificates::default(),
             cache: Cache::default(),
             evses: vec![Availability::default(); connectors],
             station_availability: Availability::default(),
@@ -117,6 +121,7 @@ impl ChargingStation {
                 self.emit(&mut out, now, EventKind::Link(LinkEvent::Connected));
                 self.connected(now);
                 self.back_online(now);
+                self.drop_fallback_roots();
                 if !self.startup_reported {
                     self.startup_reported = true;
                     self.security_event(&mut out, now, STARTUP_OF_THE_DEVICE);

@@ -5,6 +5,9 @@ use crate::api::io::Output;
 use crate::v201::event::EventKind;
 use crate::v201::messages::authorization::ClearCacheRequest;
 use crate::v201::messages::availability::ChangeAvailabilityRequest;
+use crate::v201::messages::certificates::{
+    DeleteCertificateRequest, GetInstalledCertificateIdsRequest, InstallCertificateRequest,
+};
 use crate::v201::messages::custom_data::without_custom_data;
 use crate::v201::messages::local_auth::{GetLocalListVersionRequest, SendLocalListRequest};
 use crate::v201::messages::provisioning::report::GetBaseReportRequest;
@@ -104,6 +107,17 @@ impl ChargingStation {
             }),
             "GetLocalListVersion" => answer(payload, |_: GetLocalListVersionRequest| {
                 Ok(self.local_list_version())
+            }),
+            "InstallCertificate" => answer(payload, |request: InstallCertificateRequest| {
+                Ok(self.install_certificate(out, now, request))
+            }),
+            "GetInstalledCertificateIds" => {
+                answer(payload, |request: GetInstalledCertificateIdsRequest| {
+                    Ok(self.installed_certificate_ids(request))
+                })
+            }
+            "DeleteCertificate" => answer(payload, |request: DeleteCertificateRequest| {
+                Ok(self.delete_certificate(out, now, request))
             }),
             "Reset" => answer(payload, |request: ResetRequest| {
                 Ok(self.reset(out, now, request))

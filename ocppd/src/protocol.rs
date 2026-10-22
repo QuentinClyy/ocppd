@@ -105,7 +105,7 @@ impl Protocol {
     pub fn csms_roots(&self) -> Vec<Vec<u8>> {
         match self {
             Protocol::V16(charge_point) => charge_point.csms_roots(),
-            Protocol::V201(_) => Vec::new(),
+            Protocol::V201(charging_station) => charging_station.csms_roots(),
         }
     }
 }

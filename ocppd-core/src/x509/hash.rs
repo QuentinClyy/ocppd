@@ -1,34 +1,38 @@
-use crate::v16::messages::security::certificates::{CertificateHashData, HashAlgorithm};
-use crate::wire::ci_string::CiString;
 use openssl::hash::{MessageDigest, hash};
 use openssl::x509::X509Ref;
 
 const SEQUENCE: u8 = 0x30;
 const BIT_STRING: u8 = 0x03;
 
-pub fn hash_data(root: &X509Ref, algorithm: HashAlgorithm) -> Option<CertificateHashData> {
-    let digest = match algorithm {
-        HashAlgorithm::Sha256 => MessageDigest::sha256(),
-        HashAlgorithm::Sha384 => MessageDigest::sha384(),
-        HashAlgorithm::Sha512 => MessageDigest::sha512(),
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Digest {
+    Sha256,
+    Sha384,
+    Sha512,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct HashData {
+    pub issuer_name_hash: String,
+    pub issuer_key_hash: String,
+    pub serial_number: String,
+}
+
+pub fn hash_data(root: &X509Ref, digest: Digest) -> Option<HashData> {
+    let digest = match digest {
+        Digest::Sha256 => MessageDigest::sha256(),
+        Digest::Sha384 => MessageDigest::sha384(),
+        Digest::Sha512 => MessageDigest::sha512(),
     };
     let name = root.issuer_name().to_der().ok()?;
     let key_info = root.public_key().ok()?.public_key_to_der().ok()?;
     let key = public_key_bits(&key_info)?;
     let serial = root.serial_number().to_bn().ok()?.to_hex_str().ok()?;
-    Some(CertificateHashData {
-        hash_algorithm: algorithm,
-        issuer_name_hash: CiString::new(&hex(&hash(digest, &name).ok()?)).ok()?,
-        issuer_key_hash: CiString::new(&hex(&hash(digest, key).ok()?)).ok()?,
-        serial_number: CiString::new(&without_leading_zeroes(&serial)).ok()?,
+    Some(HashData {
+        issuer_name_hash: hex(&hash(digest, &name).ok()?),
+        issuer_key_hash: hex(&hash(digest, key).ok()?),
+        serial_number: without_leading_zeroes(&serial),
     })
-}
-
-pub fn same(left: &CertificateHashData, right: &CertificateHashData) -> bool {
-    left.hash_algorithm == right.hash_algorithm
-        && left.issuer_name_hash.matches(&right.issuer_name_hash)
-        && left.issuer_key_hash.matches(&right.issuer_key_hash)
-        && left.serial_number.matches(&right.serial_number)
 }
 
 fn public_key_bits(subject_public_key_info: &[u8]) -> Option<&[u8]> {

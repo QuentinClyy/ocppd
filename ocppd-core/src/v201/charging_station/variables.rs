@@ -1,9 +1,11 @@
 use super::ChargingStation;
+use super::certificates::ADDITIONAL_ROOT_CERTIFICATE_CHECK;
 use super::device_model::shortcut;
 use super::device_model::table::{AVAILABILITY_STATE, CLOCK_CTRLR, DATE_TIME};
 use super::local_auth::{AUTH_CACHE_CTRLR, ENTRIES, LOCAL_AUTH_LIST_CTRLR};
 use super::security::{
-    BASIC_AUTH_PASSWORD, RECONFIGURATION_OF_SECURITY_PARAMETERS, SECURITY_CTRLR, SECURITY_PROFILE,
+    BASIC_AUTH_PASSWORD, CERTIFICATE_ENTRIES, RECONFIGURATION_OF_SECURITY_PARAMETERS,
+    SECURITY_CTRLR, SECURITY_PROFILE,
 };
 use crate::api::io::Output;
 use crate::v201::event::EventKind;
@@ -16,6 +18,8 @@ use crate::v201::messages::provisioning::variables::{
 use crate::wire::ci_string::CiString;
 use crate::wire::date_time::DateTime;
 
+const PROVISIONED: [&str; 2] = [SECURITY_PROFILE, ADDITIONAL_ROOT_CERTIFICATE_CHECK];
+
 impl ChargingStation {
     pub fn set_basic_auth_password(&mut self, password: &str) -> bool {
         self.configure("SecurityCtrlr.BasicAuthPassword", password)
@@ -26,7 +30,7 @@ impl ChargingStation {
             return false;
         };
         let provisioned = component.name.as_str() == SECURITY_CTRLR
-            && variable.name.as_str() == SECURITY_PROFILE
+            && PROVISIONED.contains(&variable.name.as_str())
             && variable.instance.is_none();
         match provisioned {
             true => self.device_model.provision(&component, &variable, value),
@@ -107,6 +111,9 @@ impl ChargingStation {
         let date_time = DateTime { unix_ms: now }.to_string();
         self.device_model
             .set_value(CLOCK_CTRLR, None, DATE_TIME, date_time);
+        let certificates = self.certificate_count().to_string();
+        self.device_model
+            .set_value(SECURITY_CTRLR, None, CERTIFICATE_ENTRIES, certificates);
         let entries = self.local_list.tokens.len().to_string();
         self.device_model
             .set_value(LOCAL_AUTH_LIST_CTRLR, None, ENTRIES, entries);

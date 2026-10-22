@@ -1,3 +1,4 @@
+pub mod certificates;
 pub mod local_auth;
 pub mod reliability;
 pub mod remote_control;
