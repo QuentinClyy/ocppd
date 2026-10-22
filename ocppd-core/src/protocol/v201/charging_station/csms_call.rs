@@ -12,6 +12,7 @@ use crate::protocol::v201::messages::firmware::UpdateFirmwareRequest;
 use crate::protocol::v201::messages::local_auth::{
     GetLocalListVersionRequest, SendLocalListRequest,
 };
+use crate::protocol::v201::messages::provisioning::network_profile::SetNetworkProfileRequest;
 use crate::protocol::v201::messages::provisioning::report::GetBaseReportRequest;
 use crate::protocol::v201::messages::provisioning::reset::ResetRequest;
 use crate::protocol::v201::messages::provisioning::variables::{
@@ -138,6 +139,9 @@ impl ChargingStation {
             }),
             "CustomerInformation" => answer(payload, |request: CustomerInformationRequest| {
                 Ok(self.customer_information(out, now, request))
+            }),
+            "SetNetworkProfile" => answer(payload, |request: SetNetworkProfileRequest| {
+                Ok(self.set_network_profile(out, now, request))
             }),
             "Reset" => answer(payload, |request: ResetRequest| {
                 Ok(self.reset(out, now, request))

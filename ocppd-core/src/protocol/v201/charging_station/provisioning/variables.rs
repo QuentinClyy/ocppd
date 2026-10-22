@@ -2,11 +2,12 @@ use crate::api::io::Output;
 use crate::protocol::v201::charging_station::ChargingStation;
 use crate::protocol::v201::charging_station::device_model::shortcut;
 use crate::protocol::v201::charging_station::device_model::table::{
-    AVAILABILITY_STATE, CLOCK_CTRLR, DATE_TIME,
+    AVAILABILITY_STATE, CLOCK_CTRLR, DATE_TIME, OCPP_COMM_CTRLR,
 };
 use crate::protocol::v201::charging_station::local_auth::{
     AUTH_CACHE_CTRLR, ENTRIES, LOCAL_AUTH_LIST_CTRLR,
 };
+use crate::protocol::v201::charging_station::provisioning::network_profile::NETWORK_CONFIGURATION_PRIORITY;
 use crate::protocol::v201::charging_station::security::certificates::ADDITIONAL_ROOT_CERTIFICATE_CHECK;
 use crate::protocol::v201::charging_station::security::{
     BASIC_AUTH_PASSWORD, CERTIFICATE_ENTRIES, RECONFIGURATION_OF_SECURITY_PARAMETERS,
@@ -80,17 +81,30 @@ impl ChargingStation {
         for data in request.set_variable_data {
             let attribute_type = data.attribute_type.unwrap_or_default();
             let value = data.attribute_value.as_str();
+            let priority = data.component.name.as_str() == OCPP_COMM_CTRLR
+                && data.variable.name.as_str() == NETWORK_CONFIGURATION_PRIORITY;
             let attribute_status = match attribute_type {
+                AttributeType::Actual if priority && !self.priority_allowed(value) => {
+                    SetVariableStatus::Rejected
+                }
                 AttributeType::Actual => {
                     self.device_model
                         .set(&data.component, &data.variable, value)
                 }
                 _ => SetVariableStatus::NotSupportedAttributeType,
             };
+            let attribute_status = match attribute_status {
+                SetVariableStatus::Accepted if priority => SetVariableStatus::RebootRequired,
+                other => other,
+            };
+            let changed = matches!(
+                attribute_status,
+                SetVariableStatus::Accepted | SetVariableStatus::RebootRequired
+            );
             let secret = data.variable.name.as_str() == BASIC_AUTH_PASSWORD;
-            if attribute_status == SetVariableStatus::Accepted && secret {
+            if changed && secret {
                 self.security_event(out, now, RECONFIGURATION_OF_SECURITY_PARAMETERS);
-            } else if attribute_status == SetVariableStatus::Accepted {
+            } else if changed {
                 let kind = EventKind::VariableChanged {
                     component: data.component.name.as_str().to_owned(),
                     variable: data.variable.name.as_str().to_owned(),

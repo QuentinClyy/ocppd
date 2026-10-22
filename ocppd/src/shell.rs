@@ -58,18 +58,21 @@ pub async fn run(
         let mut input = match next_wake(&mut link, protocol.next_deadline(), &mut intents).await {
             Wake::Input(input) => input,
             Wake::Lost(reason) => link.lose(&reason),
-            Wake::Reconnect => match connect(&url, &protocol).await {
-                Ok(socket) => {
-                    link.socket = Some(socket);
-                    link.failures = 0;
-                    Input::Connected
+            Wake::Reconnect => {
+                let target = target(&protocol, &url, &link.id);
+                match connect(&target, &protocol).await {
+                    Ok(socket) => {
+                        link.socket = Some(socket);
+                        link.failures = 0;
+                        Input::Connected
+                    }
+                    Err(err) => {
+                        eprintln!("{}: connect to {target} failed: {err}", link.id);
+                        link.schedule_reconnect();
+                        Input::ConnectFailed
+                    }
                 }
-                Err(err) => {
-                    eprintln!("{}: connect to {url} failed: {err}", link.id);
-                    link.schedule_reconnect();
-                    continue;
-                }
-            },
+            }
         };
         while let Some(reason) = execute(&mut protocol, input, &mut link.socket, &events).await {
             input = link.lose(&reason);
@@ -88,6 +91,13 @@ impl Link {
     fn schedule_reconnect(&mut self) {
         self.failures += 1;
         self.reconnect_at = Instant::now() + backoff(&self.id, self.failures, self.jitter);
+    }
+}
+
+fn target(protocol: &Protocol, url: &str, id: &str) -> String {
+    match protocol.csms_url() {
+        Some(base) => format!("{}/{id}", base.trim_end_matches('/')),
+        None => url.to_owned(),
     }
 }
 

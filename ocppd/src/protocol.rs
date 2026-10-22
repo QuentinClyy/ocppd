@@ -102,6 +102,20 @@ impl Protocol {
         }
     }
 
+    pub fn set_csms_url(&mut self, url: &str) -> bool {
+        match self {
+            Protocol::V16(_) => true,
+            Protocol::V201(charging_station) => charging_station.set_csms_url(url),
+        }
+    }
+
+    pub fn csms_url(&self) -> Option<String> {
+        match self {
+            Protocol::V16(_) => None,
+            Protocol::V201(charging_station) => charging_station.csms_url(),
+        }
+    }
+
     pub fn csms_roots(&self) -> Vec<Vec<u8>> {
         match self {
             Protocol::V16(charge_point) => charge_point.csms_roots(),

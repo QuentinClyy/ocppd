@@ -48,6 +48,10 @@ impl ChargingStation {
             .client_certificate()
     }
 
+    pub(in crate::protocol::v201::charging_station) fn has_client_certificate(&self) -> bool {
+        self.client_certificate.installed.is_some()
+    }
+
     pub(in crate::protocol::v201::charging_station) fn sign_charging_station_certificate(
         &mut self,
     ) -> bool {

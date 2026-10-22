@@ -3,6 +3,10 @@ use super::row::{Row, row};
 use crate::protocol::v201::charging_station::metering::{
     ALIGNED_DATA_CTRLR, MEASURANDS, SAMPLED_DATA_CTRLR,
 };
+use crate::protocol::v201::charging_station::provisioning::network_profile::{
+    ACTIVE_NETWORK_PROFILE, NETWORK_CONFIGURATION_PRIORITY, NETWORK_PROFILE_CONNECTION_ATTEMPTS,
+    SLOTS,
+};
 use crate::protocol::v201::messages::provisioning::report::{DataType, Mutability};
 use crate::station::Station;
 use crate::wire::ci_string::TooLong;
@@ -41,7 +45,7 @@ pub fn entries(station: &Station) -> Result<Vec<Entry>, TooLong> {
     let mut rows = vec![
         row(
             OCPP_COMM_CTRLR,
-            "ActiveNetworkProfile",
+            ACTIVE_NETWORK_PROFILE,
             "0",
             ReadOnly,
             Integer,
@@ -59,15 +63,15 @@ pub fn entries(station: &Station) -> Result<Vec<Entry>, TooLong> {
         .values("HTTP,HTTPS,FTP,FTPS"),
         row(
             OCPP_COMM_CTRLR,
-            "NetworkConfigurationPriority",
+            NETWORK_CONFIGURATION_PRIORITY,
             "0",
             ReadWrite,
             SequenceList,
         )
-        .values("0"),
+        .values(SLOTS),
         row(
             OCPP_COMM_CTRLR,
-            "NetworkProfileConnectionAttempts",
+            NETWORK_PROFILE_CONNECTION_ATTEMPTS,
             "3",
             ReadWrite,
             Integer,

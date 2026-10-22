@@ -75,6 +75,10 @@ pub enum EventKind {
         id_tag: String,
     },
     ChargingStationCertificateInstalled,
+    NetworkProfileSet {
+        slot: usize,
+        security_profile: u64,
+    },
     SecurityEvent {
         #[serde(rename = "type")]
         event_type: String,

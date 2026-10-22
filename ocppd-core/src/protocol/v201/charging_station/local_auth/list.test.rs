@@ -22,6 +22,15 @@ fn given_booted_station_when_full_list_sent_then_accepted_per_d01_fr_15() {
 }
 
 #[test]
+fn given_full_list_version_3_when_version_asked_then_3_per_d02_fr_01_and_tc_d_08() {
+    let mut run = list_v3();
+
+    let version = version(&mut run);
+
+    assert_eq!(version, 3);
+}
+
+#[test]
 fn given_list_version_3_when_differential_removal_sent_then_accepted_per_d01_fr_17_and_tc_d_03() {
     let mut run = list_v3();
     let removal = list(

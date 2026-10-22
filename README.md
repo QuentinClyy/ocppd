@@ -63,7 +63,12 @@ file that then replaces the system store), plus any root the CSMS installed
 with InstallCertificate. A 2.0.1 station also takes
 `SecurityCtrlr.AdditionalRootCertificateCheck`: a new CSMS root must then be
 signed by the current one, which stays trusted until the next connection.
-Profile 3 presents the charge point certificate
+A 2.0.1 station keeps its spawn CSMS url and security profile as network profile
+slot 0. The CSMS can set slot 1 with SetNetworkProfile and change
+`OCPPCommCtrlr.NetworkConfigurationPriority`; after a reboot the station
+connects with the first slot, falls back to the next one after
+`NetworkProfileConnectionAttempts` failures, and takes the new security
+profile once it is connected. Profile 3 presents the charge point certificate
 the CSMS signed after an ExtendedTriggerMessage(SignChargePointCertificate),
 or a TriggerMessage(SignChargingStationCertificate) for a 2.0.1 station;
 without one the station does not connect.

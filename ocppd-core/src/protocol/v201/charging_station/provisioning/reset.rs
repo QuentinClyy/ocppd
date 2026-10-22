@@ -63,6 +63,7 @@ impl ChargingStation {
         self.startup_reported = false;
         self.security_event(out, now, RESET_OR_REBOOT);
         self.resend_statuses = true;
+        self.try_first_profile();
     }
 }
 

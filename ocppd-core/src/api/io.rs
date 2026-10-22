@@ -5,6 +5,7 @@ use crate::wire::frame::Frame;
 #[derive(Debug, Clone, PartialEq)]
 pub enum Input {
     Connected,
+    ConnectFailed,
     Disconnected,
     Tick,
     Frame(String),

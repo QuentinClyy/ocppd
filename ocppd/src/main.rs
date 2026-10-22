@@ -167,6 +167,10 @@ fn spawn(csms: &str, command: &Spawn, events: &UnboundedSender<Event>, stations:
                     eprintln!("cannot spawn station {id}: password refused");
                     continue;
                 }
+                if !protocol.set_csms_url(base) {
+                    eprintln!("cannot spawn station {id}: csms url too long");
+                    continue;
+                }
                 let (intents, receiver) = unbounded_channel();
                 stations.insert(id, intents);
                 tokio::spawn(shell::run(protocol, url, events.clone(), receiver));

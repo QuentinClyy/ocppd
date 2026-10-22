@@ -57,23 +57,17 @@ impl ChargingStation {
         let password = self
             .device_model
             .value(SECURITY_CTRLR, BASIC_AUTH_PASSWORD)?;
-        let profile = self.security_profile();
+        let profile = self.connecting_security_profile();
         Some(password.as_bytes().to_vec())
             .filter(|password| !password.is_empty() && BASIC_AUTH_PROFILES.contains(&profile))
     }
 
     pub fn requires_tls(&self) -> bool {
-        self.security_profile() >= TLS_FROM_PROFILE
+        self.connecting_security_profile() >= TLS_FROM_PROFILE
     }
 
     pub fn requires_client_certificate(&self) -> bool {
-        self.security_profile() == CLIENT_CERTIFICATE_PROFILE
-    }
-
-    fn security_profile(&self) -> u64 {
-        self.device_model
-            .number(SECURITY_CTRLR, SECURITY_PROFILE)
-            .unwrap_or(0)
+        self.connecting_security_profile() == CLIENT_CERTIFICATE_PROFILE
     }
 }
 

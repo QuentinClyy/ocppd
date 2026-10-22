@@ -30,6 +30,7 @@ use diagnostics::log_upload::LogUpload;
 use firmware::Firmware;
 use local_auth::cache::Cache;
 use local_auth::list::LocalList;
+use provisioning::network_profile::NetworkProfiles;
 use provisioning::registration::Registration;
 use security::STARTUP_OF_THE_DEVICE;
 use security::certificates::Certificates;
@@ -62,6 +63,7 @@ pub struct ChargingStation {
     next_aligned: Option<u64>,
     boot_request: BootNotificationRequest,
     registration: Registration,
+    network: NetworkProfiles,
 }
 
 impl ChargingStation {
@@ -99,6 +101,7 @@ impl ChargingStation {
             next_aligned: None,
             boot_request,
             registration: Registration::Offline,
+            network: NetworkProfiles::default(),
         })
     }
 
@@ -127,6 +130,9 @@ impl ChargingStation {
         match input {
             Input::Connected => {
                 self.emit(&mut out, now, EventKind::Link(LinkEvent::Connected));
+                if self.network_connected() {
+                    self.registration = Registration::Offline;
+                }
                 self.connected(now);
                 self.back_online(now);
                 self.drop_fallback_roots();
@@ -142,6 +148,7 @@ impl ChargingStation {
                 self.offline_since = Some(now);
                 self.emit(&mut out, now, EventKind::Link(LinkEvent::Disconnected));
             }
+            Input::ConnectFailed => self.connect_failed(),
             Input::Tick => self.tick(&mut out, now),
             Input::Frame(text) => self.receive(&mut out, now, &text),
             Input::Intent(intent) => self.intent(&mut out, now, intent),
