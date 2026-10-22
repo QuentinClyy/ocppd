@@ -5,6 +5,7 @@ mod sampling;
 
 use super::ChargingStation;
 use super::device_model::table::{TX_CTRLR, TX_START_POINT, TX_STOP_POINT};
+use super::tariff_cost::TOTAL_COST_FALLBACK_MESSAGE;
 use crate::api::io::Output;
 use crate::protocol::v201::messages::datatypes::charging_profile::ChargingProfile;
 use crate::protocol::v201::messages::datatypes::id_token::IdToken;
@@ -146,6 +147,9 @@ impl ChargingStation {
         self.evaluate_monitors(out, now);
         if let Some(transaction) = self.sessions[index].transaction.take() {
             self.drop_transaction_messages(out, now, &transaction.id);
+        }
+        if !self.is_accepted() {
+            self.show_fallback(out, now, index, TOTAL_COST_FALLBACK_MESSAGE);
         }
         self.sessions[index] = Session::default();
         if self.charging_profiles.end_transaction(index as u32 + 1) {

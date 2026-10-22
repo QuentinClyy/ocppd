@@ -87,6 +87,15 @@ pub enum EventKind {
     ChargingProfilesCleared {
         count: usize,
     },
+    CostShown {
+        evse: u32,
+        total_cost: f64,
+        final_cost: bool,
+    },
+    DriverMessage {
+        evse: u32,
+        text: String,
+    },
     DisplayMessageSet {
         id: i32,
         priority: MessagePriority,

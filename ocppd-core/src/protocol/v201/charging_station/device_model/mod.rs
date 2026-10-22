@@ -8,6 +8,7 @@ mod security;
 pub(super) mod shortcut;
 mod smart_charging;
 pub(super) mod table;
+mod tariff_cost;
 
 use crate::protocol::v201::messages::datatypes::component::{Component, Evse, Variable};
 use crate::protocol::v201::messages::provisioning::report::{

@@ -25,6 +25,12 @@ pub struct Sent {
     payload: Value,
 }
 
+impl Sent {
+    pub fn payload(&self) -> &Value {
+        &self.payload
+    }
+}
+
 struct Queued {
     sent: Sent,
     not_before: u64,

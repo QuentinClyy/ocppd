@@ -12,4 +12,5 @@ pub mod remote_control;
 pub mod reservation;
 pub mod security;
 pub mod smart_charging;
+pub mod tariff_cost;
 pub mod transactions;

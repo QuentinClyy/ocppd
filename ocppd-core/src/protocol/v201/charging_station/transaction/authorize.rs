@@ -78,6 +78,7 @@ impl ChargingStation {
                     if !self.claim_reservation(out, now, index, &id_token, group.as_ref()) {
                         return self.reject(out, now, evse, "evse reserved for another id");
                     }
+                    self.show_tariff(out, now, index, None);
                     self.sessions[index].authorization = Authorization::Authorized {
                         id_token,
                         group,
@@ -133,6 +134,7 @@ impl ChargingStation {
             self.remember(&id_token, info.clone(), now);
         }
         let status = info.as_ref().map(|info| info.status);
+        let personal = info.as_ref().and_then(|info| info.personal_message.clone());
         let group = info
             .and_then(|info| info.group_id_token)
             .map(|group| group.id_token);
@@ -155,6 +157,9 @@ impl ChargingStation {
             if status == Some(AuthorizationStatus::Accepted) && !accepted {
                 let evse = Some(call.connector_id);
                 self.reject(out, now, evse, "evse reserved for another id");
+            }
+            if accepted {
+                self.show_tariff(out, now, index, personal.as_ref());
             }
             self.sessions[index].authorization = match accepted {
                 true => Authorization::Authorized {

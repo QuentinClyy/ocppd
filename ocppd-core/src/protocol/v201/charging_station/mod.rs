@@ -12,6 +12,7 @@ mod remote_control;
 mod reservation;
 mod security;
 mod smart_charging;
+mod tariff_cost;
 mod transaction;
 
 use crate::api::event::{Event, Kind, LinkEvent};
@@ -26,7 +27,7 @@ use crate::protocol::v201::messages::provisioning::boot::{
 use crate::station::Station;
 use crate::wire::ci_string::{CiString, TooLong};
 use crate::wire::frame::{self, Frame};
-use crate::wire::outbox::{Call, Outbox, Sent};
+use crate::wire::outbox::{Outbox, Sent};
 use crate::wire::payload;
 use availability::Availability;
 use device_model::{DeviceModel, table};
@@ -227,7 +228,7 @@ impl ChargingStation {
                 payload,
             } => self.csms_call(out, now, id, &action, payload),
             Frame::CallResult { id, payload } => match self.outbox.resolve(&id) {
-                Some(sent) => self.call_succeeded(out, now, &sent.call, payload),
+                Some(sent) => self.call_succeeded(out, now, &sent, payload),
                 None => self.emit(out, now, EventKind::Link(LinkEvent::UnknownResponse { id })),
             },
             Frame::CallError { id, code, .. } => match self.outbox.resolve(&id) {
@@ -242,11 +243,11 @@ impl ChargingStation {
         }
     }
 
-    fn call_succeeded(&mut self, out: &mut Vec<Output>, now: u64, call: &Call, payload: Value) {
-        match call.action.as_str() {
+    fn call_succeeded(&mut self, out: &mut Vec<Output>, now: u64, sent: &Sent, payload: Value) {
+        match sent.call.action.as_str() {
             "BootNotification" => self.booted(out, now, payload),
-            "Authorize" => self.authorize_reply(out, now, call, payload),
-            "TransactionEvent" => self.transaction_reply(out, now, call, payload),
+            "Authorize" => self.authorize_reply(out, now, &sent.call, payload),
+            "TransactionEvent" => self.transaction_reply(out, now, sent, payload),
             "SignCertificate" => self.sign_certificate_reply(out, now, payload),
             _ => {}
         }

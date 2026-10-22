@@ -9,7 +9,7 @@ use crate::protocol::v201::messages::transactions::{
     GetTransactionStatusRequest, GetTransactionStatusResponse, TransactionEventResponse,
     TriggerReason,
 };
-use crate::wire::outbox::{Call, Sent};
+use crate::wire::outbox::Sent;
 use serde_json::{Value, json};
 
 const TRANSACTION_EVENT: &str = "TransactionEvent";
@@ -19,13 +19,24 @@ impl ChargingStation {
         &mut self,
         out: &mut Vec<Output>,
         now: u64,
-        call: &Call,
+        sent: &Sent,
         payload: Value,
     ) {
         let response =
             self.decode::<TransactionEventResponse>(out, now, TRANSACTION_EVENT, payload);
+        let index = sent.call.connector_id as usize - 1;
+        if let Some(response) = &response {
+            let request = sent.payload();
+            let ended = request["eventType"] == "Ended";
+            let sent_online = request.get("offline").is_none();
+            if let Some(cost) = response.total_cost.filter(|_| !ended || sent_online) {
+                self.show_cost(out, now, index, cost, ended);
+            }
+            if let Some(message) = &response.updated_personal_message {
+                self.show_driver(out, now, index, message.content.as_str());
+            }
+        }
         let info = response.and_then(|response| response.id_token_info);
-        let index = call.connector_id as usize - 1;
         if let (Some(info), Authorization::Authorized { id_token, .. }) =
             (&info, self.sessions[index].authorization.clone())
         {
