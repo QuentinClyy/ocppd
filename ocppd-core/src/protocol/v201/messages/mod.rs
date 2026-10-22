@@ -1,6 +1,7 @@
 pub mod authorization;
 pub mod availability;
 pub mod custom_data;
+pub mod data_transfer;
 pub mod datatypes;
 pub mod diagnostics;
 pub mod display;

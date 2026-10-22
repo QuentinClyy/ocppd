@@ -7,6 +7,9 @@ use crate::protocol::v201::event::EventKind;
 use crate::protocol::v201::messages::authorization::ClearCacheRequest;
 use crate::protocol::v201::messages::availability::ChangeAvailabilityRequest;
 use crate::protocol::v201::messages::custom_data::without_custom_data;
+use crate::protocol::v201::messages::data_transfer::{
+    DataTransferRequest, DataTransferResponse, DataTransferStatus,
+};
 use crate::protocol::v201::messages::diagnostics::customer_information::CustomerInformationRequest;
 use crate::protocol::v201::messages::diagnostics::log::GetLogRequest;
 use crate::protocol::v201::messages::diagnostics::monitoring::{
@@ -236,6 +239,13 @@ impl ChargingStation {
             "CostUpdated" => answer(payload, |request: CostUpdatedRequest| {
                 Ok(self.cost_updated(out, now, request))
             }),
+            "DataTransfer" => answer(payload, |_: DataTransferRequest| {
+                Ok(DataTransferResponse {
+                    status: DataTransferStatus::UnknownVendorId,
+                    status_info: None,
+                    data: None,
+                })
+            }),
             "Reset" => answer(payload, |request: ResetRequest| {
                 Ok(self.reset(out, now, request))
             }),
@@ -276,3 +286,7 @@ fn answer<Request: DeserializeOwned + Serialize, Response: Serialize>(
         handler(request).map_err(|(violation, reason)| (ErrorCode::Invalid(violation), reason))?;
     Ok(json!(response))
 }
+
+#[cfg(test)]
+#[path = "csms_call.test.rs"]
+mod tests;
