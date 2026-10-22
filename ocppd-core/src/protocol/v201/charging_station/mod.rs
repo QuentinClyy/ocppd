@@ -134,6 +134,7 @@ impl ChargingStation {
             self.client_certificate_deadline(),
             self.limit_change_at,
             self.reservation_deadline(),
+            self.monitoring_deadline(),
         ]
         .into_iter()
         .flatten()

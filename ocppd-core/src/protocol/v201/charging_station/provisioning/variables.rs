@@ -2,7 +2,7 @@ use crate::api::io::Output;
 use crate::protocol::v201::charging_station::ChargingStation;
 use crate::protocol::v201::charging_station::device_model::shortcut;
 use crate::protocol::v201::charging_station::device_model::table::{
-    AVAILABILITY_STATE, CLOCK_CTRLR, DATE_TIME, OCPP_COMM_CTRLR,
+    AVAILABILITY_STATE, CLOCK_CTRLR, DATE_TIME, OCPP_COMM_CTRLR, POWER,
 };
 use crate::protocol::v201::charging_station::local_auth::{
     AUTH_CACHE_CTRLR, ENTRIES, LOCAL_AUTH_LIST_CTRLR,
@@ -129,10 +129,10 @@ impl ChargingStation {
         let date_time = DateTime { unix_ms: now }.to_string();
         self.device_model
             .set_value(CLOCK_CTRLR, None, DATE_TIME, date_time);
-        self.refresh_state();
+        self.refresh_state(now);
     }
 
-    pub(in crate::protocol::v201::charging_station) fn refresh_state(&mut self) {
+    pub(in crate::protocol::v201::charging_station) fn refresh_state(&mut self, now: u64) {
         let certificates = self.certificate_count().to_string();
         self.device_model
             .set_value(SECURITY_CTRLR, None, CERTIFICATE_ENTRIES, certificates);
@@ -160,6 +160,13 @@ impl ChargingStation {
                 self.device_model
                     .set_value(component, evse, AVAILABILITY_STATE, state.clone());
             }
+            let power = self.station.connectors[index].sample(now).power_w;
+            let evse = Some(Evse {
+                id,
+                connector_id: None,
+            });
+            self.device_model
+                .set_value("EVSE", evse, POWER, format!("{power:.0}"));
         }
     }
 

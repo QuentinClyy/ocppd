@@ -1,4 +1,7 @@
-use super::{MONITORING_CTRLR, Monitor, OFFLINE_QUEUING_SEVERITY};
+use super::{
+    ACTIVE_MONITORING_LEVEL, HIGHEST_SEVERITY, MONITORING_CTRLR, Monitor, OFFLINE_QUEUING_SEVERITY,
+    next_period,
+};
 use crate::api::io::Output;
 use crate::protocol::v201::charging_station::ChargingStation;
 use crate::protocol::v201::event::EventKind;
@@ -16,19 +19,24 @@ impl ChargingStation {
         out: &mut Vec<Output>,
         now: u64,
     ) {
-        if self.monitoring.monitors.is_empty() {
-            return;
+        let due = self.monitoring_deadline().is_some_and(|at| at <= now);
+        match due {
+            true => self.refresh_device_model(now),
+            false => self.refresh_state(now),
         }
-        self.refresh_state();
         let in_transaction = self
             .sessions
             .iter()
             .any(|session| session.transaction.is_some());
         let transaction_changed = in_transaction != self.monitoring.in_transaction;
         self.monitoring.in_transaction = in_transaction;
-        if !self.device_model.take_changed() && !transaction_changed {
+        if !self.device_model.take_changed() && !transaction_changed && !due {
             return;
         }
+        let level = self
+            .device_model
+            .number(MONITORING_CTRLR, ACTIVE_MONITORING_LEVEL)
+            .unwrap_or(u64::from(HIGHEST_SEVERITY));
         let offline_limit = match self.is_accepted() {
             true => None,
             false => {
@@ -42,6 +50,9 @@ impl ChargingStation {
         let mut event_id = self.monitoring.next_event_id;
         for monitor in &mut self.monitoring.monitors {
             if monitor.transaction && !in_transaction {
+                if monitor.next_at.is_some_and(|at| at <= now) {
+                    monitor.next_at = next_period(monitor.kind, monitor.value, now);
+                }
                 continue;
             }
             let Ok(entry) = self
@@ -54,11 +65,12 @@ impl ChargingStation {
                 entry.characteristics.data_type,
                 DataType::Integer | DataType::Decimal
             );
-            let Some((trigger, cleared)) = check(monitor, &entry.value, numeric) else {
+            let Some((trigger, cleared)) = check(monitor, &entry.value, numeric, now) else {
                 continue;
             };
-            let queued = offline_limit.is_none_or(|limit| u64::from(monitor.severity) <= limit);
-            if !queued {
+            let severity = u64::from(monitor.severity);
+            let queued = offline_limit.is_none_or(|limit| severity <= limit);
+            if !queued || severity > level {
                 continue;
             }
             let readable = entry.mutability != Mutability::WriteOnly;
@@ -66,6 +78,12 @@ impl ChargingStation {
             let Ok(actual_value) = CiString::new(actual) else {
                 continue;
             };
+            let session = monitor
+                .component
+                .evse
+                .as_ref()
+                .and_then(|evse| self.sessions.get(evse.id as usize - 1));
+            let transaction = session.and_then(|session| session.transaction.as_ref());
             event_id += 1;
             events.push(EventData {
                 event_id,
@@ -73,6 +91,7 @@ impl ChargingStation {
                 trigger,
                 actual_value,
                 cleared,
+                transaction_id: transaction.map(|transaction| transaction.id.clone()),
                 component: monitor.component.clone(),
                 variable_monitoring_id: monitor.id,
                 event_notification_type: EventNotificationType::CustomMonitor,
@@ -105,6 +124,7 @@ fn check(
     monitor: &mut Monitor,
     value: &str,
     numeric: bool,
+    now: u64,
 ) -> Option<(EventTrigger, Option<bool>)> {
     let number = value.parse::<f64>().ok().filter(|_| numeric);
     match monitor.kind {
@@ -132,7 +152,13 @@ fn check(
             monitor.reference = Some(value.to_owned());
             Some((EventTrigger::Delta, None))
         }
-        MonitorType::Periodic | MonitorType::PeriodicClockAligned => None,
+        MonitorType::Periodic | MonitorType::PeriodicClockAligned => {
+            if monitor.next_at.is_none_or(|at| now < at) {
+                return None;
+            }
+            monitor.next_at = next_period(monitor.kind, monitor.value, now);
+            Some((EventTrigger::Periodic, None))
+        }
     }
 }
 

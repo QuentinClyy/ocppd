@@ -18,6 +18,7 @@ pub const DATE_TIME: &str = "DateTime";
 pub const DEVICE_DATA_CTRLR: &str = "DeviceDataCtrlr";
 pub const ITEMS_PER_MESSAGE: &str = "ItemsPerMessage";
 pub const AVAILABILITY_STATE: &str = "AvailabilityState";
+pub const POWER: &str = "Power";
 pub const TX_CTRLR: &str = "TxCtrlr";
 pub const AUTH_CTRLR: &str = "AuthCtrlr";
 pub const MASTER_PASS_GROUP_ID: &str = "MasterPassGroupId";

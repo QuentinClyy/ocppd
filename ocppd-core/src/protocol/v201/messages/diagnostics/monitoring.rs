@@ -1,4 +1,5 @@
 use crate::protocol::v201::messages::datatypes::component::{Component, Variable};
+use crate::protocol::v201::messages::datatypes::generic_status::GenericStatus;
 use crate::protocol::v201::messages::datatypes::status_info::StatusInfo;
 use crate::wire::ci_string::CiString;
 use crate::wire::date_time::DateTime;
@@ -110,6 +111,8 @@ pub struct EventData {
     pub actual_value: CiString<2500>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cleared: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub transaction_id: Option<CiString<36>>,
     pub component: Component,
     pub variable_monitoring_id: i32,
     pub event_notification_type: EventNotificationType,
@@ -129,4 +132,17 @@ pub enum EventNotificationType {
     HardWiredMonitor,
     PreconfiguredMonitor,
     CustomMonitor,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct SetMonitoringLevelRequest {
+    pub severity: i32,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SetMonitoringLevelResponse {
+    pub status: GenericStatus,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub status_info: Option<StatusInfo>,
 }

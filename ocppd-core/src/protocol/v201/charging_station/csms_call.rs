@@ -10,7 +10,7 @@ use crate::protocol::v201::messages::custom_data::without_custom_data;
 use crate::protocol::v201::messages::diagnostics::customer_information::CustomerInformationRequest;
 use crate::protocol::v201::messages::diagnostics::log::GetLogRequest;
 use crate::protocol::v201::messages::diagnostics::monitoring::{
-    ClearVariableMonitoringRequest, SetVariableMonitoringRequest,
+    ClearVariableMonitoringRequest, SetMonitoringLevelRequest, SetVariableMonitoringRequest,
 };
 use crate::protocol::v201::messages::firmware::UpdateFirmwareRequest;
 use crate::protocol::v201::messages::local_auth::{
@@ -112,6 +112,9 @@ impl ChargingStation {
                     Ok(self.clear_variable_monitoring(request))
                 })
             }
+            "SetMonitoringLevel" => answer(payload, |request: SetMonitoringLevelRequest| {
+                Ok(self.set_monitoring_level(request))
+            }),
             "GetReport" => answer(payload, |request: GetReportRequest| {
                 let asked = request.component_variable.as_ref().map_or(0, Vec::len);
                 if asked > ITEMS_PER_REPORT {

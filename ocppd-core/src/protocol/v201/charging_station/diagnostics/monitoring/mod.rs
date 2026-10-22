@@ -3,17 +3,21 @@ mod alert;
 use crate::protocol::v201::charging_station::ChargingStation;
 use crate::protocol::v201::charging_station::device_model::Missing;
 use crate::protocol::v201::messages::datatypes::component::{Component, Variable};
+use crate::protocol::v201::messages::datatypes::generic_status::GenericStatus;
 use crate::protocol::v201::messages::diagnostics::monitoring::{
     ClearMonitoringResult, ClearMonitoringStatus, ClearVariableMonitoringRequest,
-    ClearVariableMonitoringResponse, MonitorType, SetMonitoringData, SetMonitoringResult,
-    SetMonitoringStatus, SetVariableMonitoringRequest, SetVariableMonitoringResponse,
+    ClearVariableMonitoringResponse, MonitorType, SetMonitoringData, SetMonitoringLevelRequest,
+    SetMonitoringLevelResponse, SetMonitoringResult, SetMonitoringStatus,
+    SetVariableMonitoringRequest, SetVariableMonitoringResponse,
 };
 use crate::protocol::v201::messages::provisioning::report::DataType;
 
 pub const MONITORING_CTRLR: &str = "MonitoringCtrlr";
-pub const OFFLINE_QUEUING_SEVERITY: &str = "OfflineMonitoringEventQueuingSeverity";
+pub const OFFLINE_QUEUING_SEVERITY: &str = "OfflineQueuingSeverity";
+pub const ACTIVE_MONITORING_LEVEL: &str = "ActiveMonitoringLevel";
 pub const ITEMS_PER_MONITORING: usize = 50;
-const HIGHEST_SEVERITY: u32 = 9;
+pub const HIGHEST_SEVERITY: u32 = 9;
+const SHORTEST_PERIOD_S: f64 = 1.0;
 
 #[derive(Default)]
 pub struct Monitoring {
@@ -33,6 +37,7 @@ struct Monitor {
     transaction: bool,
     tripped: bool,
     reference: Option<String>,
+    next_at: Option<u64>,
 }
 
 impl ChargingStation {
@@ -43,7 +48,7 @@ impl ChargingStation {
     ) -> SetVariableMonitoringResponse {
         self.refresh_device_model(now);
         let results = request.set_monitoring_data.into_iter();
-        let results = results.map(|data| self.set_monitor(data)).collect();
+        let results = results.map(|data| self.set_monitor(now, data)).collect();
         self.device_model.mark_changed();
         SetVariableMonitoringResponse {
             set_monitoring_result: results,
@@ -73,7 +78,32 @@ impl ChargingStation {
         }
     }
 
-    fn set_monitor(&mut self, data: SetMonitoringData) -> SetMonitoringResult {
+    pub(in crate::protocol::v201::charging_station) fn set_monitoring_level(
+        &mut self,
+        request: SetMonitoringLevelRequest,
+    ) -> SetMonitoringLevelResponse {
+        let severity = u32::try_from(request.severity).ok();
+        let status = match severity.is_some_and(|severity| severity <= HIGHEST_SEVERITY) {
+            true => GenericStatus::Accepted,
+            false => GenericStatus::Rejected,
+        };
+        if status == GenericStatus::Accepted {
+            let severity = request.severity.to_string();
+            self.device_model
+                .set_value(MONITORING_CTRLR, None, ACTIVE_MONITORING_LEVEL, severity);
+        }
+        SetMonitoringLevelResponse {
+            status,
+            status_info: None,
+        }
+    }
+
+    pub(in crate::protocol::v201::charging_station) fn monitoring_deadline(&self) -> Option<u64> {
+        let monitors = self.monitoring.monitors.iter();
+        monitors.filter_map(|monitor| monitor.next_at).min()
+    }
+
+    fn set_monitor(&mut self, now: u64, data: SetMonitoringData) -> SetMonitoringResult {
         let status = self.monitor_refusal(&data);
         let id = match status {
             Some(_) => data.id,
@@ -99,6 +129,7 @@ impl ChargingStation {
                 transaction: data.transaction,
                 tripped,
                 reference,
+                next_at: next_period(data.kind, data.value, now),
             });
         }
         SetMonitoringResult {
@@ -137,7 +168,7 @@ impl ChargingStation {
             data.kind,
             MonitorType::Periodic | MonitorType::PeriodicClockAligned
         );
-        if periodic || (threshold && !numeric) {
+        if threshold && !numeric {
             return Some(SetMonitoringStatus::UnsupportedMonitorType);
         }
         let monitors = &self.monitoring.monitors;
@@ -151,7 +182,8 @@ impl ChargingStation {
             || moved
             || data.severity > HIGHEST_SEVERITY
             || (threshold && !in_limits)
-            || (data.kind == MonitorType::Delta && data.value <= 0.0);
+            || (data.kind == MonitorType::Delta && data.value <= 0.0)
+            || (periodic && data.value < SHORTEST_PERIOD_S);
         if rejected {
             return Some(SetMonitoringStatus::Rejected);
         }
@@ -168,6 +200,15 @@ impl ChargingStation {
     fn new_monitor_id(&mut self) -> i32 {
         self.monitoring.next_id += 1;
         self.monitoring.next_id
+    }
+}
+
+pub(super) fn next_period(kind: MonitorType, seconds: f64, now: u64) -> Option<u64> {
+    let interval = (seconds * 1000.0) as u64;
+    match kind {
+        MonitorType::Periodic => Some(now + interval),
+        MonitorType::PeriodicClockAligned => Some((now / interval + 1) * interval),
+        _ => None,
     }
 }
 

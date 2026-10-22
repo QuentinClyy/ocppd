@@ -1,5 +1,5 @@
 use super::row::{Row, row};
-use super::table::{AVAILABILITY_STATE, CONNECTOR_STATUSES};
+use super::table::{AVAILABILITY_STATE, CONNECTOR_STATUSES, POWER};
 use crate::protocol::v201::messages::provisioning::report::{DataType, Mutability};
 use crate::station::Station;
 
@@ -25,7 +25,6 @@ pub fn rows(station: &Station) -> Vec<Row<'_>> {
             Integer,
         ),
     ];
-    let power = format!("{:.0}", station.limit_w());
     for id in 1..=station.connectors.len() as u32 {
         rows.extend([
             row("EVSE", "Available", "true", ReadOnly, Boolean).evse(id, None),
@@ -38,9 +37,10 @@ pub fn rows(station: &Station) -> Vec<Row<'_>> {
             )
             .evse(id, None)
             .values(CONNECTOR_STATUSES),
-            row("EVSE", "Power", &power, ReadOnly, Decimal)
+            row("EVSE", POWER, "0", ReadOnly, Decimal)
                 .evse(id, None)
-                .unit("W"),
+                .unit("W")
+                .max(station.limit_w()),
             row("EVSE", "SupplyPhases", &phases, ReadOnly, Integer).evse(id, None),
             row("Connector", "Available", "true", ReadOnly, Boolean).evse(id, Some(1)),
             row(

@@ -1,7 +1,123 @@
+use crate::api::intent::Intent;
 use crate::api::io::Input;
-use crate::fixtures::v201::monitors::{data, events, monitor, set_heartbeat};
+use crate::fixtures::v201::monitors::{data, events, monitor, set_heartbeat, status};
 use crate::fixtures::v201::station::{MINUTE, Run};
+use crate::fixtures::v201::transaction::charging;
 use serde_json::{Value, json};
+
+fn power_monitor(kind: &str, value: f64) -> Value {
+    json!({"type": kind, "value": value, "severity": 5, "component": {"name": "EVSE", "evse": {"id": 1}}, "variable": {"name": "Power"}})
+}
+
+fn power(run: &mut Run, now: u64) -> Value {
+    let get = json!({"getVariableData": [{"component": {"name": "EVSE", "evse": {"id": 1}}, "variable": {"name": "Power"}}]});
+    run.result(now, "GetVariables", get)["getVariableResult"][0]["attributeValue"].clone()
+}
+
+fn transaction_id(run: &Run) -> Value {
+    let (_, _, started) = run
+        .calls
+        .iter()
+        .find(|(_, action, _)| action == "TransactionEvent")
+        .unwrap();
+    started["transactionInfo"]["transactionId"].clone()
+}
+
+fn alerting_on_power() -> Run {
+    let mut run = Run::accepted(86_400);
+    monitor(&mut run, power_monitor("UpperThreshold", 1_000.0));
+    charging(&mut run, 0);
+    run
+}
+
+#[test]
+fn given_idle_evse_when_its_power_read_then_zero() {
+    let mut run = Run::accepted(86_400);
+
+    let value = power(&mut run, 0);
+
+    assert_eq!(value, "0");
+}
+
+#[test]
+fn given_charging_ev_when_its_power_read_then_the_power_delivered() {
+    let mut run = Run::accepted(86_400);
+    charging(&mut run, 0);
+
+    let value = power(&mut run, MINUTE);
+
+    assert_eq!(value, "11000");
+}
+
+#[test]
+fn given_booted_station_when_power_threshold_above_its_max_limit_set_then_rejected_per_n04_fr_06_and_tc_n_13()
+ {
+    let mut run = Run::accepted(86_400);
+
+    let result = monitor(&mut run, power_monitor("UpperThreshold", 22_081.0));
+
+    assert_eq!(status(&result), "Rejected");
+}
+
+#[test]
+fn given_power_upper_threshold_when_energy_transfer_starts_then_alerting_with_the_transaction_per_n07_fr_06_and_tc_n_20()
+ {
+    let mut run = Run::accepted(86_400);
+    monitor(&mut run, power_monitor("UpperThreshold", 1_000.0));
+
+    charging(&mut run, 0);
+
+    let events = events(&run);
+    assert_eq!(events.len(), 1);
+    assert_eq!(events[0]["trigger"], "Alerting");
+    assert_eq!(events[0]["actualValue"], "11000");
+    assert_eq!(events[0]["transactionId"], transaction_id(&run));
+}
+
+#[test]
+fn given_power_alert_when_charging_stops_then_cleared_with_the_transaction_per_n07_fr_02_and_tc_n_20()
+ {
+    let mut run = alerting_on_power();
+
+    run.input(MINUTE, Input::Intent(Intent::Stop { connector: 1 }));
+    run.answer_all(MINUTE);
+
+    let events = events(&run);
+    assert_eq!(events[1]["cleared"], true);
+    assert_eq!(events[1]["actualValue"], "0");
+    assert_eq!(events[1]["transactionId"], transaction_id(&run));
+}
+
+#[test]
+fn given_idle_evse_with_a_power_delta_when_energy_transfer_starts_then_delta_event_per_n07_fr_18_and_tc_n_45()
+ {
+    let mut run = Run::accepted(86_400);
+    monitor(&mut run, power_monitor("Delta", 100.0));
+
+    charging(&mut run, 0);
+
+    let events = events(&run);
+    assert_eq!(events[0]["trigger"], "Delta");
+    assert_eq!(events[0]["variableMonitoringId"], 1);
+}
+
+#[test]
+fn given_power_under_its_threshold_when_the_monitor_replaced_with_a_lower_one_then_alerting_per_n07_fr_11_and_tc_n_51()
+ {
+    let mut run = Run::accepted(86_400);
+    monitor(&mut run, power_monitor("UpperThreshold", 21_000.0));
+    charging(&mut run, 0);
+    let mut lower = power_monitor("UpperThreshold", 0.0);
+    lower["id"] = json!(1);
+
+    let result = monitor(&mut run, lower);
+    run.answer_all(0);
+
+    assert_eq!(status(&result), "Accepted");
+    let events = events(&run);
+    assert_eq!(events[0]["trigger"], "Alerting");
+    assert_eq!(events[0]["actualValue"], "11000");
+}
 
 fn upper_600() -> Run {
     let mut run = Run::accepted(300);
