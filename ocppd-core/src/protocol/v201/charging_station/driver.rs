@@ -4,6 +4,7 @@ use super::transaction::Authorization;
 use crate::api::intent::Intent;
 use crate::api::io::Output;
 use crate::protocol::v201::messages::transactions::TriggerReason;
+use crate::station::connector::Fault;
 
 impl ChargingStation {
     pub(super) fn intent(&mut self, out: &mut Vec<Output>, now: u64, intent: Intent) {
@@ -23,6 +24,9 @@ impl ChargingStation {
             Intent::PlugIn { .. } if plugged => self.reject(out, now, evse, "already plugged in"),
             Intent::PlugIn { ev, .. } => {
                 self.station.connectors[index].plug_in(ev.ev(), ev.soc);
+                if self.station.connectors[index].fault == Some(Fault::ConnectorLock) {
+                    self.lock_failed(now, index);
+                }
                 self.settle(out, now, index, TriggerReason::CablePluggedIn);
             }
             Intent::Unplug { .. } if !plugged => self.reject(out, now, evse, "nothing plugged in"),
@@ -46,7 +50,11 @@ impl ChargingStation {
                 self.settle(out, now, index, TriggerReason::StopAuthorized);
             }
             Intent::Fault { .. } => self.fault(out, now, index),
-            Intent::ClearFault { .. } => self.station.connectors[index].faulted = false,
+            Intent::ClearFault { .. } => {
+                self.station.connectors[index].repair();
+                self.lock_repaired(index);
+            }
+            Intent::LockFailure { .. } => self.station.connectors[index].lock_broken = true,
             Intent::Authorize { .. } => {}
         }
     }

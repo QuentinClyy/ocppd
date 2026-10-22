@@ -89,6 +89,9 @@ impl ChargePoint {
         let Some(index) = self.index_of(request.connector_id) else {
             return UnlockStatus::NotSupported;
         };
+        if self.station.connectors[index].lock_broken {
+            return UnlockStatus::UnlockFailed;
+        }
         self.stop(out, now, index, Reason::UnlockCommand);
         UnlockStatus::Unlocked
     }

@@ -174,7 +174,7 @@ impl ChargingStation {
         &self,
         index: usize,
     ) -> ConnectorStatus {
-        if self.station.connectors[index].faulted {
+        if self.station.connectors[index].fault.is_some() {
             return ConnectorStatus::Faulted;
         }
         if !self.operative(index) {

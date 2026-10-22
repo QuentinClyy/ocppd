@@ -8,6 +8,10 @@ fn fault(csms: &mut Csms, now: u64) {
     csms.intent(now, Intent::Fault { connector: 1 });
 }
 
+fn break_lock(csms: &mut Csms, now: u64) {
+    csms.intent(now, Intent::LockFailure { connector: 1 });
+}
+
 fn faulted_with_attempted_start() -> Csms {
     let mut csms = Csms::booted();
     fault(&mut csms, 0);
@@ -76,4 +80,55 @@ fn given_faulted_connector_when_remote_start_then_rejected_per_tc_048_1() {
     let reply = csms.call(MINUTE, "RemoteStartTransaction", start);
 
     assert_eq!(status(reply), "Rejected");
+}
+
+#[test]
+fn given_broken_lock_when_remote_start_then_accepted_per_tc_024() {
+    let mut csms = Csms::booted();
+    break_lock(&mut csms, 0);
+    let start = json!({"connectorId": 1, "idTag": "TAG1"});
+
+    let reply = csms.call(0, "RemoteStartTransaction", start);
+
+    assert_eq!(status(reply), "Accepted");
+}
+
+#[test]
+fn given_broken_lock_and_remote_start_when_ev_plugged_then_connector_lock_failure_without_transaction_per_tc_024()
+ {
+    let mut csms = Csms::booted();
+    break_lock(&mut csms, 0);
+    let start = json!({"connectorId": 1, "idTag": "TAG1"});
+    csms.call(0, "RemoteStartTransaction", start);
+    let ev = EvSpec::default();
+
+    csms.intent(MINUTE, Intent::PlugIn { connector: 1, ev });
+
+    let notification = csms.sent("StatusNotification").pop().unwrap();
+    assert_eq!(notification["status"], "Faulted");
+    assert_eq!(notification["errorCode"], "ConnectorLockFailure");
+    assert!(csms.sent("StartTransaction").is_empty());
+}
+
+#[test]
+fn given_charging_ev_with_broken_lock_when_connector_unlocked_then_unlock_failed_and_still_charging_per_tc_030()
+ {
+    let mut csms = Csms::charging(0, EvSpec::default());
+    break_lock(&mut csms, MINUTE);
+
+    let reply = csms.call(MINUTE, "UnlockConnector", json!({"connectorId": 1}));
+
+    assert_eq!(status(reply), "UnlockFailed");
+    assert!(csms.sent("StopTransaction").is_empty());
+}
+
+#[test]
+fn given_repaired_lock_when_connector_unlocked_then_unlocked_per_tc_030() {
+    let mut csms = Csms::charging(0, EvSpec::default());
+    break_lock(&mut csms, MINUTE);
+    csms.intent(2 * MINUTE, Intent::ClearFault { connector: 1 });
+
+    let reply = csms.call(2 * MINUTE, "UnlockConnector", json!({"connectorId": 1}));
+
+    assert_eq!(status(reply), "Unlocked");
 }

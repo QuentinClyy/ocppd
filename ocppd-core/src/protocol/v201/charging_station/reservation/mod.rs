@@ -54,7 +54,10 @@ impl ChargingStation {
             return response(ReserveNowStatus::Rejected);
         }
         let connectors = &self.station.connectors;
-        if targets.iter().all(|&index| connectors[index].faulted) {
+        if targets
+            .iter()
+            .all(|&index| connectors[index].fault.is_some())
+        {
             return response(ReserveNowStatus::Faulted);
         }
         if !targets.iter().any(|&index| self.operative(index)) {

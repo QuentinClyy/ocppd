@@ -20,7 +20,8 @@ impl ChargePoint {
             Intent::Stop { .. } => self.stop_by_driver(out, now, index),
             Intent::Unplug { .. } => self.unplug(out, now, index),
             Intent::Fault { .. } => self.fault(out, now, index),
-            Intent::ClearFault { .. } => self.clear_fault(index),
+            Intent::ClearFault { .. } => self.station.connectors[index].repair(),
+            Intent::LockFailure { .. } => self.station.connectors[index].lock_broken = true,
             Intent::Authorize { .. } => {}
         }
     }

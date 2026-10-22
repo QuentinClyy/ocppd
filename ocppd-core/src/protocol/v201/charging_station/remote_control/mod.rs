@@ -129,6 +129,7 @@ impl ChargingStation {
             Some(index) if self.authorized(index) && self.sessions[index].transaction.is_some() => {
                 UnlockStatus::OngoingAuthorizedTransaction
             }
+            Some(index) if self.station.connectors[index].lock_broken => UnlockStatus::UnlockFailed,
             Some(index) => {
                 let evse = index as u32 + 1;
                 self.emit(out, now, EventKind::ConnectorUnlocked { evse });

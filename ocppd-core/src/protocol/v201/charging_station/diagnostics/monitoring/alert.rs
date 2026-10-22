@@ -93,7 +93,7 @@ impl ChargingStation {
                 cleared,
                 transaction_id: transaction.map(|transaction| transaction.id.clone()),
                 component: monitor.component.clone(),
-                variable_monitoring_id: monitor.id,
+                variable_monitoring_id: Some(monitor.id),
                 event_notification_type: EventNotificationType::CustomMonitor,
                 variable: monitor.variable.clone(),
             });
@@ -103,8 +103,11 @@ impl ChargingStation {
             return;
         }
         for event in &events {
+            let Some(monitor_id) = event.variable_monitoring_id else {
+                continue;
+            };
             let kind = EventKind::MonitorTriggered {
-                monitor_id: event.variable_monitoring_id,
+                monitor_id,
                 actual_value: event.actual_value.as_str().to_owned(),
                 cleared: event.cleared == Some(true),
             };

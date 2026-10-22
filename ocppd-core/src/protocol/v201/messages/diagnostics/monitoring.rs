@@ -115,7 +115,8 @@ pub struct EventData {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub transaction_id: Option<CiString<36>>,
     pub component: Component,
-    pub variable_monitoring_id: i32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub variable_monitoring_id: Option<i32>,
     pub event_notification_type: EventNotificationType,
     pub variable: Variable,
 }

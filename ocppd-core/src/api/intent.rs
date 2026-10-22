@@ -26,6 +26,9 @@ pub enum Intent {
     ClearFault {
         connector: u32,
     },
+    LockFailure {
+        connector: u32,
+    },
 }
 
 impl Intent {
@@ -36,7 +39,8 @@ impl Intent {
             | Intent::Stop { connector }
             | Intent::Unplug { connector }
             | Intent::Fault { connector }
-            | Intent::ClearFault { connector } => Some(*connector),
+            | Intent::ClearFault { connector }
+            | Intent::LockFailure { connector } => Some(*connector),
         }
     }
 }

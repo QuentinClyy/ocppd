@@ -174,9 +174,18 @@ fn reserve(run: &mut Run, id: i32) -> Value {
     status
 }
 
+fn broken_lock(run: &mut Run) {
+    run.input(0, Input::Intent(Intent::LockFailure { connector: 1 }));
+}
+
 fn clear_fault(run: &mut Run, now: u64) {
     run.input(now, Input::Intent(Intent::ClearFault { connector: 1 }));
     run.answer_all(now);
+}
+
+fn unlock(run: &mut Run) -> Value {
+    let unlock = json!({"evseId": 1, "connectorId": 1});
+    run.result(0, "UnlockConnector", unlock)["status"].clone()
 }
 
 #[test]
@@ -254,4 +263,61 @@ fn given_faulted_evse_when_remote_start_then_rejected_per_f01_fr_23() {
     let status = run.result(0, "RequestStartTransaction", request)["status"].clone();
 
     assert_eq!(status, "Rejected");
+}
+
+#[test]
+fn given_broken_lock_when_ev_plugged_then_faulted_without_charging_and_lock_problem_notified_per_g05_fr_01_fr_02_and_tc_g_20()
+ {
+    let mut run = Run::accepted(86_400);
+    broken_lock(&mut run);
+
+    plug_in(&mut run, 0);
+
+    assert_eq!(last_status(&run), "Faulted");
+    assert!(sent(&run, "TransactionEvent").is_empty(), "G05.FR.01");
+    let event = &sent(&run, "NotifyEvent")[0]["eventData"][0];
+    assert_eq!(event["trigger"], "Delta", "G05.FR.02");
+    assert_eq!(event["component"]["name"], "ConnectorPlugRetentionLock");
+    assert_eq!(
+        event["component"]["evse"],
+        json!({"id": 1, "connectorId": 1})
+    );
+    assert_eq!(event["variable"]["name"], "Problem");
+    assert_eq!(event["actualValue"], "true");
+    assert_eq!(event["eventNotificationType"], "HardWiredNotification");
+    assert!(event.get("variableMonitoringId").is_none());
+}
+
+#[test]
+fn given_lock_failure_reported_when_fault_cleared_then_lock_problem_false() {
+    let mut run = Run::accepted(86_400);
+    broken_lock(&mut run);
+    plug_in(&mut run, 0);
+    let get = json!({"getVariableData": [{"component": {"name": "ConnectorPlugRetentionLock", "evse": {"id": 1, "connectorId": 1}}, "variable": {"name": "Problem"}}]});
+
+    clear_fault(&mut run, 0);
+
+    let read = run.result(0, "GetVariables", get)["getVariableResult"][0].clone();
+    assert_eq!(read["attributeValue"], "false");
+}
+
+#[test]
+fn given_broken_lock_when_connector_unlocked_then_unlock_failed_per_f05() {
+    let mut run = Run::accepted(86_400);
+    broken_lock(&mut run);
+
+    let status = unlock(&mut run);
+
+    assert_eq!(status, "UnlockFailed");
+}
+
+#[test]
+fn given_repaired_lock_when_connector_unlocked_then_unlocked_per_f05() {
+    let mut run = Run::accepted(86_400);
+    broken_lock(&mut run);
+    clear_fault(&mut run, 0);
+
+    let status = unlock(&mut run);
+
+    assert_eq!(status, "Unlocked");
 }

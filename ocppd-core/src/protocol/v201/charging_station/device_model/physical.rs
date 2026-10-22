@@ -1,5 +1,6 @@
 use super::row::{Row, row};
 use super::table::{AVAILABILITY_STATE, CONNECTOR_STATUSES, POWER};
+use crate::protocol::v201::charging_station::diagnostics::monitoring::{LOCK, PROBLEM};
 use crate::protocol::v201::messages::provisioning::report::{DataType, Mutability};
 use crate::station::Station;
 
@@ -61,6 +62,7 @@ pub fn rows(station: &Station) -> Vec<Row<'_>> {
             )
             .evse(id, Some(1)),
             row("Connector", "SupplyPhases", &phases, ReadOnly, Integer).evse(id, Some(1)),
+            row(LOCK, PROBLEM, "false", ReadOnly, Boolean).evse(id, Some(1)),
         ]);
     }
     rows

@@ -89,7 +89,8 @@ without one the station does not connect.
 | `{"command":"stop","station":"CP1","connector":1}` | stop the transaction locally |
 | `{"command":"unplug","station":"CP1","connector":1}` | unplug the EV; stops a running transaction |
 | `{"command":"fault","station":"CP1","connector":1}` | the connector reports `Faulted`, stops its transaction and refuses new ones and reservations |
-| `{"command":"clear_fault","station":"CP1","connector":1}` | clear the fault |
+| `{"command":"lock_failure","station":"CP1","connector":1}` | the connector's lock breaks: unlocking answers `UnlockFailed`, and plugging an EV in faults the connector (ConnectorLockFailure; a 2.0.1 station also reports `ConnectorPlugRetentionLock.Problem`) |
+| `{"command":"clear_fault","station":"CP1","connector":1}` | clear the fault and repair the lock |
 
 `plug_in` takes an optional EV, with these defaults:
 `"ev":{"capacity_kwh":60,"soc":0.2,"max_kw":11,"target_soc":1.0}`.
@@ -143,7 +144,6 @@ simulates, it does not transfer:
 
 Open protocol gaps:
 
-- UnlockConnector always answers `Unlocked`.
 - An unanswered SignCertificate is not resent (whitepaper A02.FR.17–19);
   CertificateSigned does not check the leaf's CN/O.
 - SetChargingProfile does not validate the schedule's content.
@@ -171,8 +171,8 @@ Advanced User Interface. The station simulates as it does for 1.6:
 - Everything lives in memory (device model values, certificates and the
   station key, charging profiles, reservations, monitors, display messages,
   the cache and the local list): a Reset keeps it, a restart does not.
-- One connector per EVSE, every connector `cType2`; no cable lock, no main
-  meter, no signed meter values.
+- One connector per EVSE, every connector `cType2`; no main meter,
+  no signed meter values.
 - What the EV driver sees is the event stream: display messages are kept,
   reported and expired, but no screen is simulated (no cycling by
   priority, no state or start-time gating, no language choice); costs and
@@ -182,8 +182,8 @@ Not implemented, all optional or outside the profiles: the ISO 15118
 messages, external charging limits (NotifyChargingLimit,
 ClearedChargingLimit), Reset of a single EVSE (answered `Rejected`), the
 DataSigned and ParkingBayOccupancy transaction points,
-DisableRemoteAuthorization and DisablePostAuthorize, hard-wired and
-preconfigured monitors, vendor DataTransfer (always `UnknownVendorId`) and
+DisableRemoteAuthorization and DisablePostAuthorize, hard-wired monitors
+other than the connector lock's and preconfigured monitors, vendor DataTransfer (always `UnknownVendorId`) and
 attribute types other than `Actual`.
 
 Open protocol gaps:

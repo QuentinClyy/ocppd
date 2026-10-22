@@ -4,7 +4,14 @@ use super::charge::{self, Charging, Ev, Sample};
 pub struct Connector {
     pub register_wh: f64,
     pub plugged: Option<Plugged>,
-    pub faulted: bool,
+    pub fault: Option<Fault>,
+    pub lock_broken: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum Fault {
+    Internal,
+    ConnectorLock,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -21,6 +28,14 @@ impl Connector {
             soc,
             charging: None,
         });
+        if self.lock_broken {
+            self.fault = Some(Fault::ConnectorLock);
+        }
+    }
+
+    pub fn repair(&mut self) {
+        self.fault = None;
+        self.lock_broken = false;
     }
 
     pub fn unplug(&mut self, now: u64) {

@@ -1,4 +1,5 @@
 mod alert;
+mod hard_wired;
 mod report;
 
 use crate::protocol::v201::charging_station::ChargingStation;
@@ -13,6 +14,8 @@ use crate::protocol::v201::messages::diagnostics::monitoring::{
     SetVariableMonitoringRequest, SetVariableMonitoringResponse,
 };
 use crate::protocol::v201::messages::provisioning::report::{DataType, GenericDeviceModelStatus};
+
+pub use hard_wired::{LOCK, PROBLEM};
 
 pub const MONITORING_CTRLR: &str = "MonitoringCtrlr";
 pub const OFFLINE_QUEUING_SEVERITY: &str = "OfflineQueuingSeverity";
