@@ -1,4 +1,5 @@
 pub mod certificates;
+pub mod charging_profiles;
 pub mod firmware;
 pub mod local_auth;
 pub mod reliability;

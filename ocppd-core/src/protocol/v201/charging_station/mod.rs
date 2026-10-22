@@ -9,6 +9,7 @@ mod metering;
 mod provisioning;
 mod remote_control;
 mod security;
+mod smart_charging;
 mod transaction;
 
 use crate::api::event::{Event, Kind, LinkEvent};
@@ -38,6 +39,7 @@ use security::client_certificate::ClientCertificates;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 use serde_json::Value;
+use smart_charging::profiles::ChargingProfiles;
 use transaction::Session;
 
 const TRANSACTION_MESSAGES: [&str; 1] = ["TransactionEvent"];
@@ -64,6 +66,8 @@ pub struct ChargingStation {
     boot_request: BootNotificationRequest,
     registration: Registration,
     network: NetworkProfiles,
+    charging_profiles: ChargingProfiles,
+    limit_change_at: Option<u64>,
 }
 
 impl ChargingStation {
@@ -102,6 +106,8 @@ impl ChargingStation {
             boot_request,
             registration: Registration::Offline,
             network: NetworkProfiles::default(),
+            charging_profiles: ChargingProfiles::default(),
+            limit_change_at: None,
         })
     }
 
@@ -119,6 +125,7 @@ impl ChargingStation {
             self.firmware_deadline(),
             self.log_upload_deadline(),
             self.client_certificate_deadline(),
+            self.limit_change_at,
         ]
         .into_iter()
         .flatten()
@@ -159,6 +166,7 @@ impl ChargingStation {
             self.report_statuses(&mut out, now);
             self.aligned_tick(&mut out, now);
         }
+        self.apply_limits(&mut out, now);
         if self.reconnect_due(now) {
             out.push(Output::Close);
         }

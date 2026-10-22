@@ -3,6 +3,7 @@ mod physical;
 mod row;
 mod security;
 pub(super) mod shortcut;
+mod smart_charging;
 pub(super) mod table;
 
 use crate::protocol::v201::messages::datatypes::component::{Component, Evse, Variable};
@@ -114,12 +115,31 @@ impl DeviceModel {
         variable: &str,
         value: String,
     ) {
-        let found = self.entries.iter_mut().find(|entry| {
+        self.assign(value, |entry| {
             entry.component.evse == evse
                 && entry.component.name.as_str() == component
                 && entry.variable.name.as_str() == variable
                 && entry.variable.instance.is_none()
         });
+    }
+
+    pub fn set_instance_value(
+        &mut self,
+        component: &str,
+        variable: &str,
+        instance: &str,
+        value: String,
+    ) {
+        self.assign(value, |entry| {
+            entry.component.evse.is_none()
+                && entry.component.name.as_str() == component
+                && entry.variable.name.as_str() == variable
+                && entry.variable.instance.as_ref().map(CiString::as_str) == Some(instance)
+        });
+    }
+
+    fn assign(&mut self, value: String, matches: impl Fn(&Entry) -> bool) {
+        let found = self.entries.iter_mut().find(|entry| matches(entry));
         if let Some(entry) = found {
             entry.value = value;
         }

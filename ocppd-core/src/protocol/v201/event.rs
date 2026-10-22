@@ -75,6 +75,14 @@ pub enum EventKind {
         id_tag: String,
     },
     ChargingStationCertificateInstalled,
+    ChargingProfileSet {
+        evse: u32,
+        charging_profile_id: i32,
+    },
+    ChargingLimitChanged {
+        evse: u32,
+        limit_w: f64,
+    },
     NetworkProfileSet {
         slot: usize,
         security_profile: u64,

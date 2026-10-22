@@ -40,6 +40,7 @@ pub struct Transaction {
     pub charging_state: ChargingState,
     pub id_token_sent: bool,
     pub stop_reason: Option<StoppedReason>,
+    pub started: u64,
     reached: Vec<TxPoint>,
     last_periodic: u64,
     last_ended_sample: u64,
@@ -82,6 +83,7 @@ impl ChargingStation {
                     charging_state: state,
                     id_token_sent: false,
                     stop_reason: None,
+                    started: now,
                     reached: valid,
                     last_periodic: now,
                     last_ended_sample: now,
@@ -138,6 +140,9 @@ impl ChargingStation {
         let ended = TransactionEventType::Ended;
         self.send_transaction_event(out, now, index, ended, trigger, samples);
         self.sessions[index] = Session::default();
+        if self.charging_profiles.end_transaction(index as u32 + 1) {
+            self.count_profiles();
+        }
         self.apply_charging(now, index);
         self.apply_scheduled_availability(out, now);
     }
@@ -213,7 +218,7 @@ impl ChargingStation {
             Authorization::Authorized { .. }
         );
         let suspended = self.sessions[index].suspended || !self.operative(index);
-        let limit_w = self.station.limit_w();
+        let limit_w = self.limit_w(index, now);
         let connector = &mut self.station.connectors[index];
         let plugged = connector.plugged.is_some();
         let charging = connector

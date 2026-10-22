@@ -34,9 +34,10 @@ This starts station `CP1`, which connects to `<csms>/CP1` using the
 station (`ocpp2.0.1` subprotocol; so far boot, heartbeat, status, the
 device model, Reset, local and remote transactions, meter values,
 availability, the authorization cache and the local list, security
-profiles 1 and 2, CA certificates, GetLog, UpdateFirmware and
-CustomerInformation) and `"csms"` to send that batch to another CSMS than
-`--csms`, so one process can run a mixed fleet. For a 2.0.1 station,
+profiles 1 to 3, network profiles, CA certificates, GetLog,
+UpdateFirmware, CustomerInformation and SetChargingProfile) and `"csms"`
+to send that batch to another CSMS than `--csms`, so one process can run
+a mixed fleet. For a 2.0.1 station,
 `"configuration"` keys use the Part 2 shortcut notation
 `Component[instance].Variable[instance]`, e.g.
 `{"OCPPCommCtrlr.OfflineThreshold":"120"}`:
