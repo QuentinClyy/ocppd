@@ -74,6 +74,7 @@ pub enum EventKind {
     CustomerDataCleared {
         id_tag: String,
     },
+    ChargingStationCertificateInstalled,
     SecurityEvent {
         #[serde(rename = "type")]
         event_type: String,

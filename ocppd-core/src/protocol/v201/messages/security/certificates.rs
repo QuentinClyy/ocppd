@@ -1,3 +1,4 @@
+use crate::protocol::v201::messages::datatypes::generic_status::GenericStatus;
 use crate::protocol::v201::messages::datatypes::status_info::StatusInfo;
 use crate::wire::ci_string::CiString;
 use serde::{Deserialize, Serialize};
@@ -118,4 +119,49 @@ pub enum DeleteCertificateStatus {
     Accepted,
     Failed,
     NotFound,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SignCertificateRequest {
+    pub csr: CiString<5500>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub certificate_type: Option<CertificateSigningUse>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum CertificateSigningUse {
+    ChargingStationCertificate,
+    #[serde(rename = "V2GCertificate")]
+    V2gCertificate,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SignCertificateResponse {
+    pub status: GenericStatus,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub status_info: Option<StatusInfo>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CertificateSignedRequest {
+    pub certificate_chain: CiString<10000>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub certificate_type: Option<CertificateSigningUse>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CertificateSignedResponse {
+    pub status: CertificateSignedStatus,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub status_info: Option<StatusInfo>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum CertificateSignedStatus {
+    Accepted,
+    Rejected,
 }

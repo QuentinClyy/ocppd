@@ -33,6 +33,7 @@ use local_auth::list::LocalList;
 use provisioning::registration::Registration;
 use security::STARTUP_OF_THE_DEVICE;
 use security::certificates::Certificates;
+use security::client_certificate::ClientCertificates;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 use serde_json::Value;
@@ -49,6 +50,7 @@ pub struct ChargingStation {
     sessions: Vec<Session>,
     local_list: LocalList,
     certificates: Certificates,
+    client_certificate: ClientCertificates,
     firmware: Firmware,
     log_upload: Option<LogUpload>,
     cache: Cache,
@@ -85,6 +87,7 @@ impl ChargingStation {
             sessions: (0..connectors).map(|_| Session::default()).collect(),
             local_list: LocalList::default(),
             certificates: Certificates::default(),
+            client_certificate: ClientCertificates::default(),
             firmware: Firmware::default(),
             log_upload: None,
             cache: Cache::default(),
@@ -112,6 +115,7 @@ impl ChargingStation {
             self.next_aligned,
             self.firmware_deadline(),
             self.log_upload_deadline(),
+            self.client_certificate_deadline(),
         ]
         .into_iter()
         .flatten()
@@ -148,6 +152,9 @@ impl ChargingStation {
             self.report_statuses(&mut out, now);
             self.aligned_tick(&mut out, now);
         }
+        if self.reconnect_due(now) {
+            out.push(Output::Close);
+        }
         if self.reset_due(now) {
             self.rebooted(&mut out, now);
             out.push(Output::Close);
@@ -168,6 +175,7 @@ impl ChargingStation {
             self.call_failed(out, now, sent);
         }
         self.registration_tick(now);
+        self.client_certificate_tick(now);
         self.transaction_tick(out, now);
     }
 
@@ -207,6 +215,7 @@ impl ChargingStation {
             "BootNotification" => self.booted(out, now, payload),
             "Authorize" => self.authorize_reply(out, now, call, payload),
             "TransactionEvent" => self.transaction_reply(out, now, call, payload),
+            "SignCertificate" => self.sign_certificate_reply(out, now, payload),
             _ => {}
         }
     }
@@ -216,6 +225,7 @@ impl ChargingStation {
             "BootNotification" => self.boot_failed(now),
             "Authorize" => self.authorize_failed(&sent.call),
             "TransactionEvent" => self.retry_transaction_event(out, now, sent),
+            "SignCertificate" => self.sign_certificate_failed(),
             _ => {}
         }
     }

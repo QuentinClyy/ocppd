@@ -114,6 +114,12 @@ impl ChargingStation {
                 self.report_firmware_status();
                 TriggerMessageStatus::Accepted
             }
+            MessageTrigger::SignChargingStationCertificate => {
+                match self.sign_charging_station_certificate() {
+                    true => TriggerMessageStatus::Accepted,
+                    false => TriggerMessageStatus::Rejected,
+                }
+            }
             _ => TriggerMessageStatus::NotImplemented,
         }
     }

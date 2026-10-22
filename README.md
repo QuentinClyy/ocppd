@@ -64,7 +64,8 @@ with InstallCertificate. A 2.0.1 station also takes
 `SecurityCtrlr.AdditionalRootCertificateCheck`: a new CSMS root must then be
 signed by the current one, which stays trusted until the next connection.
 Profile 3 presents the charge point certificate
-the CSMS signed after an ExtendedTriggerMessage(SignChargePointCertificate);
+the CSMS signed after an ExtendedTriggerMessage(SignChargePointCertificate),
+or a TriggerMessage(SignChargingStationCertificate) for a 2.0.1 station;
 without one the station does not connect.
 
 ### Commands

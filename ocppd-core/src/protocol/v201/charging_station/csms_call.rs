@@ -22,7 +22,8 @@ use crate::protocol::v201::messages::remote_control::{
     TriggerMessageResponse, UnlockConnectorRequest,
 };
 use crate::protocol::v201::messages::security::certificates::{
-    DeleteCertificateRequest, GetInstalledCertificateIdsRequest, InstallCertificateRequest,
+    CertificateSignedRequest, DeleteCertificateRequest, GetInstalledCertificateIdsRequest,
+    InstallCertificateRequest,
 };
 use crate::protocol::v201::messages::transactions::GetTransactionStatusRequest;
 use crate::wire::frame::Frame;
@@ -123,6 +124,9 @@ impl ChargingStation {
                     Ok(self.installed_certificate_ids(request))
                 })
             }
+            "CertificateSigned" => answer(payload, |request: CertificateSignedRequest| {
+                Ok(self.certificate_signed(out, now, request))
+            }),
             "DeleteCertificate" => answer(payload, |request: DeleteCertificateRequest| {
                 Ok(self.delete_certificate(out, now, request))
             }),

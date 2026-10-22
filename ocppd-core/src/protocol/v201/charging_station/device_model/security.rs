@@ -3,7 +3,8 @@ use crate::protocol::v201::charging_station::security::certificates::{
     ADDITIONAL_ROOT_CERTIFICATE_CHECK, CAPACITY,
 };
 use crate::protocol::v201::charging_station::security::{
-    BASIC_AUTH_PASSWORD, CERTIFICATE_ENTRIES, SECURITY_CTRLR, SECURITY_PROFILE,
+    BASIC_AUTH_PASSWORD, CERT_SIGNING_REPEAT_TIMES, CERT_SIGNING_WAIT_MINIMUM, CERTIFICATE_ENTRIES,
+    ORGANIZATION_NAME, SECURITY_CTRLR, SECURITY_PROFILE,
 };
 use crate::protocol::v201::messages::provisioning::report::{DataType, Mutability};
 
@@ -16,11 +17,28 @@ pub fn rows() -> Vec<Row<'static>> {
     vec![
         row(
             SECURITY_CTRLR,
-            "OrganizationName",
+            ORGANIZATION_NAME,
             "",
             ReadWrite,
             DataType::String,
         ),
+        row(
+            SECURITY_CTRLR,
+            CERT_SIGNING_WAIT_MINIMUM,
+            "30",
+            ReadWrite,
+            Integer,
+        )
+        .unit("s")
+        .min(0.0),
+        row(
+            SECURITY_CTRLR,
+            CERT_SIGNING_REPEAT_TIMES,
+            "3",
+            ReadWrite,
+            Integer,
+        )
+        .min(0.0),
         row(SECURITY_CTRLR, CERTIFICATE_ENTRIES, "0", ReadOnly, Integer).max(CAPACITY as f64),
         row(
             SECURITY_CTRLR,

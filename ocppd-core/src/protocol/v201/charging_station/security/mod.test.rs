@@ -127,6 +127,18 @@ fn given_booted_station_when_password_set_then_accepted_and_only_logged_without_
 }
 
 #[test]
+fn given_password_set_when_read_then_rejected_as_write_only_per_b06_fr_09() {
+    let mut run = Run::accepted(86_400);
+    set_password(&mut run, PASSWORD);
+    let get = json!({"getVariableData": [{"component": {"name": "SecurityCtrlr"}, "variable": {"name": "BasicAuthPassword"}}]});
+
+    let read = run.result(0, "GetVariables", get)["getVariableResult"][0].clone();
+
+    assert_eq!(read["attributeStatus"], "Rejected");
+    assert!(read.get("attributeValue").is_none());
+}
+
+#[test]
 fn given_password_on_profile_0_when_connecting_then_no_basic_auth_per_a00_fr_202() {
     let mut run = Run::new(1);
     run.station.set_basic_auth_password(PASSWORD);

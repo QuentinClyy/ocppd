@@ -9,6 +9,7 @@ use crate::protocol::v16::messages::security::certificates::{
     SignCertificateResponse,
 };
 use crate::wire::ci_string::CiString;
+use crate::x509::identity::{ClientCertificate, Identity};
 use crate::x509::signing::{chain_fits, signing_request};
 use openssl::pkey::{PKey, Private};
 use openssl::x509::X509;
@@ -20,31 +21,15 @@ pub struct ChargePointCertificate {
     installed: Option<Identity>,
 }
 
-struct Identity {
-    key: PKey<Private>,
-    chain: Vec<X509>,
-}
-
-pub struct ClientCertificate {
-    pub chain_pem: Vec<u8>,
-    pub key_pkcs8_pem: Vec<u8>,
-}
-
 impl ChargePoint {
     pub fn client_certificate(&self) -> Option<ClientCertificate> {
         if !self.requires_client_certificate() {
             return None;
         }
-        let identity = self.client_certificate.installed.as_ref()?;
-        let mut chain_pem = Vec::new();
-        for certificate in &identity.chain {
-            chain_pem.extend(certificate.to_pem().ok()?);
-        }
-        let key_pkcs8_pem = identity.key.private_key_to_pem_pkcs8().ok()?;
-        Some(ClientCertificate {
-            chain_pem,
-            key_pkcs8_pem,
-        })
+        self.client_certificate
+            .installed
+            .as_ref()?
+            .client_certificate()
     }
 
     pub(crate) fn has_charge_point_certificate(&self) -> bool {

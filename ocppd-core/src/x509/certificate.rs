@@ -1,4 +1,5 @@
 use openssl::asn1::Asn1Time;
+use openssl::nid::Nid;
 use openssl::x509::{X509, X509Ref};
 use std::cmp::Ordering;
 
@@ -21,4 +22,16 @@ pub fn valid_at(certificate: &X509Ref, now: u64) -> bool {
     let unexpired = certificate.not_after().compare(&now);
     started.is_ok_and(|order| order != Ordering::Greater)
         && unexpired.is_ok_and(|order| order != Ordering::Less)
+}
+
+pub fn subject_entry(certificate: &X509Ref, nid: Nid) -> Option<String> {
+    let entry = certificate.subject_name().entries_by_nid(nid).next()?;
+    entry.data().to_string().ok()
+}
+
+pub fn expires_at(certificate: &X509Ref) -> Option<u64> {
+    let epoch = Asn1Time::from_unix(0).ok()?;
+    let lifetime = epoch.diff(certificate.not_after()).ok()?;
+    let seconds = i64::from(lifetime.days) * 86_400 + i64::from(lifetime.secs);
+    u64::try_from(seconds * 1000).ok()
 }

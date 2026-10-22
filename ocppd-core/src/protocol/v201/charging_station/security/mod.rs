@@ -1,4 +1,5 @@
 pub(super) mod certificates;
+pub(super) mod client_certificate;
 
 use super::ChargingStation;
 use crate::api::io::Output;
@@ -12,18 +13,23 @@ pub const SECURITY_CTRLR: &str = "SecurityCtrlr";
 pub const SECURITY_PROFILE: &str = "SecurityProfile";
 pub const BASIC_AUTH_PASSWORD: &str = "BasicAuthPassword";
 pub const CERTIFICATE_ENTRIES: &str = "CertificateEntries";
+pub const ORGANIZATION_NAME: &str = "OrganizationName";
+pub const CERT_SIGNING_WAIT_MINIMUM: &str = "CertSigningWaitMinimum";
+pub const CERT_SIGNING_REPEAT_TIMES: &str = "CertSigningRepeatTimes";
 pub const STARTUP_OF_THE_DEVICE: &str = "StartupOfTheDevice";
 pub const RESET_OR_REBOOT: &str = "ResetOrReboot";
 pub const RECONFIGURATION_OF_SECURITY_PARAMETERS: &str = "ReconfigurationOfSecurityParameters";
 pub const FIRMWARE_UPDATED: &str = "FirmwareUpdated";
 pub const INVALID_FIRMWARE_SIGNATURE: &str = "InvalidFirmwareSignature";
 pub const INVALID_FIRMWARE_SIGNING_CERTIFICATE: &str = "InvalidFirmwareSigningCertificate";
-const CRITICAL: [&str; 5] = [
+pub const INVALID_CHARGING_STATION_CERTIFICATE: &str = "InvalidChargingStationCertificate";
+const CRITICAL: [&str; 6] = [
     STARTUP_OF_THE_DEVICE,
     RESET_OR_REBOOT,
     FIRMWARE_UPDATED,
     INVALID_FIRMWARE_SIGNATURE,
     INVALID_FIRMWARE_SIGNING_CERTIFICATE,
+    INVALID_CHARGING_STATION_CERTIFICATE,
 ];
 const BASIC_AUTH_PROFILES: [u64; 2] = [1, 2];
 const TLS_FROM_PROFILE: u64 = 2;
