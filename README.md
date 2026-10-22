@@ -2,7 +2,7 @@
 
 A sans-IO OCPP charging-station simulator. It runs station state machines
 that a CSMS can connect to, driven by JSON-line commands on stdin, with
-events as JSON lines on stdout. OCPP 1.6J first, 2.0.1 later.
+events as JSON lines on stdout. OCPP 1.6J and OCPP 2.0.1.
 
 ## Build
 
@@ -105,6 +105,7 @@ One process, measured against `cargo run --release --example sink_csms
 | 20 000 | 446 MB | 15 s | |
 | 1 000 OCPP 2.0.1 | 55 MB | under 1 s | |
 | 10 000 OCPP 2.0.1 | 472 MB | 4 s | heartbeats every 10 s: 0.05 core |
+| 5 000 1.6 + 5 000 2.0.1 | 370 MB | 4.5 s | heartbeats every 10 s: 0.04 core |
 
 A 2.0.1 station takes about twice the memory of a 1.6 one: each keeps its
 own device model of about 80 variables.
@@ -117,6 +118,8 @@ the range or spread stations over several processes and CSMS addresses to
 go further.
 
 ## Known limitations
+
+### OCPP 1.6
 
 OCPP 1.6J with the Security Whitepaper (edition 4) is complete. The station
 simulates, it does not transfer:
@@ -145,3 +148,46 @@ Open protocol gaps:
 - An offline transaction whose StartTransaction is abandoned is never
   reported to the CSMS.
 
+### OCPP 2.0.1
+
+OCPP 2.0.1 (edition 4) is complete for every certification profile except
+ISO 15118 support: Core, Advanced Security, Local Authorization List
+Management, Smart Charging, Reservation, Advanced Device Management and
+Advanced User Interface. The station simulates as it does for 1.6:
+
+- Nothing is transferred: GetLog and UpdateFirmware only need a valid
+  scheme and take 10 s; retries and time windows are ignored; the new
+  firmware version is the last segment of the location. UpdateFirmware
+  needs a signing certificate (an unsigned update is `Rejected`), a
+  signature only has to be present, and the signing certificate's
+  revocation is not checked.
+- EVSE `Power` reads the power being delivered (its `maxLimit` is the
+  station limit), so threshold and delta monitors on it follow charging;
+  their events carry the EVSE's transaction id.
+- Everything lives in memory (device model values, certificates and the
+  station key, charging profiles, reservations, monitors, display messages,
+  the cache and the local list): a Reset keeps it, a restart does not.
+- One connector per EVSE, every connector `cType2`; no cable lock, no
+  faults, no main meter, no signed meter values.
+- What the EV driver sees is the event stream: display messages are kept,
+  reported and expired, but no screen is simulated (no cycling by
+  priority, no state or start-time gating, no language choice); costs and
+  tariffs arrive as `cost_shown` and `driver_message` events.
+
+Not implemented, all optional or outside the profiles: the ISO 15118
+messages, external charging limits (NotifyChargingLimit,
+ClearedChargingLimit), Reset of a single EVSE (answered `Rejected`), the
+DataSigned and ParkingBayOccupancy transaction points,
+DisableRemoteAuthorization and DisablePostAuthorize, hard-wired and
+preconfigured monitors, vendor DataTransfer (always `UnknownVendorId`) and
+attribute types other than `Actual`.
+
+Open protocol gaps:
+
+- A ChargingStationMaxProfile is split equally between the charging EVSEs;
+  a Relative schedule counts from the transaction start.
+- SetNetworkProfile never answers `Failed`, and
+  AllowSecurityProfileDowngrade is not offered.
+- A TLS failure raises no security event.
+- The clock is the host's, not the CSMS's `currentTime`.
+- `BytesPerMessage` limits are reported but not enforced.
