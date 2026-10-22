@@ -1,6 +1,7 @@
 mod authorization;
 mod physical;
 mod row;
+mod security;
 pub(super) mod shortcut;
 pub(super) mod table;
 
@@ -50,6 +51,17 @@ impl DeviceModel {
             Found::UnknownComponent => (GetVariableStatus::UnknownComponent, None),
             Found::UnknownVariable => (GetVariableStatus::UnknownVariable, None),
         }
+    }
+
+    pub fn provision(&mut self, component: &Component, variable: &Variable, value: &str) -> bool {
+        let Found::Entry(entry) = self.find(component, variable) else {
+            return false;
+        };
+        if !fits(&entry.characteristics, value) {
+            return false;
+        }
+        entry.value = value.to_owned();
+        true
     }
 
     pub fn set(
@@ -160,7 +172,7 @@ fn fits(characteristics: &VariableCharacteristics, value: &str) -> bool {
         DataType::Decimal => value.parse::<f64>().is_ok_and(in_range),
         DataType::Boolean => value == "true" || value == "false",
         DataType::DateTime => value.parse::<DateTime>().is_ok(),
-        DataType::String => true,
+        DataType::String => in_range(value.chars().count() as f64),
         DataType::OptionList => allowed(value),
         DataType::MemberList | DataType::SequenceList => {
             value.is_empty() || value.split(',').all(allowed)

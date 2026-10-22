@@ -202,6 +202,12 @@ impl Configuration {
         }
     }
 
+    pub fn set_text(&mut self, name: &str, value: CiString<500>) {
+        if let Some(index) = self.position(name) {
+            self.keys[index].value = value;
+        }
+    }
+
     pub fn interval_ms(&self, name: &str) -> Option<u64> {
         let seconds: u64 = self.find(name)?.value.as_str().parse().ok()?;
         Some(seconds * 1000).filter(|&ms| ms > 0)
@@ -261,6 +267,10 @@ fn measurands(list: &str) -> Option<Vec<Measurand>> {
         parsed.push(measurand);
     }
     Some(parsed)
+}
+
+pub fn hex_encode(bytes: &[u8]) -> String {
+    bytes.iter().map(|byte| format!("{byte:02x}")).collect()
 }
 
 pub fn hex(text: &str) -> Option<Vec<u8>> {

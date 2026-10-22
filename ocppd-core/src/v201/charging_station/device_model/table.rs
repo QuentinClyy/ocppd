@@ -258,23 +258,9 @@ pub fn entries(station: &Station) -> Result<Vec<Entry>, TooLong> {
         )
         .unit("s")
         .min(0.0),
-        row(
-            "SecurityCtrlr",
-            "OrganizationName",
-            "",
-            ReadWrite,
-            DataType::String,
-        ),
-        row(
-            "SecurityCtrlr",
-            "CertificateEntries",
-            "0",
-            ReadOnly,
-            Integer,
-        ),
-        row("SecurityCtrlr", "SecurityProfile", "0", ReadOnly, Integer),
     ];
     rows.extend(super::authorization::rows());
+    rows.extend(super::security::rows());
     rows.extend(super::physical::rows(station));
     rows.into_iter().map(Row::entry).collect()
 }

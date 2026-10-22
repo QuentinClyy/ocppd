@@ -67,24 +67,31 @@ impl Protocol {
         }
     }
 
+    pub fn set_basic_auth_password(&mut self, password: &str) -> bool {
+        match self {
+            Protocol::V16(charge_point) => charge_point.set_basic_auth_password(password),
+            Protocol::V201(charging_station) => charging_station.set_basic_auth_password(password),
+        }
+    }
+
     pub fn basic_auth_password(&self) -> Option<Vec<u8>> {
         match self {
             Protocol::V16(charge_point) => charge_point.basic_auth_password(),
-            Protocol::V201(_) => None,
+            Protocol::V201(charging_station) => charging_station.basic_auth_password(),
         }
     }
 
     pub fn requires_tls(&self) -> bool {
         match self {
             Protocol::V16(charge_point) => charge_point.requires_tls(),
-            Protocol::V201(_) => false,
+            Protocol::V201(charging_station) => charging_station.requires_tls(),
         }
     }
 
     pub fn requires_client_certificate(&self) -> bool {
         match self {
             Protocol::V16(charge_point) => charge_point.requires_client_certificate(),
-            Protocol::V201(_) => false,
+            Protocol::V201(charging_station) => charging_station.requires_client_certificate(),
         }
     }
 

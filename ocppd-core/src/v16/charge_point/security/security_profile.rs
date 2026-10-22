@@ -1,5 +1,7 @@
 use crate::v16::charge_point::ChargePoint;
-use crate::v16::charge_point::configuration::{AUTHORIZATION_KEY, SECURITY_PROFILE, hex};
+use crate::v16::charge_point::configuration::{
+    AUTHORIZATION_KEY, SECURITY_PROFILE, hex, hex_encode,
+};
 use crate::v16::messages::core::configuration::{ChangeConfigurationRequest, ConfigurationStatus};
 use crate::wire::ci_string::CiString;
 
@@ -14,6 +16,17 @@ impl ChargePoint {
         };
         self.configuration
             .change(&ChangeConfigurationRequest { key, value })
+    }
+
+    pub fn set_basic_auth_password(&mut self, password: &str) -> bool {
+        if password.is_empty() {
+            return false;
+        }
+        let Ok(key) = CiString::new(&hex_encode(password.as_bytes())) else {
+            return false;
+        };
+        self.configuration.set_text(AUTHORIZATION_KEY, key);
+        true
     }
 
     pub fn basic_auth_password(&self) -> Option<Vec<u8>> {

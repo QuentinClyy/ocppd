@@ -1,5 +1,6 @@
 use super::ChargingStation;
 use super::registration::Registration;
+use super::security::RESET_OR_REBOOT;
 use crate::api::io::Output;
 use crate::v201::event::EventKind;
 use crate::v201::messages::provisioning::boot::BootReason;
@@ -46,12 +47,13 @@ impl ChargingStation {
         self.resetting && idle && self.outbox.is_drained(now)
     }
 
-    pub(super) fn rebooted(&mut self) {
+    pub(super) fn rebooted(&mut self, out: &mut Vec<Output>, now: u64) {
         self.resetting = false;
         self.registration = Registration::Offline;
         self.boot_request.reason = BootReason::RemoteReset;
-        self.outbox
-            .keep(|action, _| super::TRANSACTION_MESSAGES.contains(&action));
+        self.outbox.keep(|action, _| super::kept_offline(action));
+        self.startup_reported = false;
+        self.security_event(out, now, RESET_OR_REBOOT);
         self.resend_statuses = true;
     }
 }

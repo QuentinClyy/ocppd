@@ -8,6 +8,7 @@ mod registration;
 mod remote_control;
 mod report;
 mod reset;
+mod security;
 mod status;
 mod transaction;
 mod trigger;
@@ -31,6 +32,7 @@ use device_model::{DeviceModel, table};
 use local_auth::cache::Cache;
 use local_auth::list::LocalList;
 use registration::Registration;
+use security::STARTUP_OF_THE_DEVICE;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 use serde_json::Value;
@@ -51,6 +53,7 @@ pub struct ChargingStation {
     station_availability: Availability,
     device_model: DeviceModel,
     resetting: bool,
+    startup_reported: bool,
     next_aligned: Option<u64>,
     boot_request: BootNotificationRequest,
     registration: Registration,
@@ -83,6 +86,7 @@ impl ChargingStation {
             station_availability: Availability::default(),
             device_model,
             resetting: false,
+            startup_reported: false,
             next_aligned: None,
             boot_request,
             registration: Registration::Offline,
@@ -113,11 +117,14 @@ impl ChargingStation {
                 self.emit(&mut out, now, EventKind::Link(LinkEvent::Connected));
                 self.connected(now);
                 self.back_online(now);
+                if !self.startup_reported {
+                    self.startup_reported = true;
+                    self.security_event(&mut out, now, STARTUP_OF_THE_DEVICE);
+                }
             }
             Input::Disconnected => {
                 self.disconnected();
-                self.outbox
-                    .keep(|action, _| TRANSACTION_MESSAGES.contains(&action));
+                self.outbox.keep(|action, _| kept_offline(action));
                 self.mark_queued_offline();
                 self.offline_since = Some(now);
                 self.emit(&mut out, now, EventKind::Link(LinkEvent::Disconnected));
@@ -131,7 +138,7 @@ impl ChargingStation {
             self.aligned_tick(&mut out, now);
         }
         if self.reset_due(now) {
-            self.rebooted();
+            self.rebooted(&mut out, now);
             out.push(Output::Close);
         }
         if self.is_connected()
@@ -234,4 +241,8 @@ impl ChargingStation {
             kind: Kind::V201(kind),
         }));
     }
+}
+
+fn kept_offline(action: &str) -> bool {
+    TRANSACTION_MESSAGES.contains(&action) || security::survives_disconnect(action)
 }

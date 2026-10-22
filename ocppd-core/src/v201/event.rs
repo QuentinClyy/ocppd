@@ -54,6 +54,10 @@ pub enum EventKind {
         version: i32,
         entries: usize,
     },
+    SecurityEvent {
+        #[serde(rename = "type")]
+        event_type: String,
+    },
     #[serde(untagged)]
     Link(LinkEvent),
 }

@@ -2,6 +2,9 @@ use super::ChargingStation;
 use super::device_model::shortcut;
 use super::device_model::table::{AVAILABILITY_STATE, CLOCK_CTRLR, DATE_TIME};
 use super::local_auth::{AUTH_CACHE_CTRLR, ENTRIES, LOCAL_AUTH_LIST_CTRLR};
+use super::security::{
+    BASIC_AUTH_PASSWORD, RECONFIGURATION_OF_SECURITY_PARAMETERS, SECURITY_CTRLR, SECURITY_PROFILE,
+};
 use crate::api::io::Output;
 use crate::v201::event::EventKind;
 use crate::v201::messages::availability::ConnectorStatus;
@@ -14,11 +17,23 @@ use crate::wire::ci_string::CiString;
 use crate::wire::date_time::DateTime;
 
 impl ChargingStation {
+    pub fn set_basic_auth_password(&mut self, password: &str) -> bool {
+        self.configure("SecurityCtrlr.BasicAuthPassword", password)
+    }
+
     pub fn configure(&mut self, key: &str, value: &str) -> bool {
         let Some((component, variable)) = shortcut::parse(key) else {
             return false;
         };
-        self.device_model.set(&component, &variable, value) == SetVariableStatus::Accepted
+        let provisioned = component.name.as_str() == SECURITY_CTRLR
+            && variable.name.as_str() == SECURITY_PROFILE
+            && variable.instance.is_none();
+        match provisioned {
+            true => self.device_model.provision(&component, &variable, value),
+            false => {
+                self.device_model.set(&component, &variable, value) == SetVariableStatus::Accepted
+            }
+        }
     }
 
     pub(super) fn get_variables(
@@ -64,7 +79,10 @@ impl ChargingStation {
                 }
                 _ => SetVariableStatus::NotSupportedAttributeType,
             };
-            if attribute_status == SetVariableStatus::Accepted {
+            let secret = data.variable.name.as_str() == BASIC_AUTH_PASSWORD;
+            if attribute_status == SetVariableStatus::Accepted && secret {
+                self.security_event(out, now, RECONFIGURATION_OF_SECURITY_PARAMETERS);
+            } else if attribute_status == SetVariableStatus::Accepted {
                 let kind = EventKind::VariableChanged {
                     component: data.component.name.as_str().to_owned(),
                     variable: data.variable.name.as_str().to_owned(),

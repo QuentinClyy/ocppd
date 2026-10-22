@@ -6,4 +6,5 @@ pub mod local_auth;
 pub mod meter_values;
 pub mod provisioning;
 pub mod remote_control;
+pub mod security;
 pub mod transactions;

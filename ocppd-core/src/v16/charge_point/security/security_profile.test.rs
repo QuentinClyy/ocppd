@@ -259,3 +259,42 @@ fn given_new_charge_point_when_configured_at_spawn_then_value_rules_apply_but_no
         ]
     );
 }
+
+#[test]
+fn given_new_charge_point_when_empty_spawn_password_set_then_refused() {
+    let mut csms = Csms::booted();
+
+    let accepted = csms.charge_point.set_basic_auth_password("");
+
+    assert!(!accepted);
+}
+
+#[test]
+fn given_spawn_password_at_profile_1_when_connecting_then_sent_as_is() {
+    let password = "plain-text-password-of-32-chars!";
+    let mut csms = Csms::booted();
+    csms.charge_point.set_basic_auth_password(password);
+
+    csms.charge_point.configure("SecurityProfile", "1");
+
+    assert_eq!(
+        csms.charge_point.basic_auth_password(),
+        Some(password.as_bytes().to_vec())
+    );
+}
+
+#[test]
+fn given_spawn_password_when_the_csms_sets_an_authorization_key_then_the_key_replaces_it() {
+    let mut csms = Csms::booted();
+    csms.charge_point
+        .set_basic_auth_password("plain-text-password-of-32-chars!");
+    csms.charge_point.configure("SecurityProfile", "1");
+
+    let status = csms.configure(0, "AuthorizationKey", KEY);
+
+    assert_eq!(status, "Accepted");
+    assert_eq!(
+        csms.charge_point.basic_auth_password(),
+        Some(b"0123456789abcdef".to_vec())
+    );
+}

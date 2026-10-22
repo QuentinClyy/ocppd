@@ -26,10 +26,20 @@ struct Spawn {
     #[serde(default)]
     ocpp: Version,
     csms: Option<String>,
+    password: Option<String>,
 }
 
 fn jitter_by_default() -> bool {
     true
+}
+
+fn refusal_hint(key: &str) -> &'static str {
+    match key {
+        "AuthorizationKey" => {
+            ": needs 16-20 bytes as hex; use \"password\" for a plain-text password"
+        }
+        _ => "",
+    }
 }
 
 #[derive(Deserialize)]
@@ -146,7 +156,15 @@ fn spawn(csms: &str, command: &Spawn, events: &UnboundedSender<Event>, stations:
                     .iter()
                     .find(|(key, value)| !protocol.configure(key, value));
                 if let Some((key, _)) = refused {
-                    eprintln!("cannot spawn station {id}: {key} refused");
+                    eprintln!(
+                        "cannot spawn station {id}: {key} refused{}",
+                        refusal_hint(key)
+                    );
+                    continue;
+                }
+                let password = command.password.as_deref();
+                if password.is_some_and(|password| !protocol.set_basic_auth_password(password)) {
+                    eprintln!("cannot spawn station {id}: password refused");
                     continue;
                 }
                 let (intents, receiver) = unbounded_channel();
