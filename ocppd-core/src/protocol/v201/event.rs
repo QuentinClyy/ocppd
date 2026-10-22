@@ -2,6 +2,7 @@ use crate::api::event::LinkEvent;
 use crate::protocol::v201::messages::availability::ConnectorStatus;
 use crate::protocol::v201::messages::datatypes::id_token::AuthorizationStatus;
 use crate::protocol::v201::messages::diagnostics::log::UploadLogStatus;
+use crate::protocol::v201::messages::display::MessagePriority;
 use crate::protocol::v201::messages::firmware::FirmwareStatus;
 use crate::protocol::v201::messages::provisioning::boot::RegistrationStatus;
 use crate::protocol::v201::messages::provisioning::reset::ResetType;
@@ -85,6 +86,14 @@ pub enum EventKind {
     },
     ChargingProfilesCleared {
         count: usize,
+    },
+    DisplayMessageSet {
+        id: i32,
+        priority: MessagePriority,
+        content: String,
+    },
+    DisplayMessageRemoved {
+        id: i32,
     },
     MonitorTriggered {
         monitor_id: i32,

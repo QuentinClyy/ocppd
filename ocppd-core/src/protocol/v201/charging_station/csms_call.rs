@@ -14,6 +14,9 @@ use crate::protocol::v201::messages::diagnostics::monitoring::{
     SetVariableMonitoringRequest,
 };
 use crate::protocol::v201::messages::diagnostics::monitoring_report::GetMonitoringReportRequest;
+use crate::protocol::v201::messages::display::{
+    ClearDisplayMessageRequest, GetDisplayMessagesRequest, SetDisplayMessageRequest,
+};
 use crate::protocol::v201::messages::firmware::UpdateFirmwareRequest;
 use crate::protocol::v201::messages::local_auth::{
     GetLocalListVersionRequest, SendLocalListRequest,
@@ -219,6 +222,15 @@ impl ChargingStation {
             }),
             "CancelReservation" => answer(payload, |request: CancelReservationRequest| {
                 Ok(self.cancel_reservation(out, now, request))
+            }),
+            "SetDisplayMessage" => answer(payload, |request: SetDisplayMessageRequest| {
+                Ok(self.set_display_message(out, now, request))
+            }),
+            "GetDisplayMessages" => answer(payload, |request: GetDisplayMessagesRequest| {
+                Ok(self.get_display_messages(request))
+            }),
+            "ClearDisplayMessage" => answer(payload, |request: ClearDisplayMessageRequest| {
+                Ok(self.clear_display_message(out, now, request))
             }),
             "Reset" => answer(payload, |request: ResetRequest| {
                 Ok(self.reset(out, now, request))

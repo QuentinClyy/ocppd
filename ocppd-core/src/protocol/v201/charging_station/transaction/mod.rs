@@ -144,6 +144,9 @@ impl ChargingStation {
         let ended = TransactionEventType::Ended;
         self.send_transaction_event(out, now, index, ended, trigger, samples);
         self.evaluate_monitors(out, now);
+        if let Some(transaction) = self.sessions[index].transaction.take() {
+            self.drop_transaction_messages(out, now, &transaction.id);
+        }
         self.sessions[index] = Session::default();
         if self.charging_profiles.end_transaction(index as u32 + 1) {
             self.count_profiles();

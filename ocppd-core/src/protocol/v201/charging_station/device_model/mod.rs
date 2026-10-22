@@ -1,4 +1,5 @@
 mod authorization;
+mod display;
 mod monitoring;
 mod physical;
 mod reservation;

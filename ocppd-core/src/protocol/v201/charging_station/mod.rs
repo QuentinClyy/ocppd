@@ -2,6 +2,7 @@ mod availability;
 mod csms_call;
 mod device_model;
 mod diagnostics;
+mod display;
 mod driver;
 mod firmware;
 mod local_auth;
@@ -18,6 +19,7 @@ use crate::api::io::{Input, Output};
 use crate::protocol::v201::event::EventKind;
 use crate::protocol::v201::messages::availability::ConnectorStatus;
 use crate::protocol::v201::messages::custom_data::without_custom_data;
+use crate::protocol::v201::messages::display::MessageInfo;
 use crate::protocol::v201::messages::provisioning::boot::{
     BootNotificationRequest, BootReason, ChargingStationInfo,
 };
@@ -73,6 +75,7 @@ pub struct ChargingStation {
     limit_change_at: Option<u64>,
     reservations: Vec<Reservation>,
     monitoring: Monitoring,
+    display_messages: Vec<MessageInfo>,
 }
 
 impl ChargingStation {
@@ -115,6 +118,7 @@ impl ChargingStation {
             limit_change_at: None,
             reservations: Vec::new(),
             monitoring: Monitoring::default(),
+            display_messages: Vec::new(),
         })
     }
 
@@ -135,6 +139,7 @@ impl ChargingStation {
             self.limit_change_at,
             self.reservation_deadline(),
             self.monitoring_deadline(),
+            self.display_deadline(),
         ]
         .into_iter()
         .flatten()
@@ -172,6 +177,7 @@ impl ChargingStation {
         self.advance_firmware(&mut out, now);
         self.advance_log_upload(&mut out, now);
         self.reservations_tick(&mut out, now);
+        self.expire_display_messages(&mut out, now);
         if self.is_accepted() {
             self.report_statuses(&mut out, now);
             self.aligned_tick(&mut out, now);

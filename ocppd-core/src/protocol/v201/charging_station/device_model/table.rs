@@ -268,6 +268,7 @@ pub fn entries(station: &Station) -> Result<Vec<Entry>, TooLong> {
     ];
     rows.extend(super::authorization::rows());
     rows.extend(super::security::rows());
+    rows.extend(super::display::rows());
     rows.extend(super::monitoring::rows());
     rows.extend(super::reservation::rows());
     rows.extend(super::smart_charging::rows());
