@@ -32,7 +32,6 @@ struct Link {
     socket: Option<Socket>,
     failures: u32,
     reconnect_at: Instant,
-    jitter: bool,
 }
 
 enum Wake {
@@ -52,13 +51,12 @@ pub async fn run(
         socket: None,
         failures: 0,
         reconnect_at: Instant::now(),
-        jitter: protocol.station().jitter,
     };
     let mut intents = Some(receiver);
     loop {
         let mut input = match next_wake(&mut link, protocol.next_deadline(), &mut intents).await {
             Wake::Input(input) => input,
-            Wake::Lost(reason) => link.lose(&reason),
+            Wake::Lost(reason) => link.lose(&reason, &protocol),
             Wake::Reconnect => {
                 let target = target(&protocol, &url, &link.id);
                 match connect(&target, &protocol).await {
@@ -69,29 +67,33 @@ pub async fn run(
                     }
                     Err(err) => {
                         eprintln!("{}: connect to {target} failed: {err}", link.id);
-                        link.schedule_reconnect();
+                        link.schedule_reconnect(&protocol);
                         Input::ConnectFailed(failure(&err))
                     }
                 }
             }
         };
         while let Some(reason) = execute(&mut protocol, input, &mut link.socket, &events).await {
-            input = link.lose(&reason);
+            input = link.lose(&reason, &protocol);
         }
     }
 }
 
 impl Link {
-    fn lose(&mut self, reason: &str) -> Input {
+    fn lose(&mut self, reason: &str, protocol: &Protocol) -> Input {
         eprintln!("{}: disconnected: {reason}", self.id);
         self.socket = None;
-        self.schedule_reconnect();
+        self.schedule_reconnect(protocol);
         Input::Disconnected
     }
 
-    fn schedule_reconnect(&mut self) {
+    fn schedule_reconnect(&mut self, protocol: &Protocol) {
         self.failures += 1;
-        self.reconnect_at = Instant::now() + backoff(&self.id, self.failures, self.jitter);
+        let delay = match protocol.reconnect_delay_ms(self.failures) {
+            Some(ms) => Duration::from_millis(ms),
+            None => backoff(&self.id, self.failures, protocol.station().jitter),
+        };
+        self.reconnect_at = Instant::now() + delay;
     }
 }
 

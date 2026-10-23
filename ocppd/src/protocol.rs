@@ -51,6 +51,13 @@ impl Protocol {
         }
     }
 
+    pub fn reconnect_delay_ms(&self, failures: u32) -> Option<u64> {
+        match self {
+            Protocol::V16(_) => None,
+            Protocol::V201(charging_station) => Some(charging_station.reconnect_delay_ms(failures)),
+        }
+    }
+
     pub fn handle(&mut self, now: u64, input: Input) -> Vec<Output> {
         match self {
             Protocol::V16(charge_point) => charge_point.handle(now, input),

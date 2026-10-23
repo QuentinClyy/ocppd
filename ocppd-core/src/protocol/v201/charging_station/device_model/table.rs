@@ -277,6 +277,7 @@ pub fn entries(station: &Station) -> Result<Vec<Entry>, TooLong> {
         .min(0.0),
     ];
     rows.extend(super::authorization::rows());
+    rows.extend(super::back_off::rows());
     rows.extend(super::security::rows());
     rows.extend(super::display::rows());
     rows.extend(super::monitoring::rows());

@@ -48,6 +48,11 @@ another CSMS than `--csms`, so one process can run a mixed fleet. For a
 {"command":"spawn","prefix":"CS","count":1,"ocpp":"2.0.1","csms":"ws://localhost:8081"}
 ```
 
+A 2.0.1 station reconnects after `OCPPCommCtrlr.RetryBackOffWaitMinimum`
+seconds (default 5) plus a random part of up to `RetryBackOffRandomRange`
+seconds (5), and doubles the wait after each failure, at most
+`RetryBackOffRepeatTimes` times (6).
+
 ### Security profiles
 
 `spawn` takes an optional `"configuration"` object, applied with the same
