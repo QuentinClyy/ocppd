@@ -1,5 +1,7 @@
 use super::security_event::INVALID_CHARGE_POINT_CERTIFICATE;
 use crate::api::io::Output;
+use crate::protocol::shared::x509::identity::{ClientCertificate, Identity};
+use crate::protocol::shared::x509::signing::{chain_fits, signing_request};
 use crate::protocol::v16::charge_point::ChargePoint;
 use crate::protocol::v16::charge_point::configuration::CPO_NAME;
 use crate::protocol::v16::event::EventKind;
@@ -9,8 +11,6 @@ use crate::protocol::v16::messages::security::certificates::{
     SignCertificateResponse,
 };
 use crate::wire::ci_string::CiString;
-use crate::x509::identity::{ClientCertificate, Identity};
-use crate::x509::signing::{chain_fits, signing_request};
 use openssl::pkey::{PKey, Private};
 use openssl::x509::X509;
 use serde_json::{Value, json};

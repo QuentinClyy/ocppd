@@ -1,9 +1,9 @@
 use crate::api::intent::Intent;
 use crate::api::io::Input;
-use crate::file_transfer::TransferStage;
 use crate::fixtures::v201::firmware::*;
 use crate::fixtures::v201::station::Run;
 use crate::fixtures::x509::authority::Authority;
+use crate::protocol::shared::file_transfer::TransferStage;
 use serde_json::json;
 
 #[test]
@@ -12,7 +12,8 @@ fn given_manufacturer_root_when_update_signed_by_a_stranger_requested_then_inval
     let mut run = Run::accepted(86_400);
     signer(&mut run);
     let stranger = Authority::new("stranger");
-    let (_, csr) = crate::x509::signing::signing_request("forged signer", "").unwrap();
+    let (_, csr) =
+        crate::protocol::shared::x509::signing::signing_request("forged signer", "").unwrap();
     let forged = String::from_utf8(stranger.sign(&csr).to_pem().unwrap()).unwrap();
 
     let status = update(&mut run, 0, secure(&forged));

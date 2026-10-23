@@ -65,7 +65,8 @@ fn renamed(csr: &str, common_name: &str) -> String {
 }
 
 fn foreign_leaf() -> X509 {
-    let (_, other_csr) = crate::x509::signing::signing_request("SN-1", "").unwrap();
+    let (_, other_csr) =
+        crate::protocol::shared::x509::signing::signing_request("SN-1", "").unwrap();
     Authority::new("CSO CA").sign(&other_csr)
 }
 

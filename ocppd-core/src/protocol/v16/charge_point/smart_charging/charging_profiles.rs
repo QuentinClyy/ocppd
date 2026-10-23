@@ -1,8 +1,8 @@
+use crate::protocol::shared::smart_charging::schedule::{DAY_MS, Kind, Period, Schedule, Unit};
 use crate::protocol::v16::messages::datatypes::charging_profile::{
     ChargingProfile, ChargingProfileKind, ChargingProfilePurpose, ChargingRateUnit, RecurrencyKind,
 };
 use crate::protocol::v16::messages::smart_charging::ClearChargingProfileRequest;
-use crate::smart_charging::schedule::{DAY_MS, Kind, Period, Schedule, Unit};
 
 pub struct Installed {
     pub connector: u32,

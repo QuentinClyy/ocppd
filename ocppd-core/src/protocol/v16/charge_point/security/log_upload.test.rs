@@ -1,8 +1,8 @@
 use crate::api::intent::Intent;
 use crate::api::io::Input;
-use crate::file_transfer::TransferStage;
 use crate::fixtures::v16::fake_csms::Csms;
 use crate::fixtures::v16::security::result;
+use crate::protocol::shared::file_transfer::TransferStage;
 use serde_json::{Value, json};
 
 fn get_log(csms: &mut Csms, now: u64, request_id: i32, location: &str) -> Value {

@@ -1,3 +1,4 @@
+use crate::protocol::shared::smart_charging::schedule::{DAY_MS, Kind, Period, Schedule, Unit};
 use crate::protocol::v201::messages::datatypes::charging_profile::{
     ChargingProfile, ChargingProfileKind, ChargingProfilePurpose, ChargingRateUnit, RecurrencyKind,
 };
@@ -5,7 +6,6 @@ use crate::protocol::v201::messages::smart_charging::clear::ClearChargingProfile
 use crate::protocol::v201::messages::smart_charging::report::{
     ChargingLimitSource, ChargingProfileCriterion,
 };
-use crate::smart_charging::schedule::{DAY_MS, Kind, Period, Schedule, Unit};
 
 struct Installed {
     evse: u32,

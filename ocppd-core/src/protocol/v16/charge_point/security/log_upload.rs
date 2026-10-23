@@ -1,5 +1,5 @@
 use crate::api::io::Output;
-use crate::file_transfer::{TransferStage, UPLOAD_MS, reachable};
+use crate::protocol::shared::file_transfer::{TransferStage, UPLOAD_MS, reachable};
 use crate::protocol::v16::charge_point::ChargePoint;
 use crate::protocol::v16::event::EventKind;
 use crate::protocol::v16::messages::security::log::{

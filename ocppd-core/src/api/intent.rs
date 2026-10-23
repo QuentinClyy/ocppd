@@ -1,4 +1,4 @@
-use crate::file_transfer::TransferStage;
+use crate::protocol::shared::file_transfer::TransferStage;
 use crate::station::charge::Ev;
 use serde::Deserialize;
 

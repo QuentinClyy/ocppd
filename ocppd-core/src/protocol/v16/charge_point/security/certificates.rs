@@ -1,4 +1,6 @@
 use crate::api::io::Output;
+use crate::protocol::shared::x509::certificate::self_signed_root;
+use crate::protocol::shared::x509::hash::{self, Digest};
 use crate::protocol::v16::charge_point::ChargePoint;
 use crate::protocol::v16::charge_point::configuration::CERTIFICATE_STORE_MAX_LENGTH;
 use crate::protocol::v16::event::EventKind;
@@ -9,8 +11,6 @@ use crate::protocol::v16::messages::security::certificates::{
     InstallCertificateResponse, InstallCertificateStatus,
 };
 use crate::wire::ci_string::CiString;
-use crate::x509::certificate::self_signed_root;
-use crate::x509::hash::{self, Digest};
 use openssl::x509::{X509, X509Ref};
 
 #[derive(Default)]

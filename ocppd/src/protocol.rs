@@ -1,10 +1,10 @@
 use ocppd_core::api::io::{Input, Output};
+use ocppd_core::protocol::shared::x509::identity::ClientCertificate;
 use ocppd_core::protocol::v16::charge_point::ChargePoint;
 use ocppd_core::protocol::v16::messages::core::configuration::ConfigurationStatus;
 use ocppd_core::protocol::v201::charging_station::ChargingStation;
 use ocppd_core::station::Station;
 use ocppd_core::wire::ci_string::TooLong;
-use ocppd_core::x509::identity::ClientCertificate;
 use serde::Deserialize;
 
 #[derive(Clone, Copy, Default, Deserialize)]

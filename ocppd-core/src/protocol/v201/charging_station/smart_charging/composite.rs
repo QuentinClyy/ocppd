@@ -1,3 +1,5 @@
+use crate::protocol::shared::smart_charging::composite;
+use crate::protocol::shared::smart_charging::schedule::Unit;
 use crate::protocol::v201::charging_station::ChargingStation;
 use crate::protocol::v201::messages::datatypes::charging_profile::{
     ChargingRateUnit, ChargingSchedulePeriod,
@@ -6,8 +8,6 @@ use crate::protocol::v201::messages::datatypes::generic_status::GenericStatus;
 use crate::protocol::v201::messages::smart_charging::composite::{
     CompositeSchedule, GetCompositeScheduleRequest, GetCompositeScheduleResponse,
 };
-use crate::smart_charging::composite;
-use crate::smart_charging::schedule::Unit;
 use crate::wire::date_time::DateTime;
 
 impl ChargingStation {

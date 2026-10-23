@@ -3,7 +3,7 @@ use super::security::{
     FIRMWARE_UPDATED, INVALID_FIRMWARE_SIGNATURE, INVALID_FIRMWARE_SIGNING_CERTIFICATE,
 };
 use crate::api::io::Output;
-use crate::file_transfer::{DOWNLOAD_MS, TransferStage, reachable};
+use crate::protocol::shared::file_transfer::{DOWNLOAD_MS, TransferStage, reachable};
 use crate::protocol::v201::event::EventKind;
 use crate::protocol::v201::messages::firmware::{
     FirmwareStatus, FirmwareStatusNotificationRequest, UpdateFirmwareRequest,

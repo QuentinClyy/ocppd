@@ -1,8 +1,8 @@
 use crate::api::intent::{EvSpec, Intent};
 use crate::api::io::Input;
-use crate::file_transfer::TransferStage;
 use crate::fixtures::v201::station::{Run, boot};
 use crate::fixtures::x509::authority::Authority;
+use crate::protocol::shared::file_transfer::TransferStage;
 use serde_json::{Value, json};
 
 pub const LOCATION: &str = "https://firmware.example/2.0.0";
@@ -36,7 +36,8 @@ pub fn signer(run: &mut Run) -> String {
         run.result(0, "InstallCertificate", request)["status"],
         "Accepted"
     );
-    let (_, csr) = crate::x509::signing::signing_request("firmware signer", "").unwrap();
+    let (_, csr) =
+        crate::protocol::shared::x509::signing::signing_request("firmware signer", "").unwrap();
     String::from_utf8(maker.sign(&csr).to_pem().unwrap()).unwrap()
 }
 

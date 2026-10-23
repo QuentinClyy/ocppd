@@ -1,5 +1,5 @@
 use crate::api::io::Output;
-use crate::file_transfer::{DOWNLOAD_MS, TransferStage, reachable};
+use crate::protocol::shared::file_transfer::{DOWNLOAD_MS, TransferStage, reachable};
 use crate::protocol::v16::charge_point::ChargePoint;
 use crate::protocol::v16::charge_point::security::security_event::{
     FIRMWARE_UPDATED, INVALID_FIRMWARE_SIGNATURE, INVALID_FIRMWARE_SIGNING_CERTIFICATE,

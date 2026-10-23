@@ -1,7 +1,7 @@
 use crate::api::intent::Intent;
 use crate::api::io::Input;
-use crate::file_transfer::TransferStage;
 use crate::fixtures::v16::fake_csms::Csms;
+use crate::protocol::shared::file_transfer::TransferStage;
 use crate::wire::frame::Frame;
 use serde_json::{Value, json};
 

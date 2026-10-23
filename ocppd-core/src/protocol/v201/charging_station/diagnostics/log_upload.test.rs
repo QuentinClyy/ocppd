@@ -1,7 +1,7 @@
 use crate::api::intent::Intent;
 use crate::api::io::Input;
-use crate::file_transfer::TransferStage;
 use crate::fixtures::v201::station::Run;
+use crate::protocol::shared::file_transfer::TransferStage;
 use serde_json::{Value, json};
 
 fn get_log(run: &mut Run, request_id: i32, location: &str) -> Value {

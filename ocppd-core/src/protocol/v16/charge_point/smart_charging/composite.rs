@@ -1,4 +1,6 @@
 use crate::api::io::Output;
+use crate::protocol::shared::smart_charging::composite;
+use crate::protocol::shared::smart_charging::schedule::Unit;
 use crate::protocol::v16::charge_point::ChargePoint;
 use crate::protocol::v16::charge_point::transaction::Transaction;
 use crate::protocol::v16::event::EventKind;
@@ -9,8 +11,6 @@ use crate::protocol::v16::messages::datatypes::generic_status::GenericStatus;
 use crate::protocol::v16::messages::smart_charging::{
     GetCompositeScheduleRequest, GetCompositeScheduleResponse,
 };
-use crate::smart_charging::composite;
-use crate::smart_charging::schedule::Unit;
 use crate::wire::date_time::DateTime;
 
 impl ChargePoint {

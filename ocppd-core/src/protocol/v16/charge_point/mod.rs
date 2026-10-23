@@ -12,7 +12,7 @@ mod transaction;
 
 use crate::api::event::{Event, Kind, LinkEvent};
 use crate::api::io::{Input, Output};
-use crate::file_transfer::FailingTransfers;
+use crate::protocol::shared::file_transfer::FailingTransfers;
 use crate::protocol::v16::event::EventKind;
 use crate::protocol::v16::messages::core::boot::BootNotificationRequest;
 use crate::protocol::v16::messages::core::remote_control::ResetType;

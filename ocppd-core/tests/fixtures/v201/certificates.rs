@@ -1,6 +1,6 @@
 use crate::fixtures::v201::station::Run;
 use crate::fixtures::x509::authority::Authority;
-use crate::x509::signing::signing_request;
+use crate::protocol::shared::x509::signing::signing_request;
 use serde_json::{Value, json};
 
 pub const CSMS_ROOT: &str = "CSMSRootCertificate";
