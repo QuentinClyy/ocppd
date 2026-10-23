@@ -42,6 +42,26 @@ fn given_booted_station_when_remote_start_on_evse_1_then_started_with_its_remote
 }
 
 #[test]
+fn given_plugged_ev_when_remote_start_then_its_transaction_id_returned_and_charging_per_f01_fr_13()
+{
+    let mut run = Run::accepted(86_400);
+    plug_in(&mut run, 0);
+    let id = transaction_id(&run);
+
+    let response = start(&mut run, None);
+
+    assert_eq!(response["transactionId"], id);
+    let events = events(&run);
+    let [.., updated, charging] = &events[..] else {
+        panic!("{events:?}");
+    };
+    assert_eq!(updated["triggerReason"], "RemoteStart");
+    assert_eq!(updated["transactionInfo"]["remoteStartId"], 7);
+    assert_eq!(charging["triggerReason"], "ChargingStateChanged");
+    assert_eq!(charging["transactionInfo"]["chargingState"], "Charging");
+}
+
+#[test]
 fn given_authorize_remote_start_when_remote_start_then_accepted_and_authorize_sent_per_f01_fr_01() {
     let mut run = Run::accepted(86_400);
 

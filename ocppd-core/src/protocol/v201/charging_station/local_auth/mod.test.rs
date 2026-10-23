@@ -7,6 +7,27 @@ use crate::protocol::v201::event::EventKind;
 use serde_json::json;
 
 #[test]
+fn given_listed_id_token_offline_when_back_online_then_offline_authorized_and_charging_events_sent_per_c13_fr_02_and_tc_c_21()
+ {
+    let mut run = Run::accepted(86_400);
+    send(&mut run, list(json!([entry(CARD, "Accepted")]), 1, "Full"));
+    run.input(1_000, Input::Disconnected);
+    let ev = EvSpec::default();
+    run.input(2_000, Input::Intent(Intent::PlugIn { connector: 1, ev }));
+    swipe(&mut run, 2_000, CARD);
+
+    run.input(3_000, Input::Connected);
+    run.answer_all(3_000);
+
+    let events = events(&run);
+    assert_eq!(events[1]["triggerReason"], "Authorized");
+    assert_eq!(events[1]["offline"], true);
+    assert_eq!(events[2]["triggerReason"], "ChargingStateChanged");
+    assert_eq!(events[2]["transactionInfo"]["chargingState"], "Charging");
+    assert_eq!(events[2]["offline"], true);
+}
+
+#[test]
 fn given_offline_station_when_unknown_id_token_presented_then_refused_per_c15_fr_08() {
     let mut run = Run::accepted(86_400);
     run.input(1_000, Input::Disconnected);

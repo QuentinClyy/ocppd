@@ -5,7 +5,7 @@ use crate::protocol::v201::event::EventKind;
 use crate::protocol::v201::messages::datatypes::component::Evse;
 use crate::protocol::v201::messages::datatypes::meter_value::MeterValue;
 use crate::protocol::v201::messages::transactions::{
-    TransactionEventRequest, TransactionEventType, TransactionInfo, TriggerReason,
+    ChargingState, TransactionEventRequest, TransactionEventType, TransactionInfo, TriggerReason,
 };
 use crate::wire::date_time::DateTime;
 use serde_json::json;
@@ -23,6 +23,37 @@ impl ChargingStation {
         meter_value: Vec<MeterValue>,
     ) {
         let charging_state = self.charging_state(now, index);
+        let was_powered = self.sessions[index]
+            .transaction
+            .as_ref()
+            .is_some_and(|transaction| powered(transaction.charging_state));
+        let powers_up = powered(charging_state)
+            && !was_powered
+            && trigger_reason != TriggerReason::ChargingStateChanged
+            && event_type != TransactionEventType::Ended;
+        if !powers_up {
+            let event = (event_type, trigger_reason, charging_state);
+            return self.push_transaction_event(out, now, index, event, meter_value);
+        }
+        let event = (event_type, trigger_reason, ChargingState::EvConnected);
+        self.push_transaction_event(out, now, index, event, meter_value);
+        let changed = TriggerReason::ChargingStateChanged;
+        let event = (TransactionEventType::Updated, changed, charging_state);
+        self.push_transaction_event(out, now, index, event, Vec::new());
+    }
+
+    pub(super) fn push_transaction_event(
+        &mut self,
+        out: &mut Vec<Output>,
+        now: u64,
+        index: usize,
+        (event_type, trigger_reason, charging_state): (
+            TransactionEventType,
+            TriggerReason,
+            ChargingState,
+        ),
+        meter_value: Vec<MeterValue>,
+    ) {
         let online = self.is_accepted();
         let session = &mut self.sessions[index];
         let id_token = match &session.authorization {
@@ -34,7 +65,10 @@ impl ChargingStation {
         };
         let remote_start_id = session.remote_start_id.take();
         let reservation_id = session.reservation_id.take();
-        let send_id_token = id_token.filter(|_| !transaction.id_token_sent);
+        let stopped_by = session.stopped_by.take();
+        let send_id_token = id_token
+            .filter(|_| !transaction.id_token_sent)
+            .or(stopped_by);
         transaction.id_token_sent |= send_id_token.is_some();
         let state_changed = charging_state != transaction.charging_state;
         transaction.charging_state = charging_state;
@@ -77,4 +111,11 @@ impl ChargingStation {
         };
         self.emit(out, now, kind);
     }
+}
+
+fn powered(state: ChargingState) -> bool {
+    matches!(
+        state,
+        ChargingState::Charging | ChargingState::SuspendedEv | ChargingState::SuspendedEvse
+    )
 }

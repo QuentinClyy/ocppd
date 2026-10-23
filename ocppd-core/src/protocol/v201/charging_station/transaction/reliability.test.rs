@@ -133,6 +133,17 @@ fn given_no_transaction_when_status_asked_without_id_then_no_messages_queued_per
 }
 
 #[test]
+fn given_queued_transaction_event_when_status_asked_without_id_then_messages_queued_per_e14_fr_07()
+{
+    let mut run = Run::accepted(86_400);
+    plug_in(&mut run, 0);
+
+    let reply = status(&mut run, json!({}));
+
+    assert_eq!(reply, json!({"messagesInQueue": true}));
+}
+
+#[test]
 fn given_ongoing_transaction_with_nothing_queued_when_status_asked_then_ongoing_per_e14_fr_02_and_fr_05()
  {
     let mut run = Run::accepted(86_400);

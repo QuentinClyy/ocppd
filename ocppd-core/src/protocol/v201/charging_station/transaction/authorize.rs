@@ -42,8 +42,7 @@ impl ChargingStation {
             Authorization::Authorized {
                 id_token: started, ..
             } if started.id_token.matches(&id_token.id_token) => {
-                self.sessions[index].authorization = Authorization::None;
-                self.settle(out, now, index, TriggerReason::StopAuthorized);
+                self.stop_authorization(out, now, index, id_token)
             }
             Authorization::Pending(_) => self.reject(out, now, evse, "an authorization is pending"),
             Authorization::Authorized { .. } if self.sessions[index].checking.is_some() => {
@@ -56,8 +55,7 @@ impl ChargingStation {
                     }
                     let same = matches!((&group, &started), (Some(group), Some(started)) if group.matches(started));
                     if same {
-                        self.sessions[index].authorization = Authorization::None;
-                        return self.settle(out, now, index, TriggerReason::StopAuthorized);
+                        return self.stop_authorization(out, now, index, id_token);
                     }
                     self.ask(out, now, index, id_token, false);
                 }
@@ -183,9 +181,22 @@ impl ChargingStation {
             _ => false,
         };
         if accepted && same_group {
-            self.sessions[index].authorization = Authorization::None;
-            self.settle(out, now, index, TriggerReason::StopAuthorized);
+            self.stop_authorization(out, now, index, id_token);
         }
+    }
+
+    fn stop_authorization(
+        &mut self,
+        out: &mut Vec<Output>,
+        now: u64,
+        index: usize,
+        id_token: IdToken,
+    ) {
+        let session = &mut self.sessions[index];
+        session.authorization = Authorization::None;
+        session.stopped_by = Some(id_token);
+        self.settle(out, now, index, TriggerReason::StopAuthorized);
+        self.sessions[index].stopped_by = None;
     }
 
     pub(in crate::protocol::v201::charging_station) fn authorize_failed(&mut self, call: &Call) {

@@ -24,6 +24,16 @@ pub fn events(run: &Run) -> Vec<Value> {
         .collect()
 }
 
+pub fn last(run: &Run) -> (String, String, Value, Value) {
+    let event = events(run).pop().expect("no TransactionEvent");
+    (
+        event["eventType"].as_str().unwrap().into(),
+        event["triggerReason"].as_str().unwrap().into(),
+        event["transactionInfo"]["chargingState"].clone(),
+        event["transactionInfo"]["stoppedReason"].clone(),
+    )
+}
+
 pub fn configure(run: &mut Run, key: &str, value: &str) {
     assert!(run.station.configure(key, value), "{key}");
 }

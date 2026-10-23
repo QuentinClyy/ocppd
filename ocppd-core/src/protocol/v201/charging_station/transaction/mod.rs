@@ -1,5 +1,6 @@
 pub(super) mod authorize;
 pub(super) mod event;
+mod points;
 mod reliability;
 mod sampling;
 
@@ -14,12 +15,14 @@ use crate::protocol::v201::messages::transactions::{
     ChargingState, StoppedReason, TransactionEventType, TriggerReason,
 };
 use crate::wire::ci_string::CiString;
+use points::{TxPoint, stopped_reason};
 
 #[derive(Default)]
 pub struct Session {
     pub authorization: Authorization,
     pub transaction: Option<Transaction>,
     pub checking: Option<IdToken>,
+    pub stopped_by: Option<IdToken>,
     pub suspended: bool,
     pub remote_start_id: Option<i32>,
     pub remote_profile: Option<ChargingProfile>,
@@ -52,14 +55,6 @@ pub struct Transaction {
     ended_samples: Vec<MeterValue>,
 }
 
-#[derive(Clone, Copy, PartialEq)]
-enum TxPoint {
-    EvConnected,
-    Authorized,
-    PowerPathClosed,
-    EnergyTransfer,
-}
-
 impl ChargingStation {
     pub(super) fn settle(
         &mut self,
@@ -72,19 +67,18 @@ impl ChargingStation {
             self.report_statuses(out, now);
         }
         self.apply_charging(now, index);
-        let valid = self.valid_points(index);
+        let valid = self.valid_points(now, index);
         let state = self.charging_state(now, index);
         let Some(transaction) = &mut self.sessions[index].transaction else {
-            let starts = self
-                .points(TX_START_POINT)
-                .iter()
-                .any(|point| valid.contains(point));
-            let starts = starts && self.operative(index);
+            let start_points = self.points(TX_START_POINT);
+            let mut reached = start_points.iter().filter(|point| valid.contains(point));
+            let starts = reached.clone().next().is_some() && self.operative(index);
+            let on_energy = reached.all(|point| *point == TxPoint::EnergyTransfer);
             if starts {
                 self.sessions[index].transaction = Some(Transaction {
                     id: transaction_id(now, index),
                     seq_no: 0,
-                    charging_state: state,
+                    charging_state: ChargingState::Idle,
                     id_token_sent: false,
                     stop_reason: None,
                     started: now,
@@ -97,7 +91,14 @@ impl ChargingStation {
                 self.attach_remote_profile(out, now, index);
                 let begin = self.started_sample(now, index);
                 let started = TransactionEventType::Started;
-                self.send_transaction_event(out, now, index, started, trigger, begin);
+                if !on_energy {
+                    return self.send_transaction_event(out, now, index, started, trigger, begin);
+                }
+                let trigger = match trigger {
+                    TriggerReason::CablePluggedIn => TriggerReason::ChargingStateChanged,
+                    other => other,
+                };
+                self.push_transaction_event(out, now, index, (started, trigger, state), begin);
             }
             return;
         };
@@ -112,7 +113,8 @@ impl ChargingStation {
             .iter()
             .any(|point| reached.contains(point) && !valid.contains(point));
         if lost {
-            return self.end_transaction(out, now, index, trigger, stopped_reason(trigger));
+            let reason = stopped_reason(trigger, state);
+            return self.end_transaction(out, now, index, trigger, reason);
         }
         let authorized = matches!(
             self.sessions[index].authorization,
@@ -245,43 +247,6 @@ impl ChargingStation {
         }
     }
 
-    fn valid_points(&self, index: usize) -> Vec<TxPoint> {
-        let plugged = self.station.connectors[index].plugged.is_some();
-        let authorized = matches!(
-            self.sessions[index].authorization,
-            Authorization::Authorized { .. }
-        );
-        let energy = self.station.connectors[index]
-            .plugged
-            .as_ref()
-            .is_some_and(|plugged| plugged.charging.is_some());
-        [
-            (TxPoint::EvConnected, plugged),
-            (TxPoint::Authorized, authorized),
-            (TxPoint::PowerPathClosed, plugged && authorized),
-            (TxPoint::EnergyTransfer, energy),
-        ]
-        .into_iter()
-        .filter_map(|(point, valid)| valid.then_some(point))
-        .collect()
-    }
-
-    fn points(&self, variable: &str) -> Vec<TxPoint> {
-        let list = self
-            .device_model
-            .value(TX_CTRLR, variable)
-            .unwrap_or_default();
-        list.split(',')
-            .filter_map(|point| match point {
-                "EVConnected" => Some(TxPoint::EvConnected),
-                "Authorized" => Some(TxPoint::Authorized),
-                "PowerPathClosed" => Some(TxPoint::PowerPathClosed),
-                "EnergyTransfer" => Some(TxPoint::EnergyTransfer),
-                _ => None,
-            })
-            .collect()
-    }
-
     fn connection_timeout_ms(&self) -> u64 {
         let seconds = self.device_model.number(TX_CTRLR, "EVConnectionTimeOut");
         seconds.unwrap_or(0) * 1000
@@ -292,18 +257,6 @@ fn transaction_id(now: u64, index: usize) -> CiString<36> {
     let evse = index as u32 + 1;
     let id = format!("{now:x}-{evse}");
     CiString::new(&id).unwrap_or_else(|_| unreachable!("16 hex digits, a dash and a u32 fit in 36"))
-}
-
-fn stopped_reason(trigger: TriggerReason) -> StoppedReason {
-    match trigger {
-        TriggerReason::StopAuthorized => StoppedReason::Local,
-        TriggerReason::EvCommunicationLost => StoppedReason::EvDisconnected,
-        TriggerReason::EvConnectTimeout => StoppedReason::Timeout,
-        TriggerReason::Deauthorized => StoppedReason::DeAuthorized,
-        TriggerReason::RemoteStop => StoppedReason::Remote,
-        TriggerReason::ResetCommand => StoppedReason::ImmediateReset,
-        _ => StoppedReason::Other,
-    }
 }
 
 #[cfg(test)]

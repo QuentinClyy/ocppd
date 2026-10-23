@@ -45,6 +45,11 @@ impl ChargingStation {
                 {
                     self.sessions[index].authorization = Authorization::None;
                 }
+                if let Authorization::Authorized { at, .. } =
+                    &mut self.sessions[index].authorization
+                {
+                    *at = now;
+                }
                 self.settle(out, now, index, TriggerReason::EvCommunicationLost);
             }
             Intent::Stop { .. } => {
