@@ -1,7 +1,8 @@
-package main
+package ui
 
 import (
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 )
@@ -39,14 +40,34 @@ func Test_given_a_line_that_is_not_json_when_logged_then_kept_as_is(t *testing.T
 }
 
 func Test_given_a_full_log_when_a_line_is_appended_then_the_oldest_is_dropped(t *testing.T) {
-	var log []string
+	var log []entry
 	for n := range logLimit {
-		log = append(log, strconv.Itoa(n))
+		log = append(log, entry{text: strconv.Itoa(n)})
 	}
 
-	log = appendLog(log, "newest")
+	log = appendLog(log, entry{text: "newest"})
 
-	if len(log) != logLimit || log[0] != "1" || log[logLimit-1] != "newest" {
-		t.Fatalf("got %d lines from %q to %q", len(log), log[0], log[len(log)-1])
+	if len(log) != logLimit || log[0].text != "1" || log[logLimit-1].text != "newest" {
+		t.Fatalf("got %d lines from %q to %q", len(log), log[0].text, log[len(log)-1].text)
+	}
+}
+
+func Test_given_a_mixed_log_when_filtered_by_a_station_then_only_its_lines(t *testing.T) {
+	log := []entry{{"CP1", "a"}, {"CP2", "b"}, {"", "stderr"}, {"CP1", "c"}}
+
+	lines := filtered(log, "CP1")
+
+	if strings.Join(lines, ",") != "a,c" {
+		t.Fatalf("got %v", lines)
+	}
+}
+
+func Test_given_a_mixed_log_when_not_filtered_then_every_line(t *testing.T) {
+	log := []entry{{"CP1", "a"}, {"", "stderr"}}
+
+	lines := filtered(log, "")
+
+	if strings.Join(lines, ",") != "a,stderr" {
+		t.Fatalf("got %v", lines)
 	}
 }

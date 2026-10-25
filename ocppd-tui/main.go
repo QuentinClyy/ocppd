@@ -6,6 +6,8 @@ import (
 	"os"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/QuentinClyy/ocppd/ocppd-tui/ocppd"
+	"github.com/QuentinClyy/ocppd/ocppd-tui/ui"
 )
 
 const usage = "usage: ocppd-tui --csms <url>"
@@ -24,15 +26,15 @@ func main() {
 	if err != nil {
 		self = ""
 	}
-	child, err := start(ocppdPath(os.Getenv("OCPPD"), self), csms)
+	process, err := ocppd.Start(ocppd.Path(os.Getenv("OCPPD"), self), csms)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "ocppd-tui: cannot start ocppd: %v\n", err)
 		os.Exit(1)
 	}
-	program := tea.NewProgram(newModel(csms))
-	child.forward(program.Send)
+	program := tea.NewProgram(ui.New(csms))
+	process.Forward(program.Send)
 	_, err = program.Run()
-	child.stop()
+	process.Stop()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "ocppd-tui: %v\n", err)
 		os.Exit(1)

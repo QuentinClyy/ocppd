@@ -1,4 +1,4 @@
-package main
+package ui
 
 import (
 	"encoding/json"
@@ -10,6 +10,11 @@ import (
 )
 
 const logLimit = 10000
+
+type entry struct {
+	station string
+	text    string
+}
 
 func logLine(raw string, zone *time.Location) string {
 	var event map[string]any
@@ -40,10 +45,20 @@ func text(value any) string {
 	return string(encoded)
 }
 
-func appendLog(log []string, line string) []string {
+func appendLog(log []entry, line entry) []entry {
 	log = append(log, line)
 	if len(log) > logLimit {
 		return log[len(log)-logLimit:]
 	}
 	return log
+}
+
+func filtered(log []entry, station string) []string {
+	var lines []string
+	for _, line := range log {
+		if station == "" || line.station == station {
+			lines = append(lines, line.text)
+		}
+	}
+	return lines
 }

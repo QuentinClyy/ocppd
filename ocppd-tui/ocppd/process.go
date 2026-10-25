@@ -1,4 +1,4 @@
-package main
+package ocppd
 
 import (
 	"bufio"
@@ -11,20 +11,20 @@ import (
 	tea "charm.land/bubbletea/v2"
 )
 
-type eventMsg string
+type EventMsg string
 
-type errorMsg string
+type ErrorMsg string
 
-type exitMsg struct{ err error }
+type ExitMsg struct{ Err error }
 
-type child struct {
-	process *exec.Cmd
+type Process struct {
+	command *exec.Cmd
 	stdin   io.WriteCloser
 	stdout  io.Reader
 	stderr  io.Reader
 }
 
-func ocppdPath(env, self string) string {
+func Path(env, self string) string {
 	if env != "" {
 		return env
 	}
@@ -35,46 +35,46 @@ func ocppdPath(env, self string) string {
 	return "ocppd"
 }
 
-func start(path, csms string) (*child, error) {
-	process := exec.Command(path, "--csms", csms)
-	stdin, err := process.StdinPipe()
+func Start(path, csms string) (*Process, error) {
+	command := exec.Command(path, "--csms", csms)
+	stdin, err := command.StdinPipe()
 	if err != nil {
 		return nil, err
 	}
-	stdout, err := process.StdoutPipe()
+	stdout, err := command.StdoutPipe()
 	if err != nil {
 		return nil, err
 	}
-	stderr, err := process.StderrPipe()
+	stderr, err := command.StderrPipe()
 	if err != nil {
 		return nil, err
 	}
-	if err := process.Start(); err != nil {
+	if err := command.Start(); err != nil {
 		return nil, err
 	}
-	return &child{process, stdin, stdout, stderr}, nil
+	return &Process{command, stdin, stdout, stderr}, nil
 }
 
-func (c *child) forward(send func(tea.Msg)) {
+func (p *Process) Forward(send func(tea.Msg)) {
 	var readers sync.WaitGroup
 	readers.Add(2)
 	go func() {
-		readLines(c.stdout, func(line string) tea.Msg { return eventMsg(line) }, send)
+		readLines(p.stdout, func(line string) tea.Msg { return EventMsg(line) }, send)
 		readers.Done()
 	}()
 	go func() {
-		readLines(c.stderr, func(line string) tea.Msg { return errorMsg(line) }, send)
+		readLines(p.stderr, func(line string) tea.Msg { return ErrorMsg(line) }, send)
 		readers.Done()
 	}()
 	go func() {
 		readers.Wait()
-		send(exitMsg{c.process.Wait()})
+		send(ExitMsg{p.command.Wait()})
 	}()
 }
 
-func (c *child) stop() {
-	c.stdin.Close()
-	c.process.Process.Kill()
+func (p *Process) Stop() {
+	p.stdin.Close()
+	p.command.Process.Kill()
 }
 
 func readLines(reader io.Reader, wrap func(string) tea.Msg, send func(tea.Msg)) {
@@ -84,6 +84,6 @@ func readLines(reader io.Reader, wrap func(string) tea.Msg, send func(tea.Msg)) 
 		send(wrap(lines.Text()))
 	}
 	if err := lines.Err(); err != nil {
-		send(errorMsg("read: " + err.Error()))
+		send(ErrorMsg("read: " + err.Error()))
 	}
 }
