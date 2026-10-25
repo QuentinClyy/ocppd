@@ -3,11 +3,35 @@ on: [push, pull_request]
 jobs:
   test:
     runs-on: ubuntu-latest
+    env:
+      CARGO_INCREMENTAL: 0
     steps:
       - uses: actions/checkout@v7
+      - uses: actions/cache@v6
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: cargo-${{ runner.os }}-${{ hashFiles('Cargo.lock') }}
+          restore-keys: cargo-${{ runner.os }}-
       - run: cargo test
   fmt:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
       - run: cargo fmt --check
+  tui:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ocppd-tui
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: ocppd-tui/go.mod
+          cache-dependency-path: ocppd-tui/go.sum
+      - run: "! gofmt -l . | grep ."
+      - run: go vet ./...
+      - run: go test ./...

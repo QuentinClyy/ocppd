@@ -13,12 +13,13 @@ OCPP 1.6J or 2.0.1, driven from a terminal or a script.
 ## Install
 
 Download the binary for your system from the
-[latest release](https://github.com/QuentinClyy/ocppd/releases/latest). It is
-a single file with no dependencies:
+[latest release](https://github.com/QuentinClyy/ocppd/releases/latest). It holds
+two files with no dependencies: `ocppd` and `ocppd-tui`, the terminal UI that
+`ocppd` opens when it finds it beside itself:
 
 ```
 curl -L https://github.com/QuentinClyy/ocppd/releases/latest/download/ocppd-x86_64-unknown-linux-musl.tar.gz | tar xz
-sudo mv ocppd-x86_64-unknown-linux-musl/ocppd /usr/local/bin/
+sudo mv ocppd-x86_64-unknown-linux-musl/ocppd* /usr/local/bin/
 ```
 
 | System | Archive |
@@ -32,7 +33,7 @@ Each archive has a `.sha256` next to it, and a build attestation you can check
 with `gh attestation verify <archive> -R QuentinClyy/ocppd`.
 
 The macOS binary is not signed. If you downloaded it with a browser, clear the
-quarantine flag with `xattr -d com.apple.quarantine ocppd`.
+quarantine flag with `xattr -d com.apple.quarantine ocppd ocppd-tui`.
 
 To build from source, with Rust installed:
 
