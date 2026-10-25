@@ -5,7 +5,10 @@ fn args(text: &str) -> Vec<String> {
 }
 
 fn run(csms: &str) -> Result<Cli, String> {
-    Ok(Cli::Run { csms: csms.into() })
+    Ok(Cli::Run {
+        csms: csms.into(),
+        json: false,
+    })
 }
 
 #[test]
@@ -85,4 +88,17 @@ fn given_unknown_argument_when_parsed_then_usage_error_naming_it() {
     let cli = parse(&given, None);
 
     assert_eq!(cli, Err("unknown argument '--verbose'".into()));
+}
+
+#[test]
+fn given_json_flag_when_parsed_then_run_in_json_lines_mode() {
+    let given = args("--json --csms ws://csms.example");
+
+    let cli = parse(&given, None);
+
+    let expected = Cli::Run {
+        csms: "ws://csms.example".into(),
+        json: true,
+    };
+    assert_eq!(cli, Ok(expected));
 }

@@ -1,18 +1,22 @@
 # Usage
 
 ```
-ocppd --csms <url>
+ocppd --csms <url> [--json]
 ```
 
 | Option | Meaning |
 |---|---|
 | `--csms <url>` | The CSMS WebSocket url. A station connects to `<url>/<station id>`. Falls back to the `OCPPD_CSMS` environment variable. |
+| `--json` | Read and write JSON lines even in a terminal. |
 | `-h`, `--help` | Print the help and exit. |
 | `-V`, `--version` | Print the version and exit. |
 
+In a terminal, ocppd opens `ocppd-tui`, an interactive view of the fleet, when
+it is installed beside ocppd or on the `PATH`. Otherwise, or with `--json`,
 ocppd reads commands from stdin, one JSON object per line, and writes events to
 stdout, one JSON object per line. Logs and errors go to stderr. It exits when
-stdin is closed and every station has stopped.
+stdin is closed and every station has stopped. A pipe or a redirect always
+gets JSON lines.
 
 | Exit status | Meaning |
 |---|---|

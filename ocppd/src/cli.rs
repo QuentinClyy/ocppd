@@ -1,16 +1,19 @@
-pub const USAGE: &str = "usage: ocppd --csms <url>";
+pub const USAGE: &str = "usage: ocppd --csms <url> [--json]";
 
 pub const HELP: &str = "\
 ocppd - simulate OCPP 1.6 and 2.0.1 charging stations against a CSMS
 
-usage: ocppd --csms <url>
+usage: ocppd --csms <url> [--json]
 
-Reads commands from stdin, one JSON object per line, and writes events to
-stdout, one JSON object per line. Logs go to stderr.
+In a terminal, opens the ocppd-tui interface when it is installed beside
+ocppd or on the PATH. Otherwise, or with --json, reads commands from stdin,
+one JSON object per line, and writes events to stdout, one JSON object per
+line. Logs go to stderr.
 
 options:
   --csms <url>     CSMS WebSocket url; a station connects to <url>/<id>
                    [env: OCPPD_CSMS]
+  --json           read and write JSON lines even in a terminal
   -h, --help       print this help and exit
   -V, --version    print the version and exit
 
@@ -35,18 +38,20 @@ docs: https://github.com/QuentinClyy/ocppd/tree/main/docs
 
 #[derive(Debug, PartialEq)]
 pub enum Cli {
-    Run { csms: String },
+    Run { csms: String, json: bool },
     Help,
     Version,
 }
 
 pub fn parse(args: &[String], env_csms: Option<String>) -> Result<Cli, String> {
     let mut csms = None;
+    let mut json = false;
     let mut args = args.iter();
     while let Some(arg) = args.next() {
         match arg.as_str() {
             "-h" | "--help" => return Ok(Cli::Help),
             "-V" | "--version" => return Ok(Cli::Version),
+            "--json" => json = true,
             "--csms" => match args.next() {
                 Some(url) => csms = Some(url.clone()),
                 None => return Err("--csms needs a url".into()),
@@ -63,6 +68,7 @@ pub fn parse(args: &[String], env_csms: Option<String>) -> Result<Cli, String> {
         .ok_or("missing --csms <url> (or OCPPD_CSMS)")?;
     Ok(Cli::Run {
         csms: csms.trim_end_matches('/').to_owned(),
+        json,
     })
 }
 

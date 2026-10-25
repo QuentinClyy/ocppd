@@ -5,6 +5,7 @@ mod model;
 mod protocol;
 mod shell;
 mod tls;
+mod tui;
 
 use identity::Identities;
 use model::Model;
@@ -64,7 +65,15 @@ type Stations = HashMap<String, UnboundedSender<Intent>>;
 async fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let csms = match cli::parse(&args, std::env::var("OCPPD_CSMS").ok()) {
-        Ok(cli::Cli::Run { csms }) => csms,
+        Ok(cli::Cli::Run { csms, json }) => {
+            if !json
+                && tui::interactive()
+                && let Some(code) = open_tui(&csms)
+            {
+                return code;
+            }
+            csms
+        }
         Ok(cli::Cli::Help) => {
             print!("{}", cli::HELP);
             return ExitCode::SUCCESS;
@@ -88,6 +97,19 @@ async fn main() -> ExitCode {
             ExitCode::FAILURE
         }
     }
+}
+
+fn open_tui(csms: &str) -> Option<ExitCode> {
+    let ocppd = std::env::current_exe().ok();
+    let beside = ocppd.as_deref().and_then(|exe| exe.parent());
+    let path = std::env::var_os("PATH");
+    let (Some(ocppd), Some(tui)) = (ocppd.as_deref(), tui::find(beside, path.as_deref())) else {
+        eprintln!("ocppd: ocppd-tui not found, reading JSON lines (--json hides this note)");
+        return None;
+    };
+    let err = tui::open(&tui, csms, ocppd);
+    eprintln!("ocppd: cannot open {}: {err}", tui.display());
+    Some(ExitCode::FAILURE)
 }
 
 async fn read_commands(csms: &str, events: UnboundedSender<Event>) {

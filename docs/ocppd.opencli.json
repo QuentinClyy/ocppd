@@ -4,7 +4,7 @@
     "title": "ocppd",
     "version": "0.1.0",
     "summary": "Simulate OCPP 1.6 and 2.0.1 charging stations against a CSMS",
-    "description": "Reads commands from stdin, one JSON object per line, and writes events to stdout, one JSON object per line. Logs go to stderr.",
+    "description": "In a terminal, opens the ocppd-tui interface when it is installed. Otherwise, or with --json, reads commands from stdin, one JSON object per line, and writes events to stdout, one JSON object per line. Logs go to stderr.",
     "license": {
       "name": "Apache-2.0",
       "identifier": "Apache-2.0"
@@ -28,6 +28,10 @@
             "arity": { "minimum": 1, "maximum": 1 }
           }
         ]
+      },
+      {
+        "name": "--json",
+        "description": "Read commands from stdin and write events to stdout as JSON lines, even in a terminal. Without it, a terminal opens ocppd-tui when it is installed."
       },
       {
         "name": "--help",

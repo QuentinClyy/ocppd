@@ -37,7 +37,7 @@ func Path(env, self string) string {
 }
 
 func Start(path, csms string) (*Process, error) {
-	command := exec.Command(path, "--csms", csms)
+	command := exec.Command(path, "--csms", csms, "--json")
 	command.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	stdin, err := command.StdinPipe()
 	if err != nil {

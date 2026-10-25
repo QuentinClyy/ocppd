@@ -34,7 +34,7 @@ func Test_given_a_child_that_prints_when_forwarded_then_its_lines_then_its_exit_
 		select {
 		case msg := <-messages:
 			if exit, ok := msg.(ExitMsg); ok {
-				if exit.Err != nil || !got[EventMsg(`{"station":"CP1","at":0,"kind":"connected"}`)] || !got[ErrorMsg("--csms ws://x")] {
+				if exit.Err != nil || !got[EventMsg(`{"station":"CP1","at":0,"kind":"connected"}`)] || !got[ErrorMsg("--csms ws://x --json")] {
 					t.Fatalf("exit %v after %v", exit.Err, got)
 				}
 				return
