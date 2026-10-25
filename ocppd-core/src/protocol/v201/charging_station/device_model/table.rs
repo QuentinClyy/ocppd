@@ -27,7 +27,8 @@ pub const TX_START_POINT: &str = "TxStartPoint";
 pub const TX_STOP_POINT: &str = "TxStopPoint";
 pub const STOP_TX_ON_EV_SIDE_DISCONNECT: &str = "StopTxOnEVSideDisconnect";
 const ENERGY: &str = "Energy.Active.Import.Register";
-const ENERGY_POWER_SOC: &str = "Energy.Active.Import.Register,Power.Active.Import,SoC";
+const SAMPLED: &str =
+    "Energy.Active.Import.Register,Power.Active.Import,Current.Import,Current.Offered,Voltage";
 const TX_POINTS: &str = "EVConnected,Authorized,PowerPathClosed,EnergyTransfer";
 pub const CONNECTOR_STATUSES: &str = "Available,Occupied,Reserved,Unavailable,Faulted";
 
@@ -216,7 +217,7 @@ pub fn entries(station: &Station) -> Result<Vec<Entry>, TooLong> {
         row(
             SAMPLED_DATA_CTRLR,
             "TxUpdatedMeasurands",
-            ENERGY_POWER_SOC,
+            SAMPLED,
             ReadWrite,
             MemberList,
         )

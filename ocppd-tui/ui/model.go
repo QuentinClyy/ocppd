@@ -23,6 +23,7 @@ type Model struct {
 	help        bool
 	prompt      *prompt
 	form        *form
+	removing    string
 	width       int
 	height      int
 }
@@ -68,6 +69,8 @@ func (m Model) key(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return m.promptKey(msg), nil
 	case m.form != nil:
 		return m.formKey(msg), nil
+	case m.removing != "":
+		return m.removeKey(key), nil
 	case m.help:
 		m.help = key != "esc" && key != "?" && key != "q"
 		return m, nil
@@ -81,6 +84,10 @@ func (m Model) key(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		m.help = true
 	case "n":
 		m.form = newForm()
+	case "d":
+		if at, ok := m.target(); ok {
+			m.removing = at.station
+		}
 	case "tab":
 		m.byStation = !m.byStation
 	case "ctrl+u":
@@ -148,6 +155,17 @@ func (m Model) formKey(msg tea.KeyPressMsg) Model {
 	}
 	m.form = nil
 	return m.sendLine(line)
+}
+
+func (m Model) removeKey(key string) Model {
+	station := m.removing
+	m.removing = ""
+	if key != "y" && key != "d" {
+		return m
+	}
+	m.fleet.Remove(station)
+	delete(m.expanded, station)
+	return m.sendLine(encode(map[string]any{"command": "remove", "station": station}))
 }
 
 func (m Model) sendLine(line string) Model {

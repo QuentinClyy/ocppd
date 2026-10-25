@@ -38,6 +38,7 @@ echo '{"command":"spawn","prefix":"CS","count":10,"ocpp":"2.0.1"}' >&3
 | Command | Effect |
 |---|---|
 | `{"command":"spawn","prefix":"CP","count":2}` | start stations `CP1` and `CP2` (see [Configuration](configuration.md) for every option) |
+| `{"command":"remove","station":"CP1"}` | remove station `CP1`: its connection closes and its id can be spawned again |
 | `{"command":"plug_in","station":"CP1","connector":1}` | plug an EV into connector 1 |
 | `{"command":"authorize","station":"CP1","id_tag":"TAG1"}` | present a card; a transaction starts once the CSMS accepts it and an EV is plugged in (`"connector":1` picks the connector) |
 | `{"command":"stop","station":"CP1","connector":1}` | stop the transaction from the station |

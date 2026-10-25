@@ -27,7 +27,7 @@ pub const TRANSACTION_MESSAGE_ATTEMPTS: &str = "TransactionMessageAttempts";
 pub const TRANSACTION_MESSAGE_RETRY_INTERVAL: &str = "TransactionMessageRetryInterval";
 
 const DEFAULT_MEASURANDS: &str =
-    "Energy.Active.Import.Register,Power.Active.Import,Current.Import,Voltage";
+    "Energy.Active.Import.Register,Power.Active.Import,Current.Import,Current.Offered,Voltage";
 const SUPPORTED_MEASURANDS: [Measurand; 7] = [
     Measurand::EnergyActiveImportRegister,
     Measurand::EnergyActiveImportInterval,

@@ -19,6 +19,7 @@ struct Run {
     stdout: Lines<BufReader<ChildStdout>>,
     socket: Socket,
     authorization: Option<String>,
+    listener: TcpListener,
 }
 
 const SPAWN: &str = r#"{"command":"spawn","prefix":"CP","count":1}"#;
@@ -99,6 +100,19 @@ async fn given_security_profile_3_without_certificate_when_spawned_then_refused_
         "{error}"
     );
     assert!(!connected, "no connection attempted");
+}
+
+#[tokio::test]
+async fn given_a_connected_station_when_removed_then_its_socket_closes_and_its_id_is_free_again() {
+    let mut run = start(SPAWN, 300).await;
+
+    run.command(r#"{"command":"remove","station":"CP1"}"#).await;
+
+    let closed = bounded(run.socket.next()).await;
+    assert!(!matches!(closed, Some(Ok(Message::Text(_)))), "{closed:?}");
+    run.command(SPAWN).await;
+    let reconnected = bounded(run.listener.accept()).await;
+    assert!(reconnected.is_ok());
 }
 
 #[tokio::test]
@@ -198,6 +212,7 @@ async fn start(spawn: &str, heartbeat_interval: u32) -> Run {
         stdout,
         socket,
         authorization,
+        listener,
     };
 
     let id = run.call("BootNotification").await;

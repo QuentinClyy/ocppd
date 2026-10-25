@@ -32,6 +32,10 @@ func (f *Fleet) Apply(raw string) (string, bool) {
 	return e.Station, true
 }
 
+func (f *Fleet) Remove(id string) {
+	f.Stations = slices.DeleteFunc(f.Stations, func(s Station) bool { return s.ID == id })
+}
+
 func (f *Fleet) apply(e event) {
 	s := f.station(e.Station)
 	switch e.Kind {

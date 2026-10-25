@@ -167,7 +167,9 @@ fn given_charging_ev_when_the_sample_interval_passes_then_updated_with_periodic_
         vec![
             "Energy.Active.Import.Register",
             "Power.Active.Import",
-            "SoC"
+            "Current.Import",
+            "Current.Offered",
+            "Voltage"
         ]
     );
     assert_eq!(meter_value["timestamp"], periodic["timestamp"], "J02.FR.10");

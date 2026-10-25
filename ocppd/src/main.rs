@@ -18,6 +18,7 @@ use std::collections::{BTreeMap, HashMap};
 use std::process::ExitCode;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
+use tokio::task::JoinHandle;
 
 #[derive(Deserialize)]
 struct Spawn {
@@ -54,12 +55,23 @@ struct Routed {
     intent: Intent,
 }
 
+#[derive(Deserialize)]
+struct Remove {
+    station: String,
+}
+
 enum Command {
     Spawn(Spawn),
+    Remove(Remove),
     Routed(Routed),
 }
 
-type Stations = HashMap<String, UnboundedSender<Intent>>;
+struct Running {
+    intents: UnboundedSender<Intent>,
+    task: JoinHandle<()>,
+}
+
+type Stations = HashMap<String, Running>;
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> ExitCode {
@@ -129,6 +141,7 @@ async fn read_commands(csms: &str, events: UnboundedSender<Event>) {
         }
         match parse(&line) {
             Ok(Command::Spawn(command)) => spawn(csms, &command, &events, &mut stations),
+            Ok(Command::Remove(command)) => remove(&command, &mut stations),
             Ok(Command::Routed(command)) => route(command, &stations),
             Err(err) => eprintln!("bad command: {err}"),
         }
@@ -137,15 +150,22 @@ async fn read_commands(csms: &str, events: UnboundedSender<Event>) {
 
 fn parse(line: &str) -> Result<Command, serde_json::Error> {
     let value: Value = serde_json::from_str(line)?;
-    if value["command"] == "spawn" {
-        serde_json::from_value(value).map(Command::Spawn)
-    } else {
-        serde_json::from_value(value).map(Command::Routed)
+    match value["command"].as_str() {
+        Some("spawn") => serde_json::from_value(value).map(Command::Spawn),
+        Some("remove") => serde_json::from_value(value).map(Command::Remove),
+        _ => serde_json::from_value(value).map(Command::Routed),
+    }
+}
+
+fn remove(command: &Remove, stations: &mut Stations) {
+    match stations.remove(&command.station) {
+        Some(running) => running.task.abort(),
+        None => eprintln!("unknown station {}", command.station),
     }
 }
 
 fn route(command: Routed, stations: &Stations) {
-    let Some(intents) = stations.get(&command.station) else {
+    let Some(Running { intents, .. }) = stations.get(&command.station) else {
         eprintln!("unknown station {}", command.station);
         return;
     };
@@ -204,8 +224,8 @@ fn spawn(csms: &str, command: &Spawn, events: &UnboundedSender<Event>, stations:
                     continue;
                 }
                 let (intents, receiver) = unbounded_channel();
-                stations.insert(id, intents);
-                tokio::spawn(shell::run(protocol, url, events.clone(), receiver));
+                let task = tokio::spawn(shell::run(protocol, url, events.clone(), receiver));
+                stations.insert(id, Running { intents, task });
             }
             Err(err) => eprintln!("cannot spawn station {id}: {err}"),
         }

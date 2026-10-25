@@ -41,6 +41,8 @@ func render(m Model) string {
 		bar = m.prompt.view()
 	case m.form != nil:
 		bar = formBar()
+	case m.removing != "":
+		bar = " " + warn.Render("remove "+m.removing+"?") + "  " + accent.Render("y") + " yes  " + accent.Render("n") + " no"
 	case m.help:
 		bar = " " + accent.Render("esc") + " close"
 	}

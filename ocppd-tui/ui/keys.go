@@ -23,6 +23,7 @@ var bindings = []binding{
 	{"driver", "c", "clear the fault", "clear"},
 	{"driver", "x", "power cut, then reboot", "cut"},
 	{"fleet", "n", "spawn stations", "spawn"},
+	{"fleet", "d", "remove the station (dd: no question)", "remove"},
 	{"fleet", "tab", "log: this station / all", "log"},
 	{"fleet", "q", "quit", "quit"},
 	{"fleet", "esc / ?", "close this help", ""},
