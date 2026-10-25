@@ -1,0 +1,52 @@
+name: Release
+on:
+  push:
+    tags: ['v*']
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - run: test "${GITHUB_REF_NAME#v}" = "$(grep -m1 '^version' ocppd/Cargo.toml | cut -d '"' -f2)"
+  build:
+    needs: check
+    strategy:
+      matrix:
+        include:
+          - { target: x86_64-unknown-linux-musl, os: ubuntu-latest, native: true }
+          - { target: aarch64-unknown-linux-musl, os: ubuntu-24.04-arm, native: true }
+          - { target: aarch64-apple-darwin, os: macos-latest, native: true }
+          - { target: x86_64-apple-darwin, os: macos-latest, native: false }
+    runs-on: ${{ matrix.os }}
+    env:
+      ARCHIVE: ocppd-${{ matrix.target }}.tar.gz
+      BINARY: target/${{ matrix.target }}/release/ocppd
+    steps:
+      - uses: actions/checkout@v5
+      - if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y musl-tools
+      - run: rustup target add ${{ matrix.target }}
+      - run: cargo build --release --locked --features vendored -p ocppd --target ${{ matrix.target }}
+      - if: matrix.native
+        run: $BINARY --version
+      - run: |
+          mkdir dist
+          cp "$BINARY" LICENSE README.md dist/
+          tar czf "$ARCHIVE" -C dist ocppd LICENSE README.md
+          shasum -a 256 "$ARCHIVE" > "$ARCHIVE.sha256"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ocppd-${{ matrix.target }}
+          path: ${{ env.ARCHIVE }}*
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+      - run: gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --generate-notes ocppd-*
+        env:
+          GH_TOKEN: ${{ github.token }}
