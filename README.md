@@ -12,11 +12,33 @@ OCPP 1.6J or 2.0.1, driven from a terminal or a script.
 
 ## Install
 
-ocppd needs Rust and the OpenSSL headers (`apt install libssl-dev pkg-config`).
+Download the binary for your system from the
+[latest release](https://github.com/QuentinClyy/ocppd/releases/latest). It is
+a single file with no dependencies:
 
 ```
-cargo install --path ocppd
+curl -L https://github.com/QuentinClyy/ocppd/releases/latest/download/ocppd-x86_64-unknown-linux-musl.tar.gz | tar xz
+sudo mv ocppd /usr/local/bin/
 ```
+
+| System | Archive |
+|---|---|
+| Linux x86_64 | `ocppd-x86_64-unknown-linux-musl.tar.gz` |
+| Linux arm64 | `ocppd-aarch64-unknown-linux-musl.tar.gz` |
+| macOS Apple silicon | `ocppd-aarch64-apple-darwin.tar.gz` |
+| macOS Intel | `ocppd-x86_64-apple-darwin.tar.gz` |
+
+The macOS binary is not signed. If you downloaded it with a browser, clear the
+quarantine flag with `xattr -d com.apple.quarantine ocppd`.
+
+To build from source, with Rust installed:
+
+```
+cargo install --path ocppd --features vendored
+```
+
+`--features vendored` builds OpenSSL in; without it, ocppd links the system
+OpenSSL and needs its headers (`apt install libssl-dev pkg-config`).
 
 ## Quick start
 
