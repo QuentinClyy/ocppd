@@ -11,7 +11,7 @@ ocppd --csms <url> [--json]
 | `-h`, `--help` | Print the help and exit. |
 | `-V`, `--version` | Print the version and exit. |
 
-In a terminal, ocppd opens `ocppd-tui`, an interactive view of the fleet, when
+In a terminal, ocppd opens [`ocppd-tui`](tui.md), an interactive view of the fleet, when
 it is installed beside ocppd or on the `PATH`. Otherwise, or with `--json`,
 ocppd reads commands from stdin, one JSON object per line, and writes events to
 stdout, one JSON object per line. Logs and errors go to stderr. It exits when

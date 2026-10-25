@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"os"
 	"strings"
 	"testing"
 
@@ -215,5 +216,20 @@ func Test_given_a_connector_row_when_dd_then_its_station_is_removed(t *testing.T
 
 	if len(*sent) != 1 || (*sent)[0] != `{"command":"remove","station":"CP2"}` {
 		t.Fatalf("got %v", *sent)
+	}
+}
+
+func Test_given_the_key_bindings_when_the_tui_doc_is_read_then_it_lists_every_key(t *testing.T) {
+	doc, err := os.ReadFile("../../docs/tui.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, b := range bindings {
+		for _, key := range strings.Split(b.keys, " / ") {
+			if !strings.Contains(string(doc), "`"+key+"`") {
+				t.Fatalf("docs/tui.md does not list `%s` (%s)", key, b.help)
+			}
+		}
 	}
 }

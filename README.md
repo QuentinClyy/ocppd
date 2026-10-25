@@ -6,8 +6,9 @@ OCPP 1.6J or 2.0.1, driven from a terminal or a script.
 - **Real protocol, simulated hardware.** Stations boot, heartbeat, authorize,
   charge with a realistic curve, meter, reserve, update firmware and handle
   certificates. EVs, cables, faults and power cuts are commands you send.
-- **Scriptable.** Commands are JSON lines on stdin; everything that happens
-  comes back as JSON lines on stdout.
+- **Interactive or scriptable.** In a terminal, a TUI shows the fleet and drives
+  it with a few keys. In a script, commands are JSON lines on stdin and
+  everything that happens comes back as JSON lines on stdout.
 - **Light.** A thousand stations take about 30 MB.
 
 ## Install
@@ -35,10 +36,11 @@ with `gh attestation verify <archive> -R QuentinClyy/ocppd`.
 The macOS binary is not signed. If you downloaded it with a browser, clear the
 quarantine flag with `xattr -d com.apple.quarantine ocppd ocppd-tui`.
 
-To build from source, with Rust installed:
+To build from source, with Rust and Go installed:
 
 ```
 cargo install --path ocppd --features vendored
+(cd ocppd-tui && go build -o ~/.cargo/bin/ocppd-tui .)
 ```
 
 `--features vendored` builds OpenSSL in; without it, ocppd links the system
@@ -52,7 +54,21 @@ Point ocppd at a CSMS. Every station connects to `<url>/<station id>`:
 ocppd --csms ws://localhost:8180/steve/websocket/CentralSystemService
 ```
 
-Then type commands, one per line:
+The [terminal UI](docs/tui.md) opens:
+
+1. `n` opens the spawn form: `tab`, type an id such as `CP1`, then `enter`.
+2. `enter` opens the station, `j` selects its connector.
+3. `p` plugs an EV in, `a` asks for an id tag: type `TAG1`, then `enter`.
+4. The connector shows `Charging`, with its power and state of charge. `s`
+   stops, `?` lists every key, `q` quits.
+
+## Scripting
+
+With `--json`, or from a pipe, ocppd reads commands as JSON lines:
+
+```
+ocppd --json --csms ws://localhost:8180/steve/websocket/CentralSystemService
+```
 
 ```
 {"command":"spawn","prefix":"CP","count":1}
@@ -77,6 +93,7 @@ For OCPP 2.0.1, spawn with `"ocpp":"2.0.1"`:
 
 ## Documentation
 
+- [Terminal UI](docs/tui.md): the screen, the keys and the spawn form.
 - [Usage](docs/usage.md): the command line, every stdin command, and the events.
 - [Configuration](docs/configuration.md): station settings, security profiles and TLS.
 - [Simulation](docs/simulation.md): what is simulated, how, and at what scale.
@@ -90,9 +107,12 @@ For OCPP 2.0.1, spawn with `"ocpp":"2.0.1"`:
 cargo fmt --check
 cargo clippy --all-targets
 cargo test
+cd ocppd-tui && gofmt -l . && go vet ./... && go test ./...
 ```
 
-Unit tests sit next to the code they test, as `<file>.test.rs`. Test fixtures
+The TUI is a Go module in `ocppd-tui/`, built on
+[Bubble Tea](https://github.com/charmbracelet/bubbletea). Rust unit tests sit
+next to the code they test, as `<file>.test.rs`, and Go tests as `<file>_test.go`. Test fixtures
 (a fake CSMS, a test certificate authority) live in `ocppd-core/tests/fixtures`.
 The only integration tests, in `ocppd/tests`, run the binary.
 
