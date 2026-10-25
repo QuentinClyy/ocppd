@@ -41,6 +41,12 @@ pub enum EventKind {
         event_type: TransactionEventType,
         trigger_reason: TriggerReason,
     },
+    MeterSample {
+        evse: u32,
+        register_wh: f64,
+        power_w: f64,
+        soc: f64,
+    },
     RemoteStart {
         evse: u32,
         id_tag: String,

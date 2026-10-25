@@ -1,6 +1,7 @@
 use crate::api::intent::{EvSpec, Intent};
 use crate::api::io::Input;
 use crate::fixtures::v201::station::{MINUTE, Run};
+use crate::protocol::v201::event::EventKind;
 use serde_json::{Value, json};
 
 fn charging(run: &mut Run, now: u64) {
@@ -111,6 +112,43 @@ fn given_booted_station_when_ev_starts_charging_then_periodic_sample_due_after_t
     charging(&mut run, 0);
 
     assert_eq!(run.station.next_deadline(), Some(MINUTE));
+}
+
+#[test]
+fn given_charging_ev_when_the_sample_interval_passes_then_a_meter_sample_with_power_and_soc() {
+    let mut run = Run::accepted(86_400);
+    charging(&mut run, 0);
+
+    tick(&mut run, MINUTE);
+
+    let samples: Vec<_> = run
+        .events
+        .iter()
+        .filter_map(|kind| match kind {
+            EventKind::MeterSample {
+                evse, power_w, soc, ..
+            } => Some((*evse, *power_w, *soc)),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(samples.len(), 1);
+    let (evse, power_w, soc) = samples[0];
+    assert_eq!(evse, 1);
+    assert!(power_w > 0.0, "{power_w}");
+    assert!(soc > EvSpec::default().soc, "{soc}");
+}
+
+#[test]
+fn given_idle_station_when_the_sample_interval_passes_then_no_meter_sample() {
+    let mut run = Run::accepted(86_400);
+
+    tick(&mut run, MINUTE);
+
+    let sampled = run
+        .events
+        .iter()
+        .any(|kind| matches!(kind, EventKind::MeterSample { .. }));
+    assert!(!sampled);
 }
 
 #[test]

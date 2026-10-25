@@ -70,6 +70,7 @@ The main kinds:
 | `status_changed` | a connector changes status |
 | `authorization` | the CSMS answers a card |
 | `transaction_started`, `transaction_stopped` | a transaction begins or ends |
+| `meter_sample` | a transaction's meter is sampled: energy, power and SoC (`connector` in 1.6, `evse` in 2.0.1) |
 | `configuration_changed`, `variable_changed` | the CSMS changes a setting (secrets are never echoed) |
 | `charging_limit_changed` | a charging profile changes the power |
 | `firmware_status`, `log_status` | a firmware update or an upload progresses |
