@@ -1,13 +1,13 @@
 mod basic_auth;
 mod cli;
+mod model;
 mod protocol;
 mod shell;
 mod tls;
 
+use model::Model;
 use ocppd_core::api::event::Event;
 use ocppd_core::api::intent::Intent;
-use ocppd_core::station::Station;
-use ocppd_core::station::connector::Connector;
 use protocol::{Protocol, Version};
 use serde::Deserialize;
 use serde_json::Value;
@@ -28,6 +28,8 @@ struct Spawn {
     ocpp: Version,
     csms: Option<String>,
     password: Option<String>,
+    #[serde(flatten)]
+    model: Model,
 }
 
 fn jitter_by_default() -> bool {
@@ -142,17 +144,12 @@ fn spawn(csms: &str, command: &Spawn, events: &UnboundedSender<Event>, stations:
             .unwrap_or(csms)
             .trim_end_matches('/');
         let url = format!("{base}/{id}");
-        let station = Station {
-            id: id.clone(),
-            vendor: "ocppd".into(),
-            model: "sim".into(),
-            serial_number: id.clone(),
-            firmware_version: env!("CARGO_PKG_VERSION").into(),
-            voltage_v: 230.0,
-            max_current_a: 32.0,
-            phases: 3,
-            jitter: command.jitter,
-            connectors: vec![Connector::default()],
+        let station = match command.model.station(&id, command.jitter) {
+            Ok(station) => station,
+            Err(err) => {
+                eprintln!("cannot spawn station {id}: {err}");
+                continue;
+            }
         };
         match Protocol::new(command.ocpp, station) {
             Ok(mut protocol) => {
