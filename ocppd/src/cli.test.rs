@@ -1,0 +1,88 @@
+use super::*;
+
+fn args(text: &str) -> Vec<String> {
+    text.split_whitespace().map(String::from).collect()
+}
+
+fn run(csms: &str) -> Result<Cli, String> {
+    Ok(Cli::Run { csms: csms.into() })
+}
+
+#[test]
+fn given_csms_flag_when_parsed_then_run_against_it_without_trailing_slash() {
+    let given = args("--csms ws://csms.example/ocpp/");
+
+    let cli = parse(&given, None);
+
+    assert_eq!(cli, run("ws://csms.example/ocpp"));
+}
+
+#[test]
+fn given_csms_flag_with_equals_when_parsed_then_run_against_it() {
+    let given = args("--csms=ws://csms.example");
+
+    let cli = parse(&given, None);
+
+    assert_eq!(cli, run("ws://csms.example"));
+}
+
+#[test]
+fn given_no_flag_and_ocppd_csms_set_when_parsed_then_run_against_the_env_url() {
+    let given = args("");
+
+    let cli = parse(&given, Some("ws://env.example".into()));
+
+    assert_eq!(cli, run("ws://env.example"));
+}
+
+#[test]
+fn given_flag_and_ocppd_csms_set_when_parsed_then_the_flag_wins() {
+    let given = args("--csms ws://flag.example");
+
+    let cli = parse(&given, Some("ws://env.example".into()));
+
+    assert_eq!(cli, run("ws://flag.example"));
+}
+
+#[test]
+fn given_help_or_version_flags_when_parsed_then_help_or_version_even_without_csms() {
+    let cases = [
+        ("-h", Cli::Help),
+        ("--help", Cli::Help),
+        ("-V", Cli::Version),
+        ("--version", Cli::Version),
+    ];
+
+    for (flag, expected) in cases {
+        let cli = parse(&args(flag), None);
+
+        assert_eq!(cli, Ok(expected), "{flag}");
+    }
+}
+
+#[test]
+fn given_no_csms_at_all_when_parsed_then_usage_error() {
+    let given = args("");
+
+    let cli = parse(&given, Some(String::new()));
+
+    assert_eq!(cli, Err("missing --csms <url> (or OCPPD_CSMS)".into()));
+}
+
+#[test]
+fn given_csms_flag_without_url_when_parsed_then_usage_error() {
+    let given = args("--csms");
+
+    let cli = parse(&given, None);
+
+    assert_eq!(cli, Err("--csms needs a url".into()));
+}
+
+#[test]
+fn given_unknown_argument_when_parsed_then_usage_error_naming_it() {
+    let given = args("--csms ws://csms.example --verbose");
+
+    let cli = parse(&given, None);
+
+    assert_eq!(cli, Err("unknown argument '--verbose'".into()));
+}

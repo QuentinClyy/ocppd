@@ -1,4 +1,5 @@
 mod basic_auth;
+mod cli;
 mod protocol;
 mod shell;
 mod tls;
@@ -58,9 +59,21 @@ type Stations = HashMap<String, UnboundedSender<Intent>>;
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> ExitCode {
-    let Some(csms) = csms_url() else {
-        eprintln!("usage: ocppd --csms <url>");
-        return ExitCode::from(2);
+    let args: Vec<String> = std::env::args().skip(1).collect();
+    let csms = match cli::parse(&args, std::env::var("OCPPD_CSMS").ok()) {
+        Ok(cli::Cli::Run { csms }) => csms,
+        Ok(cli::Cli::Help) => {
+            print!("{}", cli::HELP);
+            return ExitCode::SUCCESS;
+        }
+        Ok(cli::Cli::Version) => {
+            println!("ocppd {}", env!("CARGO_PKG_VERSION"));
+            return ExitCode::SUCCESS;
+        }
+        Err(err) => {
+            eprintln!("ocppd: {err}\n{}\nTry 'ocppd --help' for more.", cli::USAGE);
+            return ExitCode::from(2);
+        }
     };
     let (events, receiver) = unbounded_channel();
     let writer = tokio::spawn(write_events(receiver));
@@ -71,14 +84,6 @@ async fn main() -> ExitCode {
             eprintln!("event writer failed: {err}");
             ExitCode::FAILURE
         }
-    }
-}
-
-fn csms_url() -> Option<String> {
-    let args: Vec<String> = std::env::args().skip(1).collect();
-    match args.as_slice() {
-        [flag, url] if flag == "--csms" => Some(url.trim_end_matches('/').to_owned()),
-        _ => None,
     }
 }
 
