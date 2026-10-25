@@ -4,6 +4,9 @@ version = "0.1.0"
 edition.workspace = true
 license.workspace = true
 
+[features]
+vendored = ["ocppd-core/vendored", "native-tls/vendored"]
+
 [dependencies]
 futures-util = "0.3.34"
 native-tls = "0.2"
