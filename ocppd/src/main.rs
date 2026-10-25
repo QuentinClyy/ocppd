@@ -1,10 +1,12 @@
 mod basic_auth;
 mod cli;
+mod identity;
 mod model;
 mod protocol;
 mod shell;
 mod tls;
 
+use identity::Identities;
 use model::Model;
 use ocppd_core::api::event::Event;
 use ocppd_core::api::intent::Intent;
@@ -18,8 +20,8 @@ use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
 
 #[derive(Deserialize)]
 struct Spawn {
-    prefix: String,
-    count: u32,
+    #[serde(flatten)]
+    identities: Identities,
     #[serde(default = "jitter_by_default")]
     jitter: bool,
     #[serde(default)]
@@ -27,7 +29,6 @@ struct Spawn {
     #[serde(default)]
     ocpp: Version,
     csms: Option<String>,
-    password: Option<String>,
     #[serde(flatten)]
     model: Model,
 }
@@ -132,8 +133,15 @@ fn route(command: Routed, stations: &Stations) {
 }
 
 fn spawn(csms: &str, command: &Spawn, events: &UnboundedSender<Event>, stations: &mut Stations) {
-    for n in 1..=command.count {
-        let id = format!("{}{n}", command.prefix);
+    let identities = match command.identities.list() {
+        Ok(identities) => identities,
+        Err(err) => {
+            eprintln!("cannot spawn: {err}");
+            return;
+        }
+    };
+    for identity in identities {
+        let id = identity.id;
         if stations.contains_key(&id) {
             eprintln!("station {id} already exists");
             continue;
@@ -164,7 +172,7 @@ fn spawn(csms: &str, command: &Spawn, events: &UnboundedSender<Event>, stations:
                     );
                     continue;
                 }
-                let password = command.password.as_deref();
+                let password = identity.password.as_deref();
                 if password.is_some_and(|password| !protocol.set_basic_auth_password(password)) {
                     eprintln!("cannot spawn station {id}: password refused");
                     continue;

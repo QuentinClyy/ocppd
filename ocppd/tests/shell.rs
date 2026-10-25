@@ -65,6 +65,17 @@ async fn given_security_profile_1_and_authorization_key_when_connecting_then_bas
 }
 
 #[tokio::test]
+async fn given_a_listed_station_with_its_own_password_when_connecting_then_basic_auth_with_it() {
+    let spawn = r#"{"command":"spawn","configuration":{"SecurityProfile":"1"},
+        "stations":[{"id":"CP1","password":"0123456789abcdef"}]}"#;
+
+    let run = start(&spawn.replace('\n', ""), 300).await;
+
+    let expected = "Basic Q1AxOjAxMjM0NTY3ODlhYmNkZWY=";
+    assert_eq!(run.authorization.as_deref(), Some(expected));
+}
+
+#[tokio::test]
 async fn given_security_profile_2_when_spawned_with_a_ws_url_then_refused_without_connecting() {
     let spawn = r#"{"command":"spawn","prefix":"CP","count":1,
         "configuration":{"AuthorizationKey":"30313233343536373839616263646566","SecurityProfile":"2"}}"#;
