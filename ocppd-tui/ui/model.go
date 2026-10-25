@@ -22,6 +22,7 @@ type Model struct {
 	logOffset   int
 	help        bool
 	prompt      *prompt
+	form        *form
 	width       int
 	height      int
 }
@@ -44,7 +45,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.fleetScroll = m.fleetTop()
 		return m, cmd
 	case tea.MouseWheelMsg:
-		if !m.help {
+		if !m.help && m.form == nil {
 			m = m.wheel(msg)
 		}
 	case ocppd.EventMsg:
@@ -65,6 +66,8 @@ func (m Model) key(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return m, tea.Quit
 	case m.prompt != nil:
 		return m.promptKey(msg), nil
+	case m.form != nil:
+		return m.formKey(msg), nil
 	case m.help:
 		m.help = key != "esc" && key != "?" && key != "q"
 		return m, nil
@@ -76,6 +79,8 @@ func (m Model) key(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return m, tea.Quit
 	case "?":
 		m.help = true
+	case "n":
+		m.form = newForm()
 	case "tab":
 		m.byStation = !m.byStation
 	case "ctrl+u":
@@ -126,6 +131,23 @@ func (m Model) promptKey(msg tea.KeyPressMsg) Model {
 		return m
 	}
 	return m.sendLine(authorize(edited.at, string(edited.value)))
+}
+
+func (m Model) formKey(msg tea.KeyPressMsg) Model {
+	if msg.String() == "esc" {
+		m.form = nil
+		return m
+	}
+	if !m.form.edit(msg) {
+		return m
+	}
+	line, err := m.form.line()
+	if err != nil {
+		m.form.err = err.Error()
+		return m
+	}
+	m.form = nil
+	return m.sendLine(line)
 }
 
 func (m Model) sendLine(line string) Model {

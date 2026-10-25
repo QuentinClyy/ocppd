@@ -18,13 +18,18 @@ func render(m Model) string {
 	cursor := min(m.cursor, max(len(visible)-1, 0))
 	rule := " " + dim.Render(strings.Repeat("─", max(m.width-2, 0)))
 	count := fmt.Sprintf("%d stations", len(m.fleet.Stations))
+	if len(m.fleet.Stations) == 1 {
+		count = "1 station"
+	}
 	header := " " + bold.Render("ocppd") + "  " + dim.Render(m.csms)
 	header = pad(header, max(m.width-len(count)-1, 0)) + dim.Render(count)
 	l := m.layout()
 	var lines []string
 	switch {
+	case m.form != nil:
+		lines = centered(m.form.lines(), m.width, m.height-4)
 	case m.help:
-		lines = helpScreen(m.width, m.height-4)
+		lines = centered(helpLines(), m.width, m.height-4)
 	case l.wide:
 		lines = m.wide(visible, cursor, l)
 	default:
@@ -34,6 +39,8 @@ func render(m Model) string {
 	switch {
 	case m.prompt != nil:
 		bar = m.prompt.view()
+	case m.form != nil:
+		bar = formBar()
 	case m.help:
 		bar = " " + accent.Render("esc") + " close"
 	}
@@ -108,18 +115,6 @@ func tailLines(lines []string, height, offset int) []string {
 func fill(lines []string, height int) []string {
 	for len(lines) < height {
 		lines = append(lines, "")
-	}
-	return lines
-}
-
-func helpScreen(width, height int) []string {
-	box := helpLines()
-	indent := strings.Repeat(" ", max((width-helpWidth)/2, 1))
-	lines := make([]string, height)
-	for index := range lines {
-		if index < len(box) {
-			lines[index] = indent + box[index]
-		}
 	}
 	return lines
 }

@@ -102,3 +102,13 @@ func Test_given_q_when_pressed_then_the_program_quits(t *testing.T) {
 		t.Fatalf("got %T", cmd())
 	}
 }
+
+func Test_given_one_station_when_rendered_then_the_header_says_1_station(t *testing.T) {
+	m := charging()
+
+	header := screen(m, 80, 24)[0]
+
+	if !strings.HasSuffix(strings.TrimRight(header, " "), "1 station") {
+		t.Fatalf("got %q", header)
+	}
+}

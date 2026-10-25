@@ -11,7 +11,8 @@ type binding struct {
 
 var bindings = []binding{
 	{"move", "j / k", "next / previous row", ""},
-	{"move", "l / h", "expand / collapse station", ""},
+	{"move", "enter", "open / close station", "open"},
+	{"move", "l / h", "open / close station (vim)", ""},
 	{"move", "gg / G", "first / last row", ""},
 	{"move", "^d / ^u", "scroll log down / up (or wheel)", ""},
 	{"driver", "p", "plug in an EV", "plug"},
@@ -21,6 +22,7 @@ var bindings = []binding{
 	{"driver", "f", "fault the connector", "fault"},
 	{"driver", "c", "clear the fault", "clear"},
 	{"driver", "x", "power cut, then reboot", "cut"},
+	{"fleet", "n", "spawn stations", "spawn"},
 	{"fleet", "tab", "log: this station / all", "log"},
 	{"fleet", "q", "quit", "quit"},
 	{"fleet", "esc / ?", "close this help", ""},

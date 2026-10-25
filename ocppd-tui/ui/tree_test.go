@@ -59,7 +59,11 @@ func keyMsg(key string) tea.KeyPressMsg {
 		return tea.KeyPressMsg{Code: tea.KeyEscape}
 	case "backspace":
 		return tea.KeyPressMsg{Code: tea.KeyBackspace}
-	case "ctrl+u", "ctrl+d":
+	case "space":
+		return tea.KeyPressMsg{Code: tea.KeySpace, Text: " "}
+	case "shift+tab":
+		return tea.KeyPressMsg{Code: tea.KeyTab, Mod: tea.ModShift}
+	case "ctrl+u", "ctrl+d", "ctrl+n":
 		return tea.KeyPressMsg{Code: rune(key[5]), Mod: tea.ModCtrl}
 	}
 	return tea.KeyPressMsg{Code: []rune(key)[0], Text: key}
@@ -151,5 +155,36 @@ func Test_given_the_last_row_when_j_then_the_cursor_stays(t *testing.T) {
 
 	if m.cursor != 4 {
 		t.Fatalf("got %d", m.cursor)
+	}
+}
+
+func Test_given_a_collapsed_station_when_enter_then_it_opens_and_the_cursor_stays(t *testing.T) {
+	m := New("ws://x", func(string) error { return nil })
+	m.fleet = twoStations().fleet
+
+	m = press(m, "enter")
+
+	if !m.expanded["CP1"] || m.cursor != 0 {
+		t.Fatalf("got cursor %d, expanded %v", m.cursor, m.expanded)
+	}
+}
+
+func Test_given_an_open_station_when_enter_then_it_closes(t *testing.T) {
+	m := twoStations()
+
+	m = press(m, "enter")
+
+	if m.expanded["CP1"] {
+		t.Fatalf("got %v", m.expanded)
+	}
+}
+
+func Test_given_a_connector_row_when_enter_then_its_station_closes_and_the_cursor_returns_to_it(t *testing.T) {
+	m := press(twoStations(), "j", "j")
+
+	m = press(m, "enter")
+
+	if r, _ := m.selected(); r != (row{0, stationRow}) || m.expanded["CP1"] {
+		t.Fatalf("got %v, expanded %v", r, m.expanded)
 	}
 }

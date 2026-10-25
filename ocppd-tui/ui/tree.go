@@ -48,7 +48,14 @@ func (m Model) move(key string) Model {
 		m.cursor = 0
 	case "G":
 		m.cursor = len(visible) - 1
-	case "l", "right", "enter":
+	case "enter":
+		if current.connector != stationRow {
+			m.cursor -= current.connector + 1
+			delete(m.expanded, s.ID)
+		} else {
+			m.expanded[s.ID] = !m.expanded[s.ID]
+		}
+	case "l", "right":
 		if current.connector != stationRow {
 			return m
 		}
