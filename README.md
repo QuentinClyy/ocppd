@@ -1,207 +1,75 @@
 # ocppd
 
-A sans-IO OCPP charging-station simulator. It runs station state machines
-that a CSMS can connect to, driven by JSON-line commands on stdin, with
-events as JSON lines on stdout. OCPP 1.6J and OCPP 2.0.1.
+Simulate OCPP charging stations against your CSMS: one station or ten thousand,
+OCPP 1.6J or 2.0.1, driven from a terminal or a script.
 
-## Build
+- **Real protocol, simulated hardware.** Stations boot, heartbeat, authorize,
+  charge with a realistic curve, meter, reserve, update firmware and handle
+  certificates. EVs, cables, faults and power cuts are commands you send.
+- **Scriptable.** Commands are JSON lines on stdin; everything that happens
+  comes back as JSON lines on stdout.
+- **Light.** A thousand stations take about 30 MB.
 
-Needs OpenSSL headers for `wss` (`apt install libssl-dev pkg-config`).
+## Install
+
+ocppd needs Rust and the OpenSSL headers (`apt install libssl-dev pkg-config`).
 
 ```
-cargo build --release
+cargo install --path ocppd
 ```
 
-## Test
+## Quick start
+
+Point ocppd at a CSMS. Every station connects to `<url>/<station id>`:
+
+```
+ocppd --csms ws://localhost:8180/steve/websocket/CentralSystemService
+```
+
+Then type commands, one per line:
+
+```
+{"command":"spawn","prefix":"CP","count":1}
+{"command":"plug_in","station":"CP1","connector":1}
+{"command":"authorize","station":"CP1","id_tag":"TAG1"}
+{"command":"stop","station":"CP1","connector":1}
+```
+
+`CP1` boots, starts a transaction once the CSMS accepts `TAG1`, sends meter
+values every minute, and stops. Each step prints an event:
+
+```
+{"station":"CP1","at":1792893141250,"kind":"boot_status","status":"Accepted"}
+{"station":"CP1","at":1792893149252,"kind":"transaction_started","connector":1,"transaction_id":42}
+```
+
+For OCPP 2.0.1, spawn with `"ocpp":"2.0.1"`:
+
+```
+{"command":"spawn","prefix":"CS","count":1,"ocpp":"2.0.1"}
+```
+
+## Documentation
+
+- [Usage](docs/usage.md): the command line, every stdin command, and the events.
+- [Configuration](docs/configuration.md): station settings, security profiles and TLS.
+- [Simulation](docs/simulation.md): what is simulated, how, and at what scale.
+- [OCPP 1.6](docs/ocpp-1.6.md) and [OCPP 2.0.1](docs/ocpp-2.0.1.md): what is supported.
+- [ocppd.opencli.json](docs/ocppd.opencli.json): the CLI described in the
+  [OpenCLI](https://opencli.org) format.
+
+## Development
 
 ```
 cargo fmt --check
+cargo clippy --all-targets
 cargo test
 ```
 
-## Run
+Unit tests sit next to the code they test, as `<file>.test.rs`. Test fixtures
+(a fake CSMS, a test certificate authority) live in `ocppd-core/tests/fixtures`.
+The only integration tests, in `ocppd/tests`, run the binary.
 
-Commands go in on stdin, one JSON object per line. Events come out on stdout,
-one JSON object per line. Diagnostics go to stderr.
+## License
 
-```
-echo '{"command":"spawn","prefix":"CP","count":1}' |
-  cargo run --release -- --csms ws://localhost:8180/steve/websocket/CentralSystemService
-```
-
-This starts station `CP1`, which connects to `<csms>/CP1` using the
-`ocpp1.6` subprotocol. `spawn` also takes `"ocpp": "2.0.1"` for an OCPP
-2.0.1 station (`ocpp2.0.1` subprotocol; so far boot, heartbeat, status, the
-device model with its base and custom reports and variable monitors, Reset,
-local and remote transactions, meter values, availability, the authorization
-cache and the local list, security profiles 1 to 3, network profiles, CA
-certificates, GetLog, UpdateFirmware, CustomerInformation, charging profiles
-from SetChargingProfile or a remote start, GetCompositeSchedule, and
-reservations of a given EVSE, any EVSE or a connector type, display
-messages, and the running and final cost) and `"csms"` to send that batch to
-another CSMS than `--csms`, so one process can run a mixed fleet. For a
-2.0.1 station, `"configuration"` keys use the Part 2 shortcut notation
-`Component[instance].Variable[instance]`, e.g.
-`{"OCPPCommCtrlr.OfflineThreshold":"120"}`:
-
-```
-{"command":"spawn","prefix":"CS","count":1,"ocpp":"2.0.1","csms":"ws://localhost:8081"}
-```
-
-A 2.0.1 station reconnects after `OCPPCommCtrlr.RetryBackOffWaitMinimum`
-seconds (default 5) plus a random part of up to `RetryBackOffRandomRange`
-seconds (5), and doubles the wait after each failure, at most
-`RetryBackOffRepeatTimes` times (6).
-
-### Security profiles
-
-`spawn` takes an optional `"configuration"` object, applied with the same
-rules as ChangeConfiguration. A refused key stops the spawn.
-
-```
-{"command":"spawn","prefix":"CP","count":1,
- "configuration":{"AuthorizationKey":"30313233343536373839616263646566","SecurityProfile":"2"}}
-```
-
-`AuthorizationKey` is the hex-encoded basic auth password, sent at
-profiles 1 and 2. A 2.0.1 station takes `SecurityCtrlr.SecurityProfile` and
-`SecurityCtrlr.BasicAuthPassword` (16 to 40 characters, sent as is) instead. From profile 2 the CSMS url must be `wss://`, over TLS 1.2 or newer. The CSMS
-certificate is trusted through the system store, or `SSL_CERT_FILE` (a PEM
-file that then replaces the system store), plus any root the CSMS installed
-with InstallCertificate. A 2.0.1 station also takes
-`SecurityCtrlr.AdditionalRootCertificateCheck`: a new CSMS root must then be
-signed by the current one, which stays as a fallback: the station connects
-with the new root, tries the old one when the CSMS certificate is refused,
-and keeps whichever root connected.
-A 2.0.1 station keeps its spawn CSMS url and security profile as network profile
-slot 0. The CSMS can set slot 1 with SetNetworkProfile and change
-`OCPPCommCtrlr.NetworkConfigurationPriority`; after a reboot the station
-connects with the first slot, falls back to the next one after
-`NetworkProfileConnectionAttempts` failures, and takes the new security
-profile once it is connected. Profile 3 presents the charge point certificate
-the CSMS signed after an ExtendedTriggerMessage(SignChargePointCertificate),
-or a TriggerMessage(SignChargingStationCertificate) for a 2.0.1 station;
-without one the station does not connect.
-
-### Commands
-
-| Command | Effect |
-|---|---|
-| `{"command":"spawn","prefix":"CP","count":2}` | start stations `CP1` and `CP2` |
-| `{"command":"spawn","prefix":"CP","count":100,"jitter":false}` | start an aligned fleet: every station heartbeats and reconnects at the same instant (load storms) |
-| `{"command":"plug_in","station":"CP1","connector":1}` | plug an EV into connector 1 |
-| `{"command":"authorize","station":"CP1","id_tag":"TAG1"}` | present a card; starts a transaction once accepted and plugged in (an optional `"connector":1` picks the connector) |
-| `{"command":"stop","station":"CP1","connector":1}` | stop the transaction locally |
-| `{"command":"unplug","station":"CP1","connector":1}` | unplug the EV; stops a running transaction |
-| `{"command":"fault","station":"CP1","connector":1}` | the connector reports `Faulted`, stops its transaction and refuses new ones and reservations |
-| `{"command":"lock_failure","station":"CP1","connector":1}` | the connector's lock breaks: unlocking answers `UnlockFailed`, and plugging an EV in faults the connector (ConnectorLockFailure; a 2.0.1 station also reports `ConnectorPlugRetentionLock.Problem`) |
-| `{"command":"clear_fault","station":"CP1","connector":1}` | clear the fault and repair the lock |
-| `{"command":"power_cut","station":"CP1"}` | the power fails: transactions stop (reason `PowerLoss`), the station goes down once its outbox is drained and boots again, keeping its state |
-| `{"command":"fail_transfer","station":"CP1","stage":"download"}` | the next firmware download fails (`DownloadFailed`); `"signature"` fails the next signed firmware's check (`InvalidSignature`), `"install"` the next install (`InstallationFailed`), `"upload"` the next diagnostics or log upload |
-
-`plug_in` takes an optional EV, with these defaults:
-`"ev":{"capacity_kwh":60,"soc":0.2,"max_kw":11,"target_soc":1.0}`.
-The station draws at most 230 V × 32 A × 3 phases (22 kW). Meter values
-follow a charging curve that is flat up to 80 % and tapers after that.
-
-## Load
-
-One process, measured against `cargo run --release --example sink_csms
-127.0.0.1:9000 60` (a CSMS that accepts everything) on 20 cores, 16 GB:
-
-| Stations | Memory | Boot of all | Steady load |
-|---|---|---|---|
-| 1 000 | 28 MB | under 5 s | |
-| 10 000 | 221 MB | under 5 s | aligned heartbeats every 10 s: about 0.01 core |
-| 10 000 charging | 250 MB | | MeterValues every 10 s, 1 200 calls/s: 0.11 core |
-| 20 000 | 446 MB | 15 s | |
-| 1 000 OCPP 2.0.1 | 55 MB | under 1 s | |
-| 10 000 OCPP 2.0.1 | 472 MB | 4 s | heartbeats every 10 s: 0.05 core |
-| 5 000 1.6 + 5 000 2.0.1 | 370 MB | 4.5 s | heartbeats every 10 s: 0.04 core |
-
-A 2.0.1 station takes about twice the memory of a 1.6 one: each keeps its
-own device model of about 80 variables.
-
-The ceiling is the ephemeral port range: one CSMS address takes at most
-28 232 connections (`net.ipv4.ip_local_port_range` 32768–60999); further
-stations log `Cannot assign requested address` and retry with backoff. As
-the range fills, the kernel's port search, not ocppd, costs the CPU. Widen
-the range or spread stations over several processes and CSMS addresses to
-go further.
-
-## Known limitations
-
-### OCPP 1.6
-
-OCPP 1.6J with the Security Whitepaper (edition 4) is complete. The station
-simulates, it does not transfer:
-
-- UpdateFirmware, SignedUpdateFirmware, GetDiagnostics and GetLog never
-  download or upload anything (`fail_transfer` makes one fail); `retries`,
-  `retryInterval` and time windows are ignored; the new firmware version is the last segment of the URL, and
-  a firmware signature only has to be present (`fail_transfer` makes one
-  invalid).
-- Certificates, the station key and its certificate live in memory (they
-  survive a Reset, not a restart). Keys are EC P-256; only self-signed roots
-  are installed.
-- Off through configuration keys: reservations on connector 0
-  (`ReserveConnectorZeroSupported`), a main meter, offline transactions for
-  unknown id tags (`AllowOfflineTxForUnknownId` is not offered).
-- `minChargingRate` is ignored and the authorization cache has no size
-  limit.
-
-Open protocol gaps:
-
-- An unanswered SignCertificate is not resent (whitepaper A02.FR.17–19);
-  CertificateSigned does not check the leaf's CN/O.
-- SetChargingProfile does not validate the schedule's content.
-- No fallback to the previous security profile when the new one cannot
-  connect; DeleteCertificate never answers `Failed`.
-- An offline transaction whose StartTransaction is abandoned is never
-  reported to the CSMS.
-
-### OCPP 2.0.1
-
-OCPP 2.0.1 (edition 4) is complete for every certification profile except
-ISO 15118 support: Core, Advanced Security, Local Authorization List
-Management, Smart Charging, Reservation, Advanced Device Management and
-Advanced User Interface. The station simulates as it does for 1.6:
-
-- Nothing is transferred: GetLog and UpdateFirmware only need a valid
-  scheme and take 10 s, unless `fail_transfer` makes one fail. A failing
-  GetLog upload is attempted again `retries` times, every `retryInterval`
-  seconds, before its `UploadFailure`; UpdateFirmware retries and time
-  windows are ignored. The new firmware version is the last segment of
-  the location. UpdateFirmware
-  needs a signing certificate (an unsigned update is `Rejected`), a
-  signature only has to be present, and the signing certificate's
-  revocation is not checked.
-- EVSE `Power` reads the power being delivered (its `maxLimit` is the
-  station limit), so threshold and delta monitors on it follow charging;
-  their events carry the EVSE's transaction id.
-- Everything lives in memory (device model values, certificates and the
-  station key, charging profiles, reservations, monitors, display messages,
-  the cache and the local list): a Reset keeps it, a restart does not.
-- One connector per EVSE, every connector `cType2`; no main meter,
-  no signed meter values.
-- What the EV driver sees is the event stream: display messages are kept,
-  reported and expired, but no screen is simulated (no cycling by
-  priority, no state or start-time gating, no language choice); costs and
-  tariffs arrive as `cost_shown` and `driver_message` events.
-
-Not implemented, all optional or outside the profiles: the ISO 15118
-messages, external charging limits (NotifyChargingLimit,
-ClearedChargingLimit), Reset of a single EVSE (answered `Rejected`), the
-DataSigned and ParkingBayOccupancy transaction points,
-DisableRemoteAuthorization and DisablePostAuthorize, hard-wired monitors
-other than the connector lock's and preconfigured monitors, vendor DataTransfer (always `UnknownVendorId`) and
-attribute types other than `Actual`.
-
-Open protocol gaps:
-
-- A ChargingStationMaxProfile is split equally between the charging EVSEs;
-  a Relative schedule counts from the transaction start.
-- SetNetworkProfile never answers `Failed`, and
-  AllowSecurityProfileDowngrade is not offered.
-- The clock is the host's, not the CSMS's `currentTime`.
-- `BytesPerMessage` limits are reported but not enforced.
+Apache-2.0
