@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"sync"
+	"syscall"
 
 	tea "charm.land/bubbletea/v2"
 )
@@ -37,6 +38,7 @@ func Path(env, self string) string {
 
 func Start(path, csms string) (*Process, error) {
 	command := exec.Command(path, "--csms", csms)
+	command.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	stdin, err := command.StdinPipe()
 	if err != nil {
 		return nil, err
@@ -72,9 +74,14 @@ func (p *Process) Forward(send func(tea.Msg)) {
 	}()
 }
 
+func (p *Process) Send(line string) error {
+	_, err := io.WriteString(p.stdin, line+"\n")
+	return err
+}
+
 func (p *Process) Stop() {
 	p.stdin.Close()
-	p.command.Process.Kill()
+	syscall.Kill(-p.command.Process.Pid, syscall.SIGKILL)
 }
 
 func readLines(reader io.Reader, wrap func(string) tea.Msg, send func(tea.Msg)) {

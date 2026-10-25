@@ -11,59 +11,72 @@ const (
 	wideWidth  = 150
 	narrowName = 24
 	wideName   = 20
-	keyBar     = " " + "j/k move  h/l collapse/expand  gg/G first/last  tab log filter  q quit"
 )
 
 func render(m Model) string {
-	visible := rows(m.fleet, m.collapsed)
+	visible := rows(m.fleet, m.expanded)
 	cursor := min(m.cursor, max(len(visible)-1, 0))
 	rule := " " + dim.Render(strings.Repeat("─", max(m.width-2, 0)))
 	count := fmt.Sprintf("%d stations", len(m.fleet.Stations))
 	header := " " + bold.Render("ocppd") + "  " + dim.Render(m.csms)
 	header = pad(header, max(m.width-len(count)-1, 0)) + dim.Render(count)
-	body := m.height - 4
+	l := m.layout()
 	var lines []string
-	if m.width >= wideWidth {
-		lines = m.wide(visible, cursor, body)
-	} else {
-		lines = m.narrow(visible, cursor, body-3, rule)
+	switch {
+	case m.help:
+		lines = helpScreen(m.width, m.height-4)
+	case l.wide:
+		lines = m.wide(visible, cursor, l)
+	default:
+		lines = m.narrow(visible, cursor, l, rule)
+	}
+	bar := keyBar(m.width)
+	switch {
+	case m.prompt != nil:
+		bar = m.prompt.view()
+	case m.help:
+		bar = " " + accent.Render("esc") + " close"
 	}
 	screen := append([]string{header, rule}, lines...)
-	screen = append(screen, rule, dim.Render(keyBar))
+	screen = append(screen, rule, bar)
 	for index, line := range screen {
 		screen[index] = ansi.Truncate(line, m.width, "")
 	}
 	return strings.Join(screen, "\n")
 }
 
-func (m Model) narrow(visible []row, cursor, available int, rule string) []string {
-	fleetRows := min(len(visible), max(available*2/3, 1))
-	shown := window(fleetLines(m.fleet, visible, m.collapsed, cursor, narrowName), cursor, fleetRows)
-	lines := []string{" " + fleetHeader(narrowName)}
-	for _, line := range shown {
-		lines = append(lines, " "+line)
+func (m Model) narrow(visible []row, cursor int, l layout, rule string) []string {
+	shown := window(fleetLines(m.fleet, visible, m.expanded, cursor, narrowName), m.fleetTop(), l.fleetRows)
+	fleet := make([]string, len(shown))
+	for index, line := range shown {
+		fleet[index] = " " + line
 	}
+	lines := append([]string{" " + fleetHeader(narrowName)}, scrollbar(fleet, m.width, len(visible), m.fleetTop(), " ")...)
 	lines = append(lines, rule, m.logTitle())
-	logRows := available - len(shown)
-	return append(lines, fill(tailLines(m.logLines(), logRows), logRows)...)
+	return append(lines, m.logPane(l, m.width)...)
 }
 
-func (m Model) wide(visible []row, cursor, body int) []string {
-	leftWidth := fleetWidth(wideName)
-	left := append([]string{fleetHeader(wideName)}, window(fleetLines(m.fleet, visible, m.collapsed, cursor, wideName), cursor, body-1)...)
-	right := append([]string{strings.TrimPrefix(m.logTitle(), " ")}, tailLines(m.logLines(), body-1)...)
-	lines := make([]string, body)
-	for index := range lines {
-		var l, r string
-		if index < len(left) {
-			l = left[index]
-		}
-		if index < len(right) {
-			r = strings.TrimPrefix(right[index], " ")
-		}
-		lines[index] = " " + pad(l, leftWidth) + dim.Render("│") + " " + r
+func (m Model) wide(visible []row, cursor int, l layout) []string {
+	leftWidth := fleetWidth(wideName) + 2
+	shown := window(fleetLines(m.fleet, visible, m.expanded, cursor, wideName), m.fleetTop(), l.fleetRows)
+	left := make([]string, l.fleetRows)
+	for index, line := range shown {
+		left[index] = " " + line
+	}
+	left = scrollbar(left, leftWidth, len(visible), m.fleetTop(), dim.Render("│"))
+	right := m.logPane(l, m.width-leftWidth)
+	lines := []string{pad(" "+fleetHeader(wideName), leftWidth-1) + dim.Render("│") + m.logTitle()}
+	for index := range left {
+		lines = append(lines, left[index]+right[index])
 	}
 	return lines
+}
+
+func (m Model) logPane(l layout, width int) []string {
+	logs := m.logLines()
+	offset := m.clampLog(m.logOffset)
+	top := max(len(logs)-l.logRows-offset, 0)
+	return scrollbar(fill(tailLines(logs, l.logRows, offset), l.logRows), width, len(logs), top, " ")
 }
 
 func (m Model) logTitle() string {
@@ -77,13 +90,14 @@ func (m Model) logLines() []string {
 	return filtered(m.log, m.logStation())
 }
 
-func window(lines []string, cursor, height int) []string {
-	start := max(min(cursor-height+1, len(lines)-height), 0)
-	return lines[start:min(start+height, len(lines))]
+func window(lines []string, top, height int) []string {
+	top = min(top, len(lines))
+	return lines[top:min(top+height, len(lines))]
 }
 
-func tailLines(lines []string, height int) []string {
-	shown := lines[max(len(lines)-max(height, 0), 0):]
+func tailLines(lines []string, height, offset int) []string {
+	end := max(len(lines)-offset, 0)
+	shown := lines[max(end-max(height, 0), 0):end]
 	out := make([]string, len(shown))
 	for index, line := range shown {
 		out[index] = " " + line
@@ -94,6 +108,18 @@ func tailLines(lines []string, height int) []string {
 func fill(lines []string, height int) []string {
 	for len(lines) < height {
 		lines = append(lines, "")
+	}
+	return lines
+}
+
+func helpScreen(width, height int) []string {
+	box := helpLines()
+	indent := strings.Repeat(" ", max((width-helpWidth)/2, 1))
+	lines := make([]string, height)
+	for index := range lines {
+		if index < len(box) {
+			lines[index] = indent + box[index]
+		}
 	}
 	return lines
 }

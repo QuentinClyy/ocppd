@@ -10,7 +10,7 @@ import (
 )
 
 func charging() Model {
-	m := New("ws://x")
+	m := New("ws://x", func(string) error { return nil })
 	for _, line := range []string{
 		`{"station":"EVB-0001","at":1,"kind":"connected"}`,
 		`{"station":"EVB-0001","at":2,"kind":"boot_status","status":"Accepted"}`,
@@ -22,7 +22,7 @@ func charging() Model {
 		next, _ := m.Update(ocppd.EventMsg(line))
 		m = next.(Model)
 	}
-	return m
+	return expandAll(m)
 }
 
 func screen(m Model, width, height int) []string {
@@ -91,7 +91,7 @@ func Test_given_a_line_wider_than_the_terminal_when_rendered_then_it_is_cut_to_t
 }
 
 func Test_given_q_when_pressed_then_the_program_quits(t *testing.T) {
-	m := New("ws://x")
+	m := New("ws://x", func(string) error { return nil })
 
 	_, cmd := m.Update(tea.KeyPressMsg{Code: 'q', Text: "q"})
 

@@ -9,11 +9,11 @@ type row struct {
 	connector int
 }
 
-func rows(f fleet.Fleet, collapsed map[string]bool) []row {
+func rows(f fleet.Fleet, expanded map[string]bool) []row {
 	var visible []row
 	for index, s := range f.Stations {
 		visible = append(visible, row{index, stationRow})
-		if collapsed[s.ID] {
+		if !expanded[s.ID] {
 			continue
 		}
 		for connector := range s.Connectors {
@@ -24,7 +24,7 @@ func rows(f fleet.Fleet, collapsed map[string]bool) []row {
 }
 
 func (m Model) selected() (row, bool) {
-	visible := rows(m.fleet, m.collapsed)
+	visible := rows(m.fleet, m.expanded)
 	if len(visible) == 0 {
 		return row{}, false
 	}
@@ -32,7 +32,7 @@ func (m Model) selected() (row, bool) {
 }
 
 func (m Model) move(key string) Model {
-	visible := rows(m.fleet, m.collapsed)
+	visible := rows(m.fleet, m.expanded)
 	if len(visible) == 0 {
 		return m
 	}
@@ -52,16 +52,16 @@ func (m Model) move(key string) Model {
 		if current.connector != stationRow {
 			return m
 		}
-		if m.collapsed[s.ID] {
-			delete(m.collapsed, s.ID)
-		} else if len(s.Connectors) > 0 {
+		if m.expanded[s.ID] && len(s.Connectors) > 0 {
 			m.cursor++
+		} else {
+			m.expanded[s.ID] = true
 		}
 	case "h", "left":
 		if current.connector != stationRow {
 			m.cursor -= current.connector + 1
 		} else {
-			m.collapsed[s.ID] = true
+			delete(m.expanded, s.ID)
 		}
 	}
 	return m

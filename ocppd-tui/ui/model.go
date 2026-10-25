@@ -9,20 +9,25 @@ import (
 )
 
 type Model struct {
-	csms      string
-	zone      *time.Location
-	log       []entry
-	fleet     fleet.Fleet
-	collapsed map[string]bool
-	cursor    int
-	pendingG  bool
-	byStation bool
-	width     int
-	height    int
+	csms        string
+	send        func(string) error
+	zone        *time.Location
+	log         []entry
+	fleet       fleet.Fleet
+	expanded    map[string]bool
+	cursor      int
+	fleetScroll int
+	pendingG    bool
+	byStation   bool
+	logOffset   int
+	help        bool
+	prompt      *prompt
+	width       int
+	height      int
 }
 
-func New(csms string) Model {
-	return Model{csms: csms, zone: time.Local, collapsed: map[string]bool{}}
+func New(csms string, send func(string) error) Model {
+	return Model{csms: csms, send: send, zone: time.Local, expanded: map[string]bool{}}
 }
 
 func (m Model) Init() tea.Cmd {
@@ -34,41 +39,126 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
 	case tea.KeyPressMsg:
-		return m.key(msg.String())
+		next, cmd := m.key(msg)
+		m = next.(Model)
+		m.fleetScroll = m.fleetTop()
+		return m, cmd
+	case tea.MouseWheelMsg:
+		if !m.help {
+			m = m.wheel(msg)
+		}
 	case ocppd.EventMsg:
 		station, _ := m.fleet.Apply(string(msg))
-		m.log = appendLog(m.log, entry{station, logLine(string(msg), m.zone)})
+		m = m.addLog(entry{station, logLine(string(msg), m.zone)})
 	case ocppd.ErrorMsg:
-		m.log = appendLog(m.log, entry{text: "stderr    " + string(msg)})
+		m = m.addLog(entry{text: "stderr    " + string(msg)})
 	case ocppd.ExitMsg:
-		m.log = appendLog(m.log, entry{text: exitLine(msg.Err)})
+		m = m.addLog(entry{text: exitLine(msg.Err)})
 	}
 	return m, nil
 }
 
-func (m Model) key(key string) (tea.Model, tea.Cmd) {
+func (m Model) key(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+	key := msg.String()
+	switch {
+	case key == "ctrl+c":
+		return m, tea.Quit
+	case m.prompt != nil:
+		return m.promptKey(msg), nil
+	case m.help:
+		m.help = key != "esc" && key != "?" && key != "q"
+		return m, nil
+	}
 	wasG := m.pendingG
 	m.pendingG = false
 	switch key {
-	case "q", "ctrl+c":
+	case "q":
 		return m, tea.Quit
+	case "?":
+		m.help = true
 	case "tab":
 		m.byStation = !m.byStation
+	case "ctrl+u":
+		m = m.scrollLog(m.logPage())
+	case "ctrl+d":
+		m = m.scrollLog(-m.logPage())
 	case "g":
-		if !wasG {
-			m.pendingG = true
+		if wasG {
+			return m.move("g"), nil
+		}
+		m.pendingG = true
+	case "a":
+		at, ok := m.target()
+		if ok && at.connector == 0 {
+			return m.move("l"), nil
+		}
+		if ok {
+			m.prompt = &prompt{at: at}
+		}
+	case "p", "s", "u", "f", "c", "x":
+		at, ok := m.target()
+		if !ok {
 			return m, nil
 		}
-		return m.move("g"), nil
+		line, ok := command(key, at)
+		if !ok {
+			return m.move("l"), nil
+		}
+		return m.sendLine(line), nil
 	default:
 		return m.move(key), nil
 	}
 	return m, nil
 }
 
+func (m Model) promptKey(msg tea.KeyPressMsg) Model {
+	if msg.String() == "esc" {
+		m.prompt = nil
+		return m
+	}
+	edited, done := m.prompt.edit(msg)
+	if !done {
+		m.prompt = &edited
+		return m
+	}
+	m.prompt = nil
+	if len(edited.value) == 0 {
+		return m
+	}
+	return m.sendLine(authorize(edited.at, string(edited.value)))
+}
+
+func (m Model) sendLine(line string) Model {
+	if err := m.send(line); err != nil {
+		m = m.addLog(entry{text: "send: " + err.Error()})
+	}
+	return m
+}
+
+func (m Model) target() (target, bool) {
+	r, ok := m.selected()
+	if !ok {
+		return target{}, false
+	}
+	s := m.fleet.Stations[r.station]
+	at := target{station: s.ID}
+	switch {
+	case r.connector != stationRow:
+		at.connector = s.Connectors[r.connector].ID
+	case len(s.Connectors) == 1:
+		at.connector = s.Connectors[0].ID
+	}
+	return at, true
+}
+
+func (m Model) logPage() int {
+	return max(m.height/4, 1)
+}
+
 func (m Model) View() tea.View {
 	view := tea.NewView(render(m))
 	view.AltScreen = true
+	view.MouseMode = tea.MouseModeCellMotion
 	return view
 }
 

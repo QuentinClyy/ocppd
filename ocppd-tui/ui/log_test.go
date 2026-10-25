@@ -62,6 +62,31 @@ func Test_given_a_mixed_log_when_filtered_by_a_station_then_only_its_lines(t *te
 	}
 }
 
+func Test_given_an_offset_when_the_tail_is_taken_then_older_lines_show(t *testing.T) {
+	lines := []string{"a", "b", "c", "d", "e"}
+
+	shown := tailLines(lines, 2, 2)
+
+	if strings.Join(shown, ",") != " b, c" {
+		t.Fatalf("got %q", shown)
+	}
+}
+
+func Test_given_a_long_log_when_ctrl_u_then_ctrl_d_then_back_at_the_bottom(t *testing.T) {
+	m, _ := recording()
+	m.width, m.height = 80, 24
+	for range 50 {
+		m.log = appendLog(m.log, entry{text: "line"})
+	}
+
+	up := press(m, "ctrl+u")
+	down := press(up, "ctrl+d")
+
+	if up.logOffset != 6 || down.logOffset != 0 {
+		t.Fatalf("got up %d, down %d", up.logOffset, down.logOffset)
+	}
+}
+
 func Test_given_a_mixed_log_when_not_filtered_then_every_line(t *testing.T) {
 	log := []entry{{"CP1", "a"}, {"", "stderr"}}
 

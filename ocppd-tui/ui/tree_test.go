@@ -3,6 +3,8 @@ package ui
 import (
 	"testing"
 
+	tea "charm.land/bubbletea/v2"
+
 	"github.com/QuentinClyy/ocppd/ocppd-tui/fleet"
 )
 
@@ -15,27 +17,69 @@ func fleetOf(lines ...string) fleet.Fleet {
 }
 
 func twoStations() Model {
-	m := New("ws://x")
+	m := New("ws://x", func(string) error { return nil })
 	m.fleet = fleetOf(
 		`{"station":"CP1","at":1,"kind":"status_changed","connector":1,"status":"Available"}`,
 		`{"station":"CP1","at":1,"kind":"status_changed","connector":2,"status":"Available"}`,
 		`{"station":"CP2","at":1,"kind":"status_changed","connector":1,"status":"Available"}`,
 	)
+	return expandAll(m)
+}
+
+func expandAll(m Model) Model {
+	for _, s := range m.fleet.Stations {
+		m.expanded[s.ID] = true
+	}
 	return m
 }
 
 func press(m Model, keys ...string) Model {
 	for _, key := range keys {
-		next, _ := m.key(key)
+		next, _ := m.key(keyMsg(key))
 		m = next.(Model)
 	}
 	return m
 }
 
-func Test_given_new_stations_when_listed_then_expanded_with_their_connectors(t *testing.T) {
+func pressAll(m Model, keys ...string) Model {
+	for _, key := range keys {
+		next, _ := m.Update(keyMsg(key))
+		m = next.(Model)
+	}
+	return m
+}
+
+func keyMsg(key string) tea.KeyPressMsg {
+	switch key {
+	case "tab":
+		return tea.KeyPressMsg{Code: tea.KeyTab}
+	case "enter":
+		return tea.KeyPressMsg{Code: tea.KeyEnter}
+	case "esc":
+		return tea.KeyPressMsg{Code: tea.KeyEscape}
+	case "backspace":
+		return tea.KeyPressMsg{Code: tea.KeyBackspace}
+	case "ctrl+u", "ctrl+d":
+		return tea.KeyPressMsg{Code: rune(key[5]), Mod: tea.ModCtrl}
+	}
+	return tea.KeyPressMsg{Code: []rune(key)[0], Text: key}
+}
+
+func Test_given_new_stations_when_listed_then_one_collapsed_row_each(t *testing.T) {
+	m := New("ws://x", func(string) error { return nil })
+	m.fleet = twoStations().fleet
+
+	visible := rows(m.fleet, m.expanded)
+
+	if len(visible) != 2 || visible[0] != (row{0, stationRow}) || visible[1] != (row{1, stationRow}) {
+		t.Fatalf("got %v", visible)
+	}
+}
+
+func Test_given_expanded_stations_when_listed_then_their_connectors_follow_them(t *testing.T) {
 	m := twoStations()
 
-	visible := rows(m.fleet, m.collapsed)
+	visible := rows(m.fleet, m.expanded)
 
 	want := []row{{0, stationRow}, {0, 0}, {0, 1}, {1, stationRow}, {1, 0}}
 	if len(visible) != len(want) {
@@ -63,8 +107,8 @@ func Test_given_a_station_row_when_h_then_it_collapses(t *testing.T) {
 
 	m = press(m, "h")
 
-	if len(rows(m.fleet, m.collapsed)) != 3 || !m.collapsed["CP1"] {
-		t.Fatalf("got %v", rows(m.fleet, m.collapsed))
+	if len(rows(m.fleet, m.expanded)) != 3 || m.expanded["CP1"] {
+		t.Fatalf("got %v", rows(m.fleet, m.expanded))
 	}
 }
 
@@ -73,8 +117,8 @@ func Test_given_a_collapsed_station_when_l_then_it_expands_and_the_cursor_stays(
 
 	m = press(m, "l")
 
-	if m.collapsed["CP1"] || m.cursor != 0 {
-		t.Fatalf("got cursor %d, collapsed %v", m.cursor, m.collapsed)
+	if !m.expanded["CP1"] || m.cursor != 0 {
+		t.Fatalf("got cursor %d, expanded %v", m.cursor, m.expanded)
 	}
 }
 

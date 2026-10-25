@@ -24,11 +24,11 @@ func fleetHeader(nameWidth int) string {
 	return dim.Render(line.String())
 }
 
-func fleetLines(f fleet.Fleet, visible []row, collapsed map[string]bool, cursor, nameWidth int) []string {
+func fleetLines(f fleet.Fleet, visible []row, expanded map[string]bool, cursor, nameWidth int) []string {
 	lines := make([]string, len(visible))
 	for index, r := range visible {
 		s := f.Stations[r.station]
-		cells := stationCells(s, collapsed[s.ID])
+		cells := stationCells(s, expanded[s.ID])
 		if r.connector != stationRow {
 			cells = connectorCells(s, r.connector)
 		}
@@ -37,10 +37,10 @@ func fleetLines(f fleet.Fleet, visible []row, collapsed map[string]bool, cursor,
 	return lines
 }
 
-func stationCells(s fleet.Station, isCollapsed bool) []cell {
-	marker := "▾ "
-	if isCollapsed {
-		marker = "▸ "
+func stationCells(s fleet.Station, isExpanded bool) []cell {
+	marker := "▸ "
+	if isExpanded {
+		marker = "▾ "
 	}
 	if len(s.Connectors) == 0 {
 		marker = "  "

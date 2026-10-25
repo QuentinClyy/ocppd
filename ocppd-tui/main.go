@@ -31,7 +31,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "ocppd-tui: cannot start ocppd: %v\n", err)
 		os.Exit(1)
 	}
-	program := tea.NewProgram(ui.New(csms))
+	program := tea.NewProgram(ui.New(csms, process.Send))
 	process.Forward(program.Send)
 	_, err = program.Run()
 	process.Stop()
