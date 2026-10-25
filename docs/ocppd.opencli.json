@@ -1,0 +1,54 @@
+{
+  "opencli": "0.1",
+  "info": {
+    "title": "ocppd",
+    "version": "0.1.0",
+    "summary": "Simulate OCPP 1.6 and 2.0.1 charging stations against a CSMS",
+    "description": "Reads commands from stdin, one JSON object per line, and writes events to stdout, one JSON object per line. Logs go to stderr.",
+    "license": {
+      "name": "Apache-2.0",
+      "identifier": "Apache-2.0"
+    }
+  },
+  "conventions": {
+    "groupOptions": false,
+    "optionSeparator": " "
+  },
+  "command": {
+    "name": "ocppd",
+    "options": [
+      {
+        "name": "--csms",
+        "description": "CSMS WebSocket url; a station connects to <url>/<id>. Defaults to the OCPPD_CSMS environment variable.",
+        "required": false,
+        "arguments": [
+          {
+            "name": "url",
+            "required": true,
+            "arity": { "minimum": 1, "maximum": 1 }
+          }
+        ]
+      },
+      {
+        "name": "--help",
+        "aliases": ["-h"],
+        "description": "Print the help and exit"
+      },
+      {
+        "name": "--version",
+        "aliases": ["-V"],
+        "description": "Print the version and exit"
+      }
+    ],
+    "exitCodes": [
+      { "code": 0, "description": "stdin closed and every station stopped" },
+      { "code": 1, "description": "Runtime error" },
+      { "code": 2, "description": "Usage error" }
+    ],
+    "examples": [
+      "ocppd --csms ws://localhost:8180/steve/websocket/CentralSystemService",
+      "OCPPD_CSMS=ws://localhost:8081 ocppd"
+    ],
+    "interactive": true
+  }
+}
