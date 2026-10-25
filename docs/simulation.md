@@ -5,8 +5,9 @@ station is simulated.
 
 ## The station
 
-- **Power:** every station has one connector, rated 230 V × 32 A × 3 phases
-  (22 kW). A 2.0.1 station has one EVSE per connector, of type `cType2`.
+- **Power:** by default a station has one connector, rated 230 V × 32 A × 3
+  phases (22 kW); the [station model](configuration.md#station-model) changes
+  that. A 2.0.1 station has one EVSE per connector, of type `cType2`.
 - **EV charging:** an EV charges at its own maximum, within the station's
   limits and the CSMS's charging profiles. Power is flat up to 80 % and
   tapers after that.

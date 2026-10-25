@@ -1,19 +1,42 @@
 # Configuration
 
-Stations are configured when they are spawned.
+Stations are configured when they are spawned. One spawn line describes one
+station model, and either numbers its stations or lists them:
 
 ```
 {"command":"spawn","prefix":"CP","count":100}
+{"command":"spawn","vendor":"ACME","model":"WB22","phases":1,"max_current_a":16,
+ "configuration":{"SecurityProfile":"1"},
+ "stations":[{"id":"EVB-0001","password":"s3cret-0001"},{"id":"EVB-0002","password":"s3cret-0002"}]}
 ```
+
+## Identities
+
+Use one of the two forms:
+
+| Field | Meaning |
+|---|---|
+| `prefix`, `count` | station ids are `<prefix>1` to `<prefix><count>` |
+| `password` | with `prefix`: one plain-text basic auth password for every station |
+| `stations` | a list of `{"id":...,"password":...}`; `password` is optional |
+
+The serial number is the station id. A password is sent from security
+profile 1 up, and is never echoed.
+
+## Station model
 
 | Field | Default | Meaning |
 |---|---|---|
-| `prefix`, `count` | required | station ids are `<prefix>1` to `<prefix><count>` |
 | `ocpp` | `"1.6"` | `"1.6"` or `"2.0.1"` |
-| `csms` | `--csms` | another CSMS url for this batch, so one process can run a mixed fleet |
+| `csms` | `--csms` | another CSMS url for these stations, so one process can run a mixed fleet |
+| `vendor`, `model`, `firmware_version` | `"ocppd"`, `"sim"`, the ocppd version | reported at boot |
+| `voltage_v`, `max_current_a`, `phases` | `230`, `32`, `3` | the electrical rating; `phases` is 1 to 3 |
+| `connectors` | `1` | the number of connectors; a 2.0.1 station has one EVSE per connector |
 | `jitter` | `true` | spread heartbeats and reconnects; `false` aligns the whole fleet, to test load storms |
 | `configuration` | none | settings applied before the first connection; a refused one stops the spawn |
-| `password` | none | a plain-text basic auth password |
+
+Settings that follow from the model, such as `NumberOfConnectors` or
+`SupplyPhases`, are read-only.
 
 ## Settings
 
