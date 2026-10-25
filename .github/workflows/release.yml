@@ -1,28 +1,41 @@
 name: Release
 on:
   push:
-    tags: ['v*']
+    tags: ["v*"]
 jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - run: test "${GITHUB_REF_NAME#v}" = "$(grep -m1 '^version' ocppd/Cargo.toml | cut -d '"' -f2)"
   build:
     needs: check
     strategy:
       matrix:
         include:
-          - { target: x86_64-unknown-linux-musl, os: ubuntu-latest, native: true }
-          - { target: aarch64-unknown-linux-musl, os: ubuntu-24.04-arm, native: true }
+          - {
+              target: x86_64-unknown-linux-musl,
+              os: ubuntu-latest,
+              native: true,
+            }
+          - {
+              target: aarch64-unknown-linux-musl,
+              os: ubuntu-24.04-arm,
+              native: true,
+            }
           - { target: aarch64-apple-darwin, os: macos-latest, native: true }
           - { target: x86_64-apple-darwin, os: macos-latest, native: false }
     runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
     env:
+      NAME: ocppd-${{ matrix.target }}
       ARCHIVE: ocppd-${{ matrix.target }}.tar.gz
       BINARY: target/${{ matrix.target }}/release/ocppd
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y musl-tools
       - run: rustup target add ${{ matrix.target }}
@@ -30,11 +43,15 @@ jobs:
       - if: matrix.native
         run: $BINARY --version
       - run: |
-          mkdir dist
-          cp "$BINARY" LICENSE README.md dist/
-          tar czf "$ARCHIVE" -C dist ocppd LICENSE README.md
+          mkdir "$NAME"
+          cp "$BINARY" LICENSE README.md "$NAME/"
+          tar czf "$ARCHIVE" "$NAME"
           shasum -a 256 "$ARCHIVE" > "$ARCHIVE.sha256"
-      - uses: actions/upload-artifact@v4
+      - if: ${{ !github.event.repository.private }}
+        uses: actions/attest-build-provenance@v4
+        with:
+          subject-path: ${{ env.ARCHIVE }}
+      - uses: actions/upload-artifact@v7
         with:
           name: ocppd-${{ matrix.target }}
           path: ${{ env.ARCHIVE }}*
@@ -44,7 +61,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           merge-multiple: true
       - run: gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --generate-notes ocppd-*

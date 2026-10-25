@@ -18,7 +18,7 @@ a single file with no dependencies:
 
 ```
 curl -L https://github.com/QuentinClyy/ocppd/releases/latest/download/ocppd-x86_64-unknown-linux-musl.tar.gz | tar xz
-sudo mv ocppd /usr/local/bin/
+sudo mv ocppd-x86_64-unknown-linux-musl/ocppd /usr/local/bin/
 ```
 
 | System | Archive |
@@ -27,6 +27,9 @@ sudo mv ocppd /usr/local/bin/
 | Linux arm64 | `ocppd-aarch64-unknown-linux-musl.tar.gz` |
 | macOS Apple silicon | `ocppd-aarch64-apple-darwin.tar.gz` |
 | macOS Intel | `ocppd-x86_64-apple-darwin.tar.gz` |
+
+Each archive has a `.sha256` next to it, and a build attestation you can check
+with `gh attestation verify <archive> -R QuentinClyy/ocppd`.
 
 The macOS binary is not signed. If you downloaded it with a browser, clear the
 quarantine flag with `xattr -d com.apple.quarantine ocppd`.
