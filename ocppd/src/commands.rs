@@ -50,7 +50,7 @@ pub struct Routed {
 
 #[derive(Deserialize)]
 pub struct Remove {
-    station: String,
+    pub station: String,
 }
 
 pub enum Command {

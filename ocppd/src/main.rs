@@ -1,15 +1,18 @@
 mod basic_auth;
 mod cli;
 mod commands;
+mod hub;
 mod identity;
 mod model;
 mod protocol;
 mod rejection;
 mod shell;
+mod snapshot;
 mod tls;
 mod tui;
 
 use commands::{Command, Stations};
+use hub::{Client, Control};
 use ocppd_core::api::event::Event;
 use rejection::Rejection;
 use std::process::ExitCode;
@@ -42,10 +45,15 @@ async fn main() -> ExitCode {
             return ExitCode::from(2);
         }
     };
-    let (events, receiver) = unbounded_channel();
-    let (replies, rejections) = unbounded_channel();
-    let writer = tokio::spawn(write_events(receiver, rejections));
-    read_commands(&csms, events, replies).await;
+    let (events, event_inbox) = unbounded_channel();
+    let (control, control_inbox) = unbounded_channel();
+    tokio::spawn(hub::run(event_inbox, control_inbox));
+    let (stdout, lines) = unbounded_channel();
+    if control.send(Control::Attach(stdout.clone())).is_err() {
+        return ExitCode::FAILURE;
+    }
+    let writer = tokio::spawn(write_lines(lines));
+    read_commands(&csms, events, control, stdout).await;
     match writer.await {
         Ok(()) => ExitCode::SUCCESS,
         Err(err) => {
@@ -71,7 +79,8 @@ fn open_tui(csms: &str) -> Option<ExitCode> {
 async fn read_commands(
     csms: &str,
     events: UnboundedSender<Event>,
-    replies: UnboundedSender<Rejection>,
+    control: UnboundedSender<Control>,
+    client: Client,
 ) {
     let mut stations = Stations::new();
     let mut lines = BufReader::new(tokio::io::stdin()).lines();
@@ -89,10 +98,13 @@ async fn read_commands(
         }
         let rejections = match commands::parse(&line) {
             Ok(Command::Spawn(command)) => commands::spawn(csms, &command, &events, &mut stations),
-            Ok(Command::Remove(command)) => commands::remove(&command, &mut stations)
-                .err()
-                .into_iter()
-                .collect(),
+            Ok(Command::Remove(command)) => match commands::remove(&command, &mut stations) {
+                Ok(()) => {
+                    let _ = control.send(Control::Forget(command.station));
+                    Vec::new()
+                }
+                Err(rejection) => vec![rejection],
+            },
             Ok(Command::Routed(command)) => commands::route(command, &stations)
                 .err()
                 .into_iter()
@@ -100,31 +112,26 @@ async fn read_commands(
             Err(rejection) => vec![rejection],
         };
         for rejection in rejections {
-            if replies.send(rejection).is_err() {
+            if !reply(&client, &rejection) {
                 return;
             }
         }
     }
 }
 
-async fn write_events(
-    mut events: UnboundedReceiver<Event>,
-    mut rejections: UnboundedReceiver<Rejection>,
-) {
+fn reply(client: &Client, rejection: &Rejection) -> bool {
+    match serde_json::to_string(rejection) {
+        Ok(line) => client.send(line).is_ok(),
+        Err(err) => {
+            eprintln!("rejection not serializable: {err}");
+            true
+        }
+    }
+}
+
+async fn write_lines(mut lines: UnboundedReceiver<String>) {
     let mut stdout = tokio::io::stdout();
-    loop {
-        let serialized = tokio::select! {
-            Some(event) = events.recv() => serde_json::to_string(&event),
-            Some(rejection) = rejections.recv() => serde_json::to_string(&rejection),
-            else => return,
-        };
-        let mut line = match serialized {
-            Ok(line) => line,
-            Err(err) => {
-                eprintln!("event not serializable: {err}");
-                continue;
-            }
-        };
+    while let Some(mut line) = lines.recv().await {
         line.push('\n');
         let written = match stdout.write_all(line.as_bytes()).await {
             Ok(()) => stdout.flush().await,
