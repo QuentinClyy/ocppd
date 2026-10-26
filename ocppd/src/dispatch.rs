@@ -4,6 +4,8 @@ use crate::rejection::Rejection;
 use ocppd_core::api::event::Event;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
 
+pub const SHUTDOWN: &str = r#"{"command":"shutdown"}"#;
+
 pub struct Request {
     pub line: String,
     pub client: Client,
@@ -59,7 +61,10 @@ async fn dispatch(
             continue;
         }
         let rejections = match commands::parse(&line) {
-            Ok(Command::Shutdown) => return Ended::Shutdown,
+            Ok(Command::Shutdown) => {
+                commands::stop(stations).await;
+                return Ended::Shutdown;
+            }
             Ok(Command::Spawn(command)) => commands::spawn(csms, &command, &events, &mut stations),
             Ok(Command::Remove(command)) => match commands::remove(&command, &mut stations) {
                 Ok(()) => {

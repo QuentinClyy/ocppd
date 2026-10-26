@@ -55,6 +55,26 @@ impl ChargingStation {
         self.reboot = Some(BootReason::PowerUp);
     }
 
+    pub(in crate::protocol::v201::charging_station) fn shut_down(
+        &mut self,
+        out: &mut Vec<Output>,
+        now: u64,
+    ) {
+        for index in 0..self.sessions.len() {
+            let trigger = TriggerReason::AbnormalCondition;
+            self.end_transaction(out, now, index, trigger, StoppedReason::Other);
+        }
+        self.shutting_down = true;
+    }
+
+    pub fn finished(&self, now: u64) -> bool {
+        let idle = self
+            .sessions
+            .iter()
+            .all(|session| session.transaction.is_none());
+        self.shutting_down && idle && self.outbox.is_drained(now)
+    }
+
     pub(in crate::protocol::v201::charging_station) fn reset_due(&self, now: u64) -> bool {
         let idle = self
             .sessions

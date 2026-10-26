@@ -8,8 +8,12 @@ use ocppd_core::api::intent::Intent;
 use serde::Deserialize;
 use serde_json::Value;
 use std::collections::{BTreeMap, HashMap};
+use std::time::Duration;
 use tokio::sync::mpsc::{UnboundedSender, unbounded_channel};
 use tokio::task::JoinHandle;
+use tokio::time::{Instant, timeout_at};
+
+const STOP_WITHIN: Duration = Duration::from_secs(5);
 
 #[derive(Deserialize)]
 pub struct Spawn {
@@ -162,4 +166,18 @@ pub fn spawn(
         }
     }
     rejections
+}
+
+pub async fn stop(stations: Stations) {
+    let deadline = Instant::now() + STOP_WITHIN;
+    let mut tasks = Vec::new();
+    for running in stations.into_values() {
+        let _ = running.intents.send(Intent::Shutdown);
+        tasks.push(running.task);
+    }
+    for mut task in tasks {
+        if timeout_at(deadline, &mut task).await.is_err() {
+            task.abort();
+        }
+    }
 }

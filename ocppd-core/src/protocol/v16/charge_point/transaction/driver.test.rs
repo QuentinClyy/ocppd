@@ -249,3 +249,29 @@ fn given_inoperative_station_cut_from_power_when_power_returns_then_still_unavai
     let last = csms.sent("StatusNotification").pop().unwrap();
     assert_eq!(last["status"], "Unavailable");
 }
+
+#[test]
+fn given_charging_ev_when_shut_down_then_the_transaction_stops_as_other_and_the_station_finishes_once_it_is_answered()
+ {
+    let mut csms = Csms::charging(0, EvSpec::default());
+    csms.answered_by_test.push("StopTransaction");
+
+    csms.intent(MINUTE, Intent::Shutdown);
+    let waiting = csms.charge_point.finished(MINUTE);
+    csms.answer(MINUTE, json!({"idTagInfo": {"status": "Accepted"}}));
+
+    assert_eq!(csms.sent("StopTransaction")[0]["reason"], "Other");
+    assert!(!waiting, "not finished while the stop is unanswered");
+    assert!(csms.charge_point.finished(MINUTE));
+}
+
+#[test]
+fn given_idle_station_when_shut_down_then_it_is_finished_without_sending_anything() {
+    let mut csms = Csms::booted();
+    let before = csms.sent.len();
+
+    csms.intent(MINUTE, Intent::Shutdown);
+
+    assert!(csms.charge_point.finished(MINUTE));
+    assert_eq!(csms.sent.len(), before);
+}

@@ -31,6 +31,8 @@ pub enum Intent {
         connector: u32,
     },
     PowerCut,
+    #[serde(skip_deserializing)]
+    Shutdown,
     FailTransfer {
         stage: TransferStage,
     },
@@ -40,7 +42,7 @@ impl Intent {
     pub fn connector(&self) -> Option<u32> {
         match self {
             Intent::Authorize { connector, .. } => *connector,
-            Intent::PowerCut | Intent::FailTransfer { .. } => None,
+            Intent::PowerCut | Intent::Shutdown | Intent::FailTransfer { .. } => None,
             Intent::PlugIn { connector, .. }
             | Intent::Stop { connector }
             | Intent::Unplug { connector }

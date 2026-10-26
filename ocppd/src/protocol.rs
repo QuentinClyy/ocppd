@@ -44,6 +44,13 @@ impl Protocol {
         }
     }
 
+    pub fn finished(&self, now: u64) -> bool {
+        match self {
+            Protocol::V16(charge_point) => charge_point.finished(now),
+            Protocol::V201(charging_station) => charging_station.finished(now),
+        }
+    }
+
     pub fn next_deadline(&self) -> Option<u64> {
         match self {
             Protocol::V16(charge_point) => charge_point.next_deadline(),

@@ -76,6 +76,12 @@ pub async fn run(
         while let Some(reason) = execute(&mut protocol, input, &mut link.socket, &events).await {
             input = link.lose(&reason, &protocol);
         }
+        if protocol.finished(now_ms()) {
+            if let Some(mut open) = link.socket.take() {
+                let _ = open.close(None).await;
+            }
+            return;
+        }
     }
 }
 

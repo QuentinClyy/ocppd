@@ -1,9 +1,10 @@
-use crate::dispatch::Shell;
+use crate::dispatch::{Request, SHUTDOWN, Shell};
 use crate::listen::{self, Address, Session};
 use serde_json::json;
 use std::path::PathBuf;
 use std::process::ExitCode;
 use tokio::signal::unix::{SignalKind, signal};
+use tokio::sync::mpsc::unbounded_channel;
 
 pub async fn run(
     shell: Shell,
@@ -37,9 +38,18 @@ pub async fn run(
         tokio::spawn(listen::serve(listener, session.clone(), client_token));
     }
     drop(session);
+    let requests = shell.requests.clone();
+    let dispatching = shell.run(csms);
+    tokio::pin!(dispatching);
     tokio::select! {
-        _ = shell.run(csms) => {}
-        _ = stopped() => {}
+        _ = &mut dispatching => {}
+        _ = stopped() => {
+            let (client, _) = unbounded_channel();
+            let shutdown = Request { line: SHUTDOWN.into(), client };
+            if requests.send(shutdown).is_ok() {
+                dispatching.await;
+            }
+        }
     }
     remove(&sockets);
     ExitCode::SUCCESS

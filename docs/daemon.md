@@ -56,8 +56,10 @@ disconnected.
 ## Stopping it
 
 `{"command":"shutdown"}`, `Q` in the TUI, SIGTERM or Ctrl+C stop the daemon
-and every station, and remove its socket. Transactions are not stopped first:
-the CSMS sees the stations drop, as on a power loss.
+and every station, and remove its socket. Each station first stops its
+transactions (reason `Other`), waits for the CSMS to answer, and closes its
+WebSocket. A station that cannot finish within 5 seconds, offline for example,
+is cut off.
 
 ## From a script
 

@@ -124,6 +124,15 @@ impl ChargePoint {
         self.resetting = Some(ResetType::Soft);
     }
 
+    pub(crate) fn shut_down(&mut self, out: &mut Vec<Output>, now: u64) {
+        self.stop_all(out, now, Reason::Other);
+        self.shutting_down = true;
+    }
+
+    pub fn finished(&self, now: u64) -> bool {
+        self.shutting_down && self.outbox.is_drained(now)
+    }
+
     fn stop_all(&mut self, out: &mut Vec<Output>, now: u64, reason: Reason) {
         for index in 0..self.transactions.len() {
             match self.transactions[index] {

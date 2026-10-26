@@ -14,6 +14,9 @@ impl ChargePoint {
         if intent == Intent::PowerCut {
             return self.power_cut(out, now);
         }
+        if intent == Intent::Shutdown {
+            return self.shut_down(out, now);
+        }
         if let Intent::FailTransfer { stage } = intent {
             return self.failing.add(stage);
         }
@@ -28,7 +31,10 @@ impl ChargePoint {
             Intent::Fault { .. } => self.fault(out, now, index),
             Intent::ClearFault { .. } => self.station.connectors[index].repair(),
             Intent::LockFailure { .. } => self.station.connectors[index].lock_broken = true,
-            Intent::Authorize { .. } | Intent::PowerCut | Intent::FailTransfer { .. } => {}
+            Intent::Authorize { .. }
+            | Intent::PowerCut
+            | Intent::Shutdown
+            | Intent::FailTransfer { .. } => {}
         }
     }
 

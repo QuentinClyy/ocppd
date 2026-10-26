@@ -1,5 +1,5 @@
-use futures_util::StreamExt;
-use serde_json::Value;
+use futures_util::{SinkExt, StreamExt};
+use serde_json::{Value, json};
 use std::path::PathBuf;
 use std::process::Stdio;
 use std::time::Duration;
@@ -7,6 +7,8 @@ use tokio::io::{AsyncBufReadExt, AsyncRead, AsyncWrite, AsyncWriteExt, BufReader
 use tokio::net::{TcpListener, TcpStream, UnixStream};
 use tokio::process::{Child, Command};
 use tokio::time::{sleep, timeout};
+use tokio_tungstenite::WebSocketStream;
+use tokio_tungstenite::tungstenite::Message;
 use tokio_tungstenite::tungstenite::handshake::server::{ErrorResponse, Request, Response};
 use tokio_tungstenite::tungstenite::http::HeaderValue;
 
@@ -269,21 +271,62 @@ async fn tcp_daemon(token: &str) -> (Child, String) {
 }
 
 #[tokio::test]
-async fn given_a_tcp_client_with_a_wrong_token_when_it_says_hello_then_it_is_disconnected() {
+async fn given_a_tcp_daemon_when_clients_say_hello_then_only_the_one_with_the_token_gets_the_daemon_line()
+ {
     let (_daemon, address) = tcp_daemon("s3cret").await;
-    let mut client = client(TcpStream::connect(&address).await.unwrap());
+    let mut guessing = client(TcpStream::connect(&address).await.unwrap());
+    let mut knowing = client(TcpStream::connect(&address).await.unwrap());
 
-    client.send(r#"{"command":"hello","token":"guess"}"#).await;
+    guessing
+        .send(r#"{"command":"hello","token":"guess"}"#)
+        .await;
+    knowing
+        .send(r#"{"command":"hello","token":"s3cret"}"#)
+        .await;
 
-    assert_eq!(client.next().await, None);
+    assert_eq!(guessing.next().await, None);
+    assert_eq!(knowing.next().await.unwrap()["kind"], "daemon");
+}
+
+async fn answer_until_closed(mut station: WebSocketStream<TcpStream>) -> bool {
+    while let Some(Ok(message)) = station.next().await {
+        let frame: Value = match message {
+            Message::Text(text) => serde_json::from_str(&text).unwrap(),
+            Message::Close(_) => return true,
+            _ => continue,
+        };
+        let payload = match frame[2].as_str() {
+            Some("BootNotification") => {
+                json!({"status": "Accepted", "currentTime": "2026-10-20T00:00:00Z", "interval": 300})
+            }
+            _ => json!({}),
+        };
+        let reply = json!([3, frame[1], payload]).to_string();
+        if station.send(Message::text(reply)).await.is_err() {
+            return false;
+        }
+    }
+    false
 }
 
 #[tokio::test]
-async fn given_a_tcp_client_with_the_token_when_it_says_hello_then_it_gets_the_daemon_line() {
-    let (_daemon, address) = tcp_daemon("s3cret").await;
-    let mut client = client(TcpStream::connect(&address).await.unwrap());
+async fn given_a_booted_station_when_shutdown_is_sent_then_it_closes_its_websocket_before_the_daemon_exits()
+ {
+    let (csms, url) = fake_csms().await;
+    let mut daemon = daemon("graceful", &url).await;
+    let mut client = connect(&daemon).await;
+    client
+        .send(r#"{"command":"spawn","prefix":"CP","count":1}"#)
+        .await;
+    let (tcp, _) = bounded(csms.accept()).await.unwrap();
+    let station = bounded(tokio_tungstenite::accept_hdr_async(tcp, ocpp16))
+        .await
+        .unwrap();
+    let closed = tokio::spawn(answer_until_closed(station));
+    client.until("boot_status").await;
 
-    client.send(r#"{"command":"hello","token":"s3cret"}"#).await;
+    client.send(r#"{"command":"shutdown"}"#).await;
 
-    assert_eq!(client.next().await.unwrap()["kind"], "daemon");
+    assert!(bounded(closed).await.unwrap(), "no close frame");
+    assert!(bounded(daemon.child.wait()).await.unwrap().success());
 }

@@ -163,3 +163,20 @@ fn given_power_came_back_and_reset_immediate_when_reconnected_then_boots_with_re
 
     assert_eq!(run.boot_request()["reason"], "RemoteReset");
 }
+
+#[test]
+fn given_plugged_ev_when_shut_down_then_the_transaction_ends_as_other_and_the_station_finishes_once_it_is_answered()
+ {
+    let mut run = Run::accepted(300);
+    plug_in(&mut run, 0);
+
+    run.input(1_000, Input::Intent(Intent::Shutdown));
+    let waiting = run.station.finished(1_000);
+    run.answer_all(1_000);
+
+    let ended = sent(&run, "TransactionEvent").pop().unwrap();
+    assert_eq!(ended["eventType"], "Ended");
+    assert_eq!(ended["transactionInfo"]["stoppedReason"], "Other");
+    assert!(!waiting, "not finished while the event is unanswered");
+    assert!(run.station.finished(1_000));
+}
