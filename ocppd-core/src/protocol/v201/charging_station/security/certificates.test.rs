@@ -226,7 +226,7 @@ fn replaced_root() -> (Run, String, String) {
 }
 
 fn refused(run: &mut Run, now: u64) {
-    run.input(now, Input::ConnectFailed(ConnectFailure::CsmsCertificate));
+    run.input(now, Input::ConnectFailed(ConnectFailure::CsmsCertificate, String::new()));
 }
 
 #[test]

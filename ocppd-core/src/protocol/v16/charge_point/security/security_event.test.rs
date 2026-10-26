@@ -26,14 +26,14 @@ fn refused_certificate_events(csms: &Csms) -> Vec<Value> {
 
 fn outage(csms: &mut Csms, start: u64, failure: ConnectFailure) {
     csms.disconnect(start);
-    csms.input(start + 1_000, Input::ConnectFailed(failure));
+    csms.input(start + 1_000, Input::ConnectFailed(failure, String::new()));
     csms.reconnect(start + 10_000);
 }
 
 fn refused_twice_offline() -> Csms {
     let mut csms = Csms::booted();
     csms.disconnect(1_000);
-    let refused = Input::ConnectFailed(ConnectFailure::CsmsCertificate);
+    let refused = Input::ConnectFailed(ConnectFailure::CsmsCertificate, String::new());
     csms.input(2_000, refused.clone());
     csms.input(9_000, refused);
     csms

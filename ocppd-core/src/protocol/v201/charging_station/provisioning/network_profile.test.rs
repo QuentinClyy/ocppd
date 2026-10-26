@@ -75,7 +75,7 @@ fn upgrade_set() -> Run {
 
 fn fail(run: &mut Run, times: usize) {
     for _ in 0..times {
-        run.input(0, Input::ConnectFailed(ConnectFailure::Other));
+        run.input(0, Input::ConnectFailed(ConnectFailure::Other, String::new()));
     }
 }
 

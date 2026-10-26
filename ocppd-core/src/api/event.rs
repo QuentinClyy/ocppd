@@ -21,6 +21,9 @@ pub enum Kind {
 pub enum LinkEvent {
     Connected,
     Disconnected,
+    ConnectFailed {
+        reason: String,
+    },
     CallTimedOut {
         action: String,
     },

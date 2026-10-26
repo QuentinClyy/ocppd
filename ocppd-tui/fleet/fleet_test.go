@@ -130,3 +130,13 @@ func Test_given_a_rejected_spawn_naming_a_station_when_applied_then_no_station_a
 		t.Fatalf("got %+v", stations)
 	}
 }
+
+func Test_given_a_station_that_never_connected_when_the_csms_refuses_it_then_it_is_listed_down(t *testing.T) {
+	f := applied(`{"station":"CP1","at":1,"kind":"connect_failed","reason":"HTTP error: 401 Unauthorized"}`)
+
+	stations := f.Stations
+
+	if len(stations) != 1 || stations[0].Link != "down" {
+		t.Fatalf("got %+v", stations)
+	}
+}

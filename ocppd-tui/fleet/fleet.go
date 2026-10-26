@@ -39,6 +39,7 @@ func (f *Fleet) Remove(id string) {
 var tracked = map[string]bool{
 	"connected":           true,
 	"disconnected":        true,
+	"connect_failed":      true,
 	"boot_status":         true,
 	"status_changed":      true,
 	"transaction_started": true,
@@ -55,7 +56,7 @@ func (f *Fleet) apply(e event) {
 	switch e.Kind {
 	case "connected":
 		s.Link = "up"
-	case "disconnected":
+	case "disconnected", "connect_failed":
 		s.Link = "down"
 	case "boot_status":
 		s.Boot = e.Status

@@ -89,4 +89,5 @@ The main kinds:
 | `firmware_status`, `log_status` | a firmware update or an upload progresses |
 | `monitor_triggered` | a 2.0.1 variable monitor fires |
 | `display_message_set`, `cost_shown`, `driver_message` | what a 2.0.1 driver would see on screen |
+| `connect_failed` | the CSMS could not be reached or refused the connection (`reason`) |
 | `call_retried`, `call_abandoned`, `intent_rejected`, `command_rejected` | a message is retried or given up, or a command is refused |

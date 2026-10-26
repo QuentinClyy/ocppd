@@ -68,7 +68,7 @@ pub async fn run(
                     Err(err) => {
                         eprintln!("{}: connect to {target} failed: {err}", link.id);
                         link.schedule_reconnect(&protocol);
-                        Input::ConnectFailed(failure(&err))
+                        Input::ConnectFailed(failure(&err), err)
                     }
                 }
             }

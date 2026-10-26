@@ -158,7 +158,10 @@ impl ChargePoint {
                 self.connection_lost();
                 self.emit(&mut out, now, EventKind::Link(LinkEvent::Disconnected));
             }
-            Input::ConnectFailed(failure) => self.certificate_refused(&mut out, now, failure),
+            Input::ConnectFailed(failure, reason) => {
+                self.emit(&mut out, now, EventKind::Link(LinkEvent::ConnectFailed { reason }));
+                self.certificate_refused(&mut out, now, failure);
+            }
             Input::Tick => self.tick(&mut out, now),
             Input::Frame(text) => self.receive(&mut out, now, &text),
             Input::Intent(intent) => self.intent(&mut out, now, intent),
