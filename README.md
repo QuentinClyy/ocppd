@@ -60,7 +60,16 @@ The [terminal UI](docs/tui.md) opens:
 2. `enter` opens the station, `j` selects its connector.
 3. `p` plugs an EV in, `a` asks for an id tag: type `TAG1`, then `enter`.
 4. The connector shows `Charging`, with its power and state of charge. `s`
-   stops, `?` lists every key, `q` quits.
+   stops, `?` lists every key.
+5. `q` quits and leaves the stations running in a background
+   [daemon](docs/daemon.md); `ocppd` again comes back to them, `Q` stops them.
+
+## Docker
+
+```
+docker run -d -p 127.0.0.1:7600:7600 -e OCPPD_TOKEN=s3cret -e OCPPD_CSMS=ws://csms.example/ocpp ghcr.io/quentinclyy/ocppd
+OCPPD_TOKEN=s3cret ocppd-tui --connect tcp:127.0.0.1:7600
+```
 
 ## Scripting
 
@@ -94,6 +103,7 @@ For OCPP 2.0.1, spawn with `"ocpp":"2.0.1"`:
 ## Documentation
 
 - [Terminal UI](docs/tui.md): the screen, the keys and the spawn form.
+- [Daemon](docs/daemon.md): stations that outlive the TUI, sockets, Docker.
 - [Usage](docs/usage.md): the command line, every stdin command, and the events.
 - [Configuration](docs/configuration.md): station settings, security profiles and TLS.
 - [Simulation](docs/simulation.md): what is simulated, how, and at what scale.

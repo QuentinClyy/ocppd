@@ -22,7 +22,8 @@ func render(m Model) string {
 		count = "1 station"
 	}
 	header := " " + bold.Render("ocppd") + "  " + dim.Render(m.csms)
-	header = pad(header, max(m.width-len(count)-1, 0)) + dim.Render(count)
+	room := max(m.width-len(count)-2, 0)
+	header = pad(ansi.Truncate(header, room, "…"), room+1) + dim.Render(count)
 	l := m.layout()
 	var lines []string
 	switch {

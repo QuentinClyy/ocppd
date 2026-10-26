@@ -112,3 +112,14 @@ func Test_given_one_station_when_rendered_then_the_header_says_1_station(t *test
 		t.Fatalf("got %q", header)
 	}
 }
+
+func Test_given_a_csms_url_longer_than_the_header_when_rendered_then_it_is_cut_before_the_station_count(t *testing.T) {
+	m := charging()
+	m.csms = "ws://host.docker.internal:8180/steve/websocket/CentralSystemService"
+
+	header := screen(m, 60, 24)[0]
+
+	if ansi.StringWidth(header) > 60 || !strings.HasSuffix(header, "… 1 station") {
+		t.Fatalf("got %q", header)
+	}
+}
