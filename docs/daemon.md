@@ -43,7 +43,7 @@ it first, within 5 seconds:
 
 1. One line about the daemon:
    ```
-   {"kind":"daemon","csms":"ws://…","version":"0.2.0"}
+   {"kind":"daemon","csms":"ws://…","version":"…"}
    ```
 2. A snapshot: the latest event of each kind for each station and connector,
    in time order. It is enough to rebuild the state of the fleet.

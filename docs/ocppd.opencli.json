@@ -2,7 +2,7 @@
   "opencli": "0.1",
   "info": {
     "title": "ocppd",
-    "version": "0.2.0",
+    "version": "0.3.0",
     "summary": "Simulate OCPP 1.6 and 2.0.1 charging stations against a CSMS",
     "description": "In a terminal, opens the ocppd-tui interface when it is installed. Otherwise, or with --json, reads commands from stdin, one JSON object per line, and writes events to stdout, one JSON object per line. Logs go to stderr.",
     "license": {
