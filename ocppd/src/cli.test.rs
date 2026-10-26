@@ -8,6 +8,7 @@ fn run(csms: &str) -> Result<Cli, String> {
     Ok(Cli::Run {
         csms: csms.into(),
         json: false,
+        listen: Vec::new(),
     })
 }
 
@@ -99,6 +100,37 @@ fn given_json_flag_when_parsed_then_run_in_json_lines_mode() {
     let expected = Cli::Run {
         csms: "ws://csms.example".into(),
         json: true,
+        listen: Vec::new(),
     };
     assert_eq!(cli, Ok(expected));
+}
+
+#[test]
+fn given_two_listen_flags_when_parsed_then_both_addresses_in_order() {
+    let given =
+        args("--csms ws://csms.example --listen unix:/tmp/ocppd.sock --listen=tcp:127.0.0.1:7600");
+
+    let cli = parse(&given, None);
+
+    let expected = Cli::Run {
+        csms: "ws://csms.example".into(),
+        json: false,
+        listen: vec![
+            Address::Unix("/tmp/ocppd.sock".into()),
+            Address::Tcp("127.0.0.1:7600".into()),
+        ],
+    };
+    assert_eq!(cli, Ok(expected));
+}
+
+#[test]
+fn given_a_listen_address_without_a_scheme_when_parsed_then_usage_error() {
+    let given = args("--csms ws://csms.example --listen /tmp/ocppd.sock");
+
+    let cli = parse(&given, None);
+
+    assert_eq!(
+        cli,
+        Err("listen address '/tmp/ocppd.sock' must be unix:<path> or tcp:<host>:<port>".into())
+    );
 }

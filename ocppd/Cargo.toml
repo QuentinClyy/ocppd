@@ -13,7 +13,7 @@ native-tls = "0.2"
 ocppd-core = { path = "../ocppd-core" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-tokio = { version = "1", features = ["rt", "macros", "time", "sync", "io-std", "io-util"] }
+tokio = { version = "1", features = ["rt", "macros", "time", "sync", "io-std", "io-util", "net", "signal"] }
 tokio-tungstenite = { version = "0.30.0", features = ["native-tls"] }
 
 [dev-dependencies]

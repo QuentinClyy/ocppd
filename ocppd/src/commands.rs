@@ -54,6 +54,7 @@ pub struct Remove {
 }
 
 pub enum Command {
+    Shutdown,
     Spawn(Spawn),
     Remove(Remove),
     Routed(Routed),
@@ -72,6 +73,7 @@ pub fn parse(line: &str) -> Result<Command, Rejection> {
     let name = value["command"].as_str().map(str::to_owned);
     let station = value["station"].as_str().map(str::to_owned);
     let command = match name.as_deref() {
+        Some("shutdown") => Ok(Command::Shutdown),
         Some("spawn") => serde_json::from_value(value).map(Command::Spawn),
         Some("remove") => serde_json::from_value(value).map(Command::Remove),
         _ => serde_json::from_value(value).map(|routed: Routed| {

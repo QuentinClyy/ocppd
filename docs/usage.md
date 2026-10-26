@@ -1,13 +1,14 @@
 # Usage
 
 ```
-ocppd --csms <url> [--json]
+ocppd --csms <url> [--json] [--listen <addr>]...
 ```
 
 | Option | Meaning |
 |---|---|
 | `--csms <url>` | The CSMS WebSocket url. A station connects to `<url>/<station id>`. Falls back to the `OCPPD_CSMS` environment variable. |
 | `--json` | Read and write JSON lines even in a terminal. |
+| `--listen <addr>` | Run as a daemon: serve the same JSON lines to clients on `unix:<path>` or `tcp:<host>:<port>`, and keep the stations running when they disconnect. Repeatable. A tcp listener needs `OCPPD_TOKEN`, which a client sends first as `{"command":"hello","token":"…"}`. `{"command":"shutdown"}`, SIGTERM or Ctrl+C stop it. |
 | `-h`, `--help` | Print the help and exit. |
 | `-V`, `--version` | Print the version and exit. |
 

@@ -34,6 +34,18 @@
         "description": "Read commands from stdin and write events to stdout as JSON lines, even in a terminal. Without it, a terminal opens ocppd-tui when it is installed."
       },
       {
+        "name": "--listen",
+        "description": "Run as a daemon that serves clients the same JSON lines on unix:<path> or tcp:<host>:<port>. Repeatable. Listening on tcp needs the OCPPD_TOKEN environment variable, which a client sends first as {\"command\":\"hello\",\"token\":...}.",
+        "required": false,
+        "arguments": [
+          {
+            "name": "addr",
+            "required": true,
+            "arity": { "minimum": 1, "maximum": 1 }
+          }
+        ]
+      },
+      {
         "name": "--help",
         "aliases": ["-h"],
         "description": "Print the help and exit"
