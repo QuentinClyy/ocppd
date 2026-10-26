@@ -1,4 +1,4 @@
-FROM alpine:3.22 AS certificates
+FROM --platform=$BUILDPLATFORM alpine:3.22 AS certificates
 RUN apk add --no-cache ca-certificates
 
 FROM scratch
