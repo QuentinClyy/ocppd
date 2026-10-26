@@ -139,6 +139,10 @@ pub fn spawn(
                 continue;
             }
         };
+        let profile_key = match command.ocpp {
+            Version::V16 => "SecurityProfile",
+            Version::V201 => "SecurityCtrlr.SecurityProfile",
+        };
         match Protocol::new(command.ocpp, station) {
             Ok(mut protocol) => {
                 let refused = command
@@ -153,6 +157,10 @@ pub fn spawn(
                 if password.is_some_and(|password| !protocol.set_basic_auth_password(password)) {
                     rejections.push(reject("password refused".into()));
                     continue;
+                }
+                if password.is_some() && !command.configuration.contains_key(profile_key) {
+                    let profile = if base.starts_with("wss://") { "2" } else { "1" };
+                    protocol.configure(profile_key, profile);
                 }
                 if !protocol.set_csms_url(base) {
                     rejections.push(reject("csms url too long".into()));

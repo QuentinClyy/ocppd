@@ -21,7 +21,8 @@ Use one of the two forms:
 | `stations` | a list of `{"id":...,"password":...}`; `password` is optional |
 
 The serial number is the station id. A password is sent from security
-profile 1 up, and is never echoed.
+profile 1 up, and is never echoed. A station given a password and no
+security profile gets profile 1 on `ws://` and 2 on `wss://`.
 
 ## Station model
 

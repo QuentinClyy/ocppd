@@ -186,7 +186,11 @@ impl ChargingStation {
                 self.emit(&mut out, now, EventKind::Link(LinkEvent::Disconnected));
             }
             Input::ConnectFailed(failure, reason) => {
-                self.emit(&mut out, now, EventKind::Link(LinkEvent::ConnectFailed { reason }));
+                self.emit(
+                    &mut out,
+                    now,
+                    EventKind::Link(LinkEvent::ConnectFailed { reason }),
+                );
                 self.connect_failed();
                 self.certificate_refused(&mut out, now, failure);
             }

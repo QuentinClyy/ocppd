@@ -236,7 +236,10 @@ fn given_outage_with_refused_csms_certificates_when_back_online_then_reported_on
     let refused = Input::ConnectFailed(ConnectFailure::CsmsCertificate, String::new());
     run.input(2_000, refused.clone());
     run.input(9_000, refused);
-    run.input(10_000, Input::ConnectFailed(ConnectFailure::Other, String::new()));
+    run.input(
+        10_000,
+        Input::ConnectFailed(ConnectFailure::Other, String::new()),
+    );
 
     run.input(20_000, Input::Connected);
     run.answer_all(20_000);
