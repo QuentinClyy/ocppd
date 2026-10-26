@@ -1,3 +1,4 @@
+mod attach;
 mod basic_auth;
 mod cli;
 mod commands;
@@ -68,7 +69,13 @@ fn open_tui(csms: &str) -> Option<ExitCode> {
         eprintln!("ocppd: ocppd-tui not found, reading JSON lines (--json hides this note)");
         return None;
     };
-    let err = tui::open(&tui, csms, ocppd);
+    let env = |key: &str| std::env::var(key).ok();
+    let socket = attach::default_socket(env);
+    if let Err(err) = attach::ensure(&socket, csms, ocppd, &attach::log_file(env)) {
+        eprintln!("ocppd: {err}");
+        return Some(ExitCode::FAILURE);
+    }
+    let err = tui::open(&tui, &format!("unix:{}", socket.display()));
     eprintln!("ocppd: cannot open {}: {err}", tui.display());
     Some(ExitCode::FAILURE)
 }

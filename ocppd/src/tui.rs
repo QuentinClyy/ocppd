@@ -22,11 +22,8 @@ pub fn find(beside: Option<&Path>, path: Option<&OsStr>) -> Option<PathBuf> {
         .find(|file| file.is_file())
 }
 
-pub fn open(tui: &Path, csms: &str, ocppd: &Path) -> std::io::Error {
-    Command::new(tui)
-        .args(["--csms", csms])
-        .env("OCPPD", ocppd)
-        .exec()
+pub fn open(tui: &Path, address: &str) -> std::io::Error {
+    Command::new(tui).args(["--connect", address]).exec()
 }
 
 #[cfg(test)]

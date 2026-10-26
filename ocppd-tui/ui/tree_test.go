@@ -17,7 +17,7 @@ func fleetOf(lines ...string) fleet.Fleet {
 }
 
 func twoStations() Model {
-	m := New("ws://x", func(string) error { return nil })
+	m := New(func(string) error { return nil })
 	m.fleet = fleetOf(
 		`{"station":"CP1","at":1,"kind":"status_changed","connector":1,"status":"Available"}`,
 		`{"station":"CP1","at":1,"kind":"status_changed","connector":2,"status":"Available"}`,
@@ -70,7 +70,7 @@ func keyMsg(key string) tea.KeyPressMsg {
 }
 
 func Test_given_new_stations_when_listed_then_one_collapsed_row_each(t *testing.T) {
-	m := New("ws://x", func(string) error { return nil })
+	m := New(func(string) error { return nil })
 	m.fleet = twoStations().fleet
 
 	visible := rows(m.fleet, m.expanded)
@@ -159,7 +159,7 @@ func Test_given_the_last_row_when_j_then_the_cursor_stays(t *testing.T) {
 }
 
 func Test_given_a_collapsed_station_when_enter_then_it_opens_and_the_cursor_stays(t *testing.T) {
-	m := New("ws://x", func(string) error { return nil })
+	m := New(func(string) error { return nil })
 	m.fleet = twoStations().fleet
 
 	m = press(m, "enter")

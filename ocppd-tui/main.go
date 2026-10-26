@@ -10,10 +10,10 @@ import (
 	"github.com/QuentinClyy/ocppd/ocppd-tui/ui"
 )
 
-const usage = "usage: ocppd-tui --csms <url>"
+const usage = "usage: ocppd-tui [--connect unix:<path>|tcp:<host>:<port>]"
 
 func main() {
-	csms, err := parseArgs(os.Args[1:], os.Getenv("OCPPD_CSMS"))
+	address, err := parseArgs(os.Args[1:], ocppd.DefaultSocket(os.Getenv))
 	if errors.Is(err, errHelp) {
 		fmt.Println(usage)
 		return
@@ -22,21 +22,21 @@ func main() {
 		fmt.Fprintf(os.Stderr, "ocppd-tui: %v\n%s\n", err, usage)
 		os.Exit(2)
 	}
-	self, err := os.Executable()
+	connection, err := ocppd.Connect(address, os.Getenv("OCPPD_TOKEN"))
 	if err != nil {
-		self = ""
-	}
-	process, err := ocppd.Start(ocppd.Path(os.Getenv("OCPPD"), self), csms)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "ocppd-tui: cannot start ocppd: %v\n", err)
+		fmt.Fprintf(os.Stderr, "ocppd-tui: cannot connect to %s: %v\n", address, err)
 		os.Exit(1)
 	}
-	program := tea.NewProgram(ui.New(csms, process.Send))
-	process.Forward(program.Send)
-	_, err = program.Run()
-	process.Stop()
+	program := tea.NewProgram(ui.New(connection.Send))
+	connection.Forward(program.Send)
+	final, err := program.Run()
+	connection.Close()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "ocppd-tui: %v\n", err)
+		os.Exit(1)
+	}
+	if final.(ui.Model).Lost() {
+		fmt.Fprintln(os.Stderr, "ocppd-tui: the daemon closed the connection")
 		os.Exit(1)
 	}
 }

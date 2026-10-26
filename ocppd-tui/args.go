@@ -8,26 +8,23 @@ import (
 
 var errHelp = errors.New("help")
 
-func parseArgs(args []string, envCsms string) (string, error) {
-	csms := envCsms
+func parseArgs(args []string, defaultSocket string) (string, error) {
+	address := "unix:" + defaultSocket
 	for i := 0; i < len(args); i++ {
 		switch arg := args[i]; {
 		case arg == "-h" || arg == "--help":
 			return "", errHelp
-		case arg == "--csms":
+		case arg == "--connect":
 			if i+1 == len(args) {
-				return "", errors.New("--csms needs a url")
+				return "", errors.New("--connect needs an address")
 			}
 			i++
-			csms = args[i]
-		case strings.HasPrefix(arg, "--csms="):
-			csms = strings.TrimPrefix(arg, "--csms=")
+			address = args[i]
+		case strings.HasPrefix(arg, "--connect="):
+			address = strings.TrimPrefix(arg, "--connect=")
 		default:
 			return "", fmt.Errorf("unknown argument '%s'", arg)
 		}
 	}
-	if csms == "" {
-		return "", errors.New("missing --csms <url> (or OCPPD_CSMS)")
-	}
-	return strings.TrimRight(csms, "/"), nil
+	return address, nil
 }

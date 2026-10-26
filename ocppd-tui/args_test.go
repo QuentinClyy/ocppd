@@ -5,50 +5,42 @@ import (
 	"testing"
 )
 
-func Test_given_a_csms_flag_when_parsed_then_its_url_without_a_trailing_slash(t *testing.T) {
-	args := []string{"--csms", "ws://localhost:8081/"}
-
-	csms, err := parseArgs(args, "")
-
-	if err != nil || csms != "ws://localhost:8081" {
-		t.Fatalf("got %q, %v", csms, err)
-	}
-}
-
-func Test_given_an_equals_flag_and_an_env_url_when_parsed_then_the_flag_wins(t *testing.T) {
-	args := []string{"--csms=ws://flag"}
-
-	csms, err := parseArgs(args, "ws://env")
-
-	if err != nil || csms != "ws://flag" {
-		t.Fatalf("got %q, %v", csms, err)
-	}
-}
-
-func Test_given_only_the_env_url_when_parsed_then_the_env_url(t *testing.T) {
+func Test_given_no_arguments_when_parsed_then_the_default_socket(t *testing.T) {
 	var args []string
 
-	csms, err := parseArgs(args, "ws://env")
+	address, err := parseArgs(args, "/run/user/1000/ocppd.sock")
 
-	if err != nil || csms != "ws://env" {
-		t.Fatalf("got %q, %v", csms, err)
+	if err != nil || address != "unix:/run/user/1000/ocppd.sock" {
+		t.Fatalf("got %q, %v", address, err)
 	}
 }
 
-func Test_given_no_url_when_parsed_then_a_missing_url_error(t *testing.T) {
-	var args []string
+func Test_given_a_connect_flag_when_parsed_then_its_address(t *testing.T) {
+	cases := [][]string{{"--connect", "tcp:127.0.0.1:7600"}, {"--connect=tcp:127.0.0.1:7600"}}
 
-	_, err := parseArgs(args, "")
+	for _, args := range cases {
+		address, err := parseArgs(args, "/run/user/1000/ocppd.sock")
 
-	if err == nil || err.Error() != "missing --csms <url> (or OCPPD_CSMS)" {
+		if err != nil || address != "tcp:127.0.0.1:7600" {
+			t.Fatalf("%v: got %q, %v", args, address, err)
+		}
+	}
+}
+
+func Test_given_connect_without_an_address_when_parsed_then_refused(t *testing.T) {
+	args := []string{"--connect"}
+
+	_, err := parseArgs(args, "/tmp/ocppd.sock")
+
+	if err == nil || err.Error() != "--connect needs an address" {
 		t.Fatalf("got %v", err)
 	}
 }
 
 func Test_given_help_when_parsed_then_the_help_error(t *testing.T) {
-	args := []string{"--csms", "ws://x", "-h"}
+	args := []string{"-h"}
 
-	_, err := parseArgs(args, "")
+	_, err := parseArgs(args, "/tmp/ocppd.sock")
 
 	if !errors.Is(err, errHelp) {
 		t.Fatalf("got %v", err)
@@ -56,11 +48,11 @@ func Test_given_help_when_parsed_then_the_help_error(t *testing.T) {
 }
 
 func Test_given_an_unknown_argument_when_parsed_then_refused(t *testing.T) {
-	args := []string{"--json"}
+	args := []string{"--csms", "ws://x"}
 
-	_, err := parseArgs(args, "ws://env")
+	_, err := parseArgs(args, "/tmp/ocppd.sock")
 
-	if err == nil || err.Error() != "unknown argument '--json'" {
+	if err == nil || err.Error() != "unknown argument '--csms'" {
 		t.Fatalf("got %v", err)
 	}
 }

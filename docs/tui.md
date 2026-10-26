@@ -1,15 +1,19 @@
 # Terminal UI
 
 `ocppd-tui` is an interactive view of the fleet. Run ocppd in a terminal and it
-opens the TUI, as long as `ocppd-tui` sits beside ocppd or on the `PATH`:
+opens the TUI, as long as `ocppd-tui` sits beside ocppd or on the `PATH`. ocppd
+starts a daemon in the background first, if none is running, and the TUI
+connects to it:
 
 ```
 ocppd --csms ws://localhost:8180/steve/websocket/CentralSystemService
 ```
 
-The TUI runs ocppd as a child and talks to it with the same JSON lines as a
-script (see [Usage](usage.md)), so anything the TUI does, a script can do too.
-Quitting stops the child and every station.
+The TUI talks to the daemon with the same JSON lines as a script (see
+[Usage](usage.md)), so anything the TUI does, a script can do too. Quitting
+leaves the daemon and its stations running: run `ocppd` again to come back to
+them, or press `Q` to stop everything. `ocppd-tui --connect tcp:<host>:<port>`
+reaches a daemon elsewhere, with `OCPPD_TOKEN` set.
 
 ## The screen
 
@@ -58,7 +62,8 @@ only connector, or open the station when it has several.
 | `n` | spawn stations (the form below) |
 | `d` | remove the station: `y` confirms, `dd` skips the question |
 | `tab` | log: the selected station / all stations |
-| `q` | quit |
+| `q` | quit; the daemon and its stations keep running |
+| `Q` | stop the daemon and every station: `y` confirms |
 | `esc` / `?` | open / close the key help |
 
 The TUI captures the mouse so the wheel scrolls its panes; hold Shift to select

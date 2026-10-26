@@ -22,7 +22,7 @@ func withLog(m Model, count int) Model {
 }
 
 func manyStations(count int) Model {
-	m := New("ws://x", func(string) error { return nil })
+	m := New(func(string) error { return nil })
 	for n := range count {
 		m.fleet.Apply(fmt.Sprintf(`{"station":"CP%d","at":1,"kind":"status_changed","connector":1,"status":"Available"}`, n+1))
 	}

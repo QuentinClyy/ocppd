@@ -25,7 +25,8 @@ var bindings = []binding{
 	{"fleet", "n", "spawn stations", "spawn"},
 	{"fleet", "d", "remove the station (dd: no question)", "remove"},
 	{"fleet", "tab", "log: this station / all", "log"},
-	{"fleet", "q", "quit", "quit"},
+	{"fleet", "q", "quit; the stations keep running", "quit"},
+	{"fleet", "Q", "stop the daemon and every station", ""},
 	{"fleet", "esc / ?", "close this help", ""},
 }
 

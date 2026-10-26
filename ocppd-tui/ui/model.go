@@ -23,13 +23,19 @@ type Model struct {
 	help        bool
 	prompt      *prompt
 	form        *form
-	removing    string
+	confirm     *confirmation
+	stopping    bool
+	lost        bool
 	width       int
 	height      int
 }
 
-func New(csms string, send func(string) error) Model {
-	return Model{csms: csms, send: send, zone: time.Local, expanded: map[string]bool{}}
+func New(send func(string) error) Model {
+	return Model{send: send, zone: time.Local, expanded: map[string]bool{}}
+}
+
+func (m Model) Lost() bool {
+	return m.lost
 }
 
 func (m Model) Init() tea.Cmd {
@@ -50,12 +56,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m = m.wheel(msg)
 		}
 	case ocppd.EventMsg:
+		if url, ok := daemonURL(string(msg)); ok {
+			m.csms = url
+			return m, nil
+		}
 		station, _ := m.fleet.Apply(string(msg))
 		m = m.addLog(entry{station, logLine(string(msg), m.zone)})
-	case ocppd.ErrorMsg:
-		m = m.addLog(entry{text: "stderr    " + string(msg)})
-	case ocppd.ExitMsg:
-		m = m.addLog(entry{text: exitLine(msg.Err)})
+	case ocppd.ClosedMsg:
+		m.lost = !m.stopping
+		return m, tea.Quit
 	}
 	return m, nil
 }
@@ -69,8 +78,8 @@ func (m Model) key(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return m.promptKey(msg), nil
 	case m.form != nil:
 		return m.formKey(msg), nil
-	case m.removing != "":
-		return m.removeKey(key), nil
+	case m.confirm != nil:
+		return m.confirmKey(key), nil
 	case m.help:
 		m.help = key != "esc" && key != "?" && key != "q"
 		return m, nil
@@ -84,9 +93,11 @@ func (m Model) key(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		m.help = true
 	case "n":
 		m.form = newForm()
+	case "Q":
+		m.confirm = stopping()
 	case "d":
 		if at, ok := m.target(); ok {
-			m.removing = at.station
+			m.confirm = removal(at.station)
 		}
 	case "tab":
 		m.byStation = !m.byStation
@@ -157,17 +168,6 @@ func (m Model) formKey(msg tea.KeyPressMsg) Model {
 	return m.sendLine(line)
 }
 
-func (m Model) removeKey(key string) Model {
-	station := m.removing
-	m.removing = ""
-	if key != "y" && key != "d" {
-		return m
-	}
-	m.fleet.Remove(station)
-	delete(m.expanded, station)
-	return m.sendLine(encode(map[string]any{"command": "remove", "station": station}))
-}
-
 func (m Model) sendLine(line string) Model {
 	if err := m.send(line); err != nil {
 		m = m.addLog(entry{text: "send: " + err.Error()})
@@ -208,11 +208,4 @@ func (m Model) logStation() string {
 		return ""
 	}
 	return m.fleet.Stations[r.station].ID
-}
-
-func exitLine(err error) string {
-	if err != nil {
-		return "ocppd exited: " + err.Error()
-	}
-	return "ocppd exited"
 }

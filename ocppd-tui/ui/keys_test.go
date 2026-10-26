@@ -5,12 +5,13 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/QuentinClyy/ocppd/ocppd-tui/ocppd"
 	"github.com/charmbracelet/x/ansi"
 )
 
 func recording() (Model, *[]string) {
 	var sent []string
-	m := New("ws://x", func(line string) error {
+	m := New(func(line string) error {
 		sent = append(sent, line)
 		return nil
 	})
@@ -183,7 +184,7 @@ func Test_given_a_selected_station_when_d_twice_then_it_is_removed_without_the_q
 
 	m = press(m, "d", "d")
 
-	if len(*sent) != 1 || len(m.fleet.Stations) != 1 || m.removing != "" {
+	if len(*sent) != 1 || len(m.fleet.Stations) != 1 || m.confirm != nil {
 		t.Fatalf("sent %v, stations %v", *sent, m.fleet.Stations)
 	}
 }
@@ -193,7 +194,7 @@ func Test_given_the_remove_question_when_n_then_nothing_is_removed(t *testing.T)
 
 	m = press(m, "d", "n")
 
-	if len(*sent) != 0 || len(m.fleet.Stations) != 2 || m.removing != "" {
+	if len(*sent) != 0 || len(m.fleet.Stations) != 2 || m.confirm != nil {
 		t.Fatalf("sent %v, stations %v", *sent, m.fleet.Stations)
 	}
 }
@@ -231,5 +232,57 @@ func Test_given_the_key_bindings_when_the_tui_doc_is_read_then_it_lists_every_ke
 				t.Fatalf("docs/tui.md does not list `%s` (%s)", key, b.help)
 			}
 		}
+	}
+}
+
+func Test_given_Q_then_y_when_pressed_then_shutdown_is_sent(t *testing.T) {
+	m, sent := recording()
+
+	m = press(m, "Q", "y")
+
+	if len(*sent) != 1 || (*sent)[0] != `{"command":"shutdown"}` || !m.stopping {
+		t.Fatalf("sent %v, stopping %v", *sent, m.stopping)
+	}
+}
+
+func Test_given_Q_then_n_when_pressed_then_nothing_is_sent(t *testing.T) {
+	m, sent := recording()
+
+	press(m, "Q", "n")
+
+	if len(*sent) != 0 {
+		t.Fatalf("got %v", *sent)
+	}
+}
+
+func Test_given_a_shutdown_asked_for_when_the_connection_closes_then_it_quits_without_reporting_a_loss(t *testing.T) {
+	m, _ := recording()
+	m = press(m, "Q", "y")
+
+	next, cmd := m.Update(ocppd.ClosedMsg{})
+
+	if next.(Model).Lost() || cmd == nil {
+		t.Fatalf("lost %v, cmd %v", next.(Model).Lost(), cmd)
+	}
+}
+
+func Test_given_no_shutdown_when_the_connection_closes_then_it_quits_and_reports_the_loss(t *testing.T) {
+	m, _ := recording()
+
+	next, cmd := m.Update(ocppd.ClosedMsg{})
+
+	if !next.(Model).Lost() || cmd == nil {
+		t.Fatalf("lost %v, cmd %v", next.(Model).Lost(), cmd)
+	}
+}
+
+func Test_given_the_daemon_line_when_received_then_the_header_shows_its_url_and_the_log_skips_it(t *testing.T) {
+	m, _ := recording()
+
+	next, _ := m.Update(ocppd.EventMsg(`{"kind":"daemon","csms":"ws://steve/ocpp","version":"0.2.0"}`))
+
+	m = next.(Model)
+	if m.csms != "ws://steve/ocpp" || len(m.log) != 0 {
+		t.Fatalf("csms %q, log %v", m.csms, m.log)
 	}
 }
