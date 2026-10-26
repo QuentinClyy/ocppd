@@ -284,7 +284,7 @@ dependencies = [
 
 [[package]]
 name = "ocppd"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "futures-util",
  "native-tls",
@@ -297,7 +297,7 @@ dependencies = [
 
 [[package]]
 name = "ocppd-core"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "openssl",
  "serde",
