@@ -38,10 +38,16 @@ func (c *confirmation) bar() string {
 	return " " + warn.Render(c.question) + "  " + accent.Render("y") + " yes  " + accent.Render("n") + " no"
 }
 
-func daemonURL(line string) (string, bool) {
-	var greeting struct{ Kind, Csms string }
-	if json.Unmarshal([]byte(line), &greeting) != nil || greeting.Kind != "daemon" {
-		return "", false
+type greeting struct {
+	Kind    string
+	Csms    string
+	Version string
+}
+
+func parseGreeting(line string) (greeting, bool) {
+	var parsed greeting
+	if json.Unmarshal([]byte(line), &parsed) != nil || parsed.Kind != "daemon" {
+		return greeting{}, false
 	}
-	return greeting.Csms, true
+	return parsed, true
 }

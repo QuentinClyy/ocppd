@@ -13,28 +13,28 @@ OCPP 1.6J or 2.0.1, driven from a terminal or a script.
 
 ## Install
 
-Download the binary for your system from the
-[latest release](https://github.com/QuentinClyy/ocppd/releases/latest). It holds
-two files with no dependencies: `ocppd` and `ocppd-tui`, the terminal UI that
-`ocppd` opens when it finds it beside itself:
+On Linux or macOS (x86_64 or arm64):
 
 ```
-curl -L https://github.com/QuentinClyy/ocppd/releases/latest/download/ocppd-x86_64-unknown-linux-musl.tar.gz | tar xz
-sudo mv ocppd-x86_64-unknown-linux-musl/ocppd* /usr/local/bin/
+curl -fsSL https://raw.githubusercontent.com/QuentinClyy/ocppd/main/install.sh | sh
 ```
 
-| System | Archive |
-|---|---|
-| Linux x86_64 | `ocppd-x86_64-unknown-linux-musl.tar.gz` |
-| Linux arm64 | `ocppd-aarch64-unknown-linux-musl.tar.gz` |
-| macOS Apple silicon | `ocppd-aarch64-apple-darwin.tar.gz` |
-| macOS Intel | `ocppd-x86_64-apple-darwin.tar.gz` |
+It downloads the [latest release](https://github.com/QuentinClyy/ocppd/releases/latest),
+checks its checksum, and puts `ocppd` and `ocppd-tui`, the terminal UI, in
+`~/.local/bin`. Run it again to update. To read it before running it:
 
-Each archive has a `.sha256` next to it, and a build attestation you can check
-with `gh attestation verify <archive> -R QuentinClyy/ocppd`.
+```
+curl -fsSLO https://raw.githubusercontent.com/QuentinClyy/ocppd/main/install.sh
+less install.sh && sh install.sh
+```
 
-The macOS binary is not signed. If you downloaded it with a browser, clear the
-quarantine flag with `xattr -d com.apple.quarantine ocppd ocppd-tui`.
+| Variable | Default | Meaning |
+|---|---|---|
+| `OCPPD_INSTALL_DIR` | `~/.local/bin` | where the two binaries go |
+| `OCPPD_DOWNLOAD` | the latest release | where to download from, e.g. `https://github.com/QuentinClyy/ocppd/releases/download/v0.3.0` for a given version |
+
+Every archive also has a build attestation:
+`gh attestation verify <archive> -R QuentinClyy/ocppd`.
 
 To build from source, with Rust and Go installed:
 

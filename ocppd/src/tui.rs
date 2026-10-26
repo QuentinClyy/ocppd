@@ -23,7 +23,10 @@ pub fn find(beside: Option<&Path>, path: Option<&OsStr>) -> Option<PathBuf> {
 }
 
 pub fn open(tui: &Path, address: &str) -> std::io::Error {
-    Command::new(tui).args(["--connect", address]).exec()
+    Command::new(tui)
+        .args(["--connect", address])
+        .env("OCPPD_VERSION", env!("CARGO_PKG_VERSION"))
+        .exec()
 }
 
 #[cfg(test)]

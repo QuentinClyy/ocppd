@@ -123,3 +123,39 @@ func Test_given_a_csms_url_longer_than_the_header_when_rendered_then_it_is_cut_b
 		t.Fatalf("got %q", header)
 	}
 }
+
+func greeted(expected, daemon string) Model {
+	m := charging().Expecting(expected)
+	next, _ := m.Update(ocppd.EventMsg(`{"kind":"daemon","csms":"ws://x","version":"` + daemon + `"}`))
+	return next.(Model)
+}
+
+func Test_given_an_older_daemon_when_rendered_then_the_header_warns_and_says_how_to_restart(t *testing.T) {
+	m := greeted("0.3.0", "0.2.0")
+
+	header := screen(m, 100, 24)[0]
+
+	if !strings.Contains(header, "daemon 0.2.0 ≠ 0.3.0 · Q restarts") || !strings.HasSuffix(strings.TrimRight(header, " "), "1 station") {
+		t.Fatalf("got %q", header)
+	}
+}
+
+func Test_given_a_daemon_of_the_same_version_when_rendered_then_no_warning(t *testing.T) {
+	m := greeted("0.3.0", "0.3.0")
+
+	header := screen(m, 100, 24)[0]
+
+	if strings.Contains(header, "≠") {
+		t.Fatalf("got %q", header)
+	}
+}
+
+func Test_given_a_tui_started_without_an_expected_version_when_rendered_then_no_warning(t *testing.T) {
+	m := greeted("", "0.2.0")
+
+	header := screen(m, 100, 24)[0]
+
+	if strings.Contains(header, "≠") {
+		t.Fatalf("got %q", header)
+	}
+}

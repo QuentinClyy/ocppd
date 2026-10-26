@@ -27,7 +27,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "ocppd-tui: cannot connect to %s: %v\n", address, err)
 		os.Exit(1)
 	}
-	program := tea.NewProgram(ui.New(connection.Send))
+	program := tea.NewProgram(ui.New(connection.Send).Expecting(os.Getenv("OCPPD_VERSION")))
 	connection.Forward(program.Send)
 	final, err := program.Run()
 	connection.Close()

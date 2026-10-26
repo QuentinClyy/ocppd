@@ -21,9 +21,13 @@ func render(m Model) string {
 	if len(m.fleet.Stations) == 1 {
 		count = "1 station"
 	}
+	right := dim.Render(count)
+	if m.outdated() {
+		right = warn.Render("daemon "+m.daemon+" ≠ "+m.expected+" · Q restarts") + "  " + right
+	}
 	header := " " + bold.Render("ocppd") + "  " + dim.Render(m.csms)
-	room := max(m.width-len(count)-2, 0)
-	header = pad(ansi.Truncate(header, room, "…"), room+1) + dim.Render(count)
+	room := max(m.width-ansi.StringWidth(right)-2, 0)
+	header = pad(ansi.Truncate(header, room, "…"), room+1) + right
 	l := m.layout()
 	var lines []string
 	switch {

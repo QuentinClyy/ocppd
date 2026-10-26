@@ -10,6 +10,8 @@ import (
 
 type Model struct {
 	csms        string
+	expected    string
+	daemon      string
 	send        func(string) error
 	zone        *time.Location
 	log         []entry
@@ -34,6 +36,11 @@ func New(send func(string) error) Model {
 	return Model{send: send, zone: time.Local, expanded: map[string]bool{}}
 }
 
+func (m Model) Expecting(version string) Model {
+	m.expected = version
+	return m
+}
+
 func (m Model) Lost() bool {
 	return m.lost
 }
@@ -56,8 +63,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m = m.wheel(msg)
 		}
 	case ocppd.EventMsg:
-		if url, ok := daemonURL(string(msg)); ok {
-			m.csms = url
+		if g, ok := parseGreeting(string(msg)); ok {
+			m.csms, m.daemon = g.Csms, g.Version
 			return m, nil
 		}
 		station, _ := m.fleet.Apply(string(msg))
@@ -208,4 +215,8 @@ func (m Model) logStation() string {
 		return ""
 	}
 	return m.fleet.Stations[r.station].ID
+}
+
+func (m Model) outdated() bool {
+	return m.expected != "" && m.daemon != "" && m.daemon != m.expected
 }
