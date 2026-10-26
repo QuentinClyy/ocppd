@@ -1,77 +1,20 @@
 mod basic_auth;
 mod cli;
+mod commands;
 mod identity;
 mod model;
 mod protocol;
+mod rejection;
 mod shell;
 mod tls;
 mod tui;
 
-use identity::Identities;
-use model::Model;
+use commands::{Command, Stations};
 use ocppd_core::api::event::Event;
-use ocppd_core::api::intent::Intent;
-use protocol::{Protocol, Version};
-use serde::Deserialize;
-use serde_json::Value;
-use std::collections::{BTreeMap, HashMap};
+use rejection::Rejection;
 use std::process::ExitCode;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
-use tokio::task::JoinHandle;
-
-#[derive(Deserialize)]
-struct Spawn {
-    #[serde(flatten)]
-    identities: Identities,
-    #[serde(default = "jitter_by_default")]
-    jitter: bool,
-    #[serde(default)]
-    configuration: BTreeMap<String, String>,
-    #[serde(default)]
-    ocpp: Version,
-    csms: Option<String>,
-    #[serde(flatten)]
-    model: Model,
-}
-
-fn jitter_by_default() -> bool {
-    true
-}
-
-fn refusal_hint(key: &str) -> &'static str {
-    match key {
-        "AuthorizationKey" => {
-            ": needs 16-20 bytes as hex; use \"password\" for a plain-text password"
-        }
-        _ => "",
-    }
-}
-
-#[derive(Deserialize)]
-struct Routed {
-    station: String,
-    #[serde(flatten)]
-    intent: Intent,
-}
-
-#[derive(Deserialize)]
-struct Remove {
-    station: String,
-}
-
-enum Command {
-    Spawn(Spawn),
-    Remove(Remove),
-    Routed(Routed),
-}
-
-struct Running {
-    intents: UnboundedSender<Intent>,
-    task: JoinHandle<()>,
-}
-
-type Stations = HashMap<String, Running>;
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> ExitCode {
@@ -100,8 +43,9 @@ async fn main() -> ExitCode {
         }
     };
     let (events, receiver) = unbounded_channel();
-    let writer = tokio::spawn(write_events(receiver));
-    read_commands(&csms, events).await;
+    let (replies, rejections) = unbounded_channel();
+    let writer = tokio::spawn(write_events(receiver, rejections));
+    read_commands(&csms, events, replies).await;
     match writer.await {
         Ok(()) => ExitCode::SUCCESS,
         Err(err) => {
@@ -124,7 +68,11 @@ fn open_tui(csms: &str) -> Option<ExitCode> {
     Some(ExitCode::FAILURE)
 }
 
-async fn read_commands(csms: &str, events: UnboundedSender<Event>) {
+async fn read_commands(
+    csms: &str,
+    events: UnboundedSender<Event>,
+    replies: UnboundedSender<Rejection>,
+) {
     let mut stations = Stations::new();
     let mut lines = BufReader::new(tokio::io::stdin()).lines();
     loop {
@@ -139,103 +87,38 @@ async fn read_commands(csms: &str, events: UnboundedSender<Event>) {
         if line.trim().is_empty() {
             continue;
         }
-        match parse(&line) {
-            Ok(Command::Spawn(command)) => spawn(csms, &command, &events, &mut stations),
-            Ok(Command::Remove(command)) => remove(&command, &mut stations),
-            Ok(Command::Routed(command)) => route(command, &stations),
-            Err(err) => eprintln!("bad command: {err}"),
-        }
-    }
-}
-
-fn parse(line: &str) -> Result<Command, serde_json::Error> {
-    let value: Value = serde_json::from_str(line)?;
-    match value["command"].as_str() {
-        Some("spawn") => serde_json::from_value(value).map(Command::Spawn),
-        Some("remove") => serde_json::from_value(value).map(Command::Remove),
-        _ => serde_json::from_value(value).map(Command::Routed),
-    }
-}
-
-fn remove(command: &Remove, stations: &mut Stations) {
-    match stations.remove(&command.station) {
-        Some(running) => running.task.abort(),
-        None => eprintln!("unknown station {}", command.station),
-    }
-}
-
-fn route(command: Routed, stations: &Stations) {
-    let Some(Running { intents, .. }) = stations.get(&command.station) else {
-        eprintln!("unknown station {}", command.station);
-        return;
-    };
-    if intents.send(command.intent).is_err() {
-        eprintln!("station {} stopped", command.station);
-    }
-}
-
-fn spawn(csms: &str, command: &Spawn, events: &UnboundedSender<Event>, stations: &mut Stations) {
-    let identities = match command.identities.list() {
-        Ok(identities) => identities,
-        Err(err) => {
-            eprintln!("cannot spawn: {err}");
-            return;
-        }
-    };
-    for identity in identities {
-        let id = identity.id;
-        if stations.contains_key(&id) {
-            eprintln!("station {id} already exists");
-            continue;
-        }
-        let base = command
-            .csms
-            .as_deref()
-            .unwrap_or(csms)
-            .trim_end_matches('/');
-        let url = format!("{base}/{id}");
-        let station = match command.model.station(&id, command.jitter) {
-            Ok(station) => station,
-            Err(err) => {
-                eprintln!("cannot spawn station {id}: {err}");
-                continue;
-            }
+        let rejections = match commands::parse(&line) {
+            Ok(Command::Spawn(command)) => commands::spawn(csms, &command, &events, &mut stations),
+            Ok(Command::Remove(command)) => commands::remove(&command, &mut stations)
+                .err()
+                .into_iter()
+                .collect(),
+            Ok(Command::Routed(command)) => commands::route(command, &stations)
+                .err()
+                .into_iter()
+                .collect(),
+            Err(rejection) => vec![rejection],
         };
-        match Protocol::new(command.ocpp, station) {
-            Ok(mut protocol) => {
-                let refused = command
-                    .configuration
-                    .iter()
-                    .find(|(key, value)| !protocol.configure(key, value));
-                if let Some((key, _)) = refused {
-                    eprintln!(
-                        "cannot spawn station {id}: {key} refused{}",
-                        refusal_hint(key)
-                    );
-                    continue;
-                }
-                let password = identity.password.as_deref();
-                if password.is_some_and(|password| !protocol.set_basic_auth_password(password)) {
-                    eprintln!("cannot spawn station {id}: password refused");
-                    continue;
-                }
-                if !protocol.set_csms_url(base) {
-                    eprintln!("cannot spawn station {id}: csms url too long");
-                    continue;
-                }
-                let (intents, receiver) = unbounded_channel();
-                let task = tokio::spawn(shell::run(protocol, url, events.clone(), receiver));
-                stations.insert(id, Running { intents, task });
+        for rejection in rejections {
+            if replies.send(rejection).is_err() {
+                return;
             }
-            Err(err) => eprintln!("cannot spawn station {id}: {err}"),
         }
     }
 }
 
-async fn write_events(mut receiver: UnboundedReceiver<Event>) {
+async fn write_events(
+    mut events: UnboundedReceiver<Event>,
+    mut rejections: UnboundedReceiver<Rejection>,
+) {
     let mut stdout = tokio::io::stdout();
-    while let Some(event) = receiver.recv().await {
-        let mut line = match serde_json::to_string(&event) {
+    loop {
+        let serialized = tokio::select! {
+            Some(event) = events.recv() => serde_json::to_string(&event),
+            Some(rejection) = rejections.recv() => serde_json::to_string(&rejection),
+            else => return,
+        };
+        let mut line = match serialized {
             Ok(line) => line,
             Err(err) => {
                 eprintln!("event not serializable: {err}");

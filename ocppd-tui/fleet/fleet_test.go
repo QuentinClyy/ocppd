@@ -120,3 +120,13 @@ func Test_given_ids_with_and_without_numbers_when_compared_then_numbers_sort_by_
 		}
 	}
 }
+
+func Test_given_a_rejected_spawn_naming_a_station_when_applied_then_no_station_appears(t *testing.T) {
+	f := applied(`{"station":"CP1","at":1,"kind":"command_rejected","command":"spawn","reason":"phases must be 1 to 3"}`)
+
+	stations := f.Stations
+
+	if len(stations) != 0 {
+		t.Fatalf("got %+v", stations)
+	}
+}

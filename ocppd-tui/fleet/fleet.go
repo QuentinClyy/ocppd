@@ -36,7 +36,21 @@ func (f *Fleet) Remove(id string) {
 	f.Stations = slices.DeleteFunc(f.Stations, func(s Station) bool { return s.ID == id })
 }
 
+var tracked = map[string]bool{
+	"connected":           true,
+	"disconnected":        true,
+	"boot_status":         true,
+	"status_changed":      true,
+	"transaction_started": true,
+	"transaction_event":   true,
+	"transaction_stopped": true,
+	"meter_sample":        true,
+}
+
 func (f *Fleet) apply(e event) {
+	if !tracked[e.Kind] {
+		return
+	}
 	s := f.station(e.Station)
 	switch e.Kind {
 	case "connected":

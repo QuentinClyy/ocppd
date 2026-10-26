@@ -14,7 +14,7 @@ ocppd --csms <url> [--json]
 In a terminal, ocppd opens [`ocppd-tui`](tui.md), an interactive view of the fleet, when
 it is installed beside ocppd or on the `PATH`. Otherwise, or with `--json`,
 ocppd reads commands from stdin, one JSON object per line, and writes events to
-stdout, one JSON object per line. Logs and errors go to stderr. It exits when
+stdout, one JSON object per line. Connection logs go to stderr. It exits when
 stdin is closed and every station has stopped. A pipe or a redirect always
 gets JSON lines.
 
@@ -55,8 +55,15 @@ echo '{"command":"spawn","prefix":"CS","count":10,"ocpp":"2.0.1"}' >&3
 "ev":{"capacity_kwh":60,"soc":0.2,"max_kw":11,"target_soc":1.0}
 ```
 
-A command that does not fit (an unknown station, an EV already plugged in, a
-stop without a transaction) is refused with an `intent_rejected` event.
+A command that does not fit the station's state (an EV already plugged in, a
+stop without a transaction) is refused with an `intent_rejected` event. A
+command ocppd cannot run at all (an unknown station, a spawn with a bad
+setting, a line that is not JSON) is answered with a `command_rejected` event,
+which has a `reason`, and the `command` and `station` when it has them:
+
+```
+{"station":"NOPE","at":1792893141250,"kind":"command_rejected","command":"stop","reason":"unknown station"}
+```
 
 ## Events
 
@@ -81,4 +88,4 @@ The main kinds:
 | `firmware_status`, `log_status` | a firmware update or an upload progresses |
 | `monitor_triggered` | a 2.0.1 variable monitor fires |
 | `display_message_set`, `cost_shown`, `driver_message` | what a 2.0.1 driver would see on screen |
-| `call_retried`, `call_abandoned`, `intent_rejected` | a message is retried or given up, or a command is refused |
+| `call_retried`, `call_abandoned`, `intent_rejected`, `command_rejected` | a message is retried or given up, or a command is refused |

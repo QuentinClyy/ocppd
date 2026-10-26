@@ -251,7 +251,7 @@ fn emit(events: &UnboundedSender<Event>, event: Event) {
     }
 }
 
-fn now_ms() -> u64 {
+pub fn now_ms() -> u64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map_or(0, |since| since.as_millis() as u64)

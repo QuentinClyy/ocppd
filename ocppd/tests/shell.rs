@@ -276,3 +276,64 @@ fn check_handshake(request: &Request, mut response: Response) -> Result<Response
     );
     Ok(response)
 }
+
+#[tokio::test]
+async fn given_commands_that_cannot_run_when_sent_then_each_is_rejected_on_stdout() {
+    let lines = [
+        r#"{"command":"stop","station":"NOPE","connector":1}"#,
+        r#"{"command":"remove","station":"NOPE"}"#,
+        r#"{"command":"spawn","prefix":"CP","count":1,"phases":4}"#,
+        "not json",
+    ];
+
+    let rejected = rejections(&lines).await;
+
+    let reasons: Vec<_> = rejected
+        .iter()
+        .map(|event| {
+            (
+                event["command"].clone(),
+                event["station"].clone(),
+                event["reason"].clone(),
+            )
+        })
+        .collect();
+    assert_eq!(
+        reasons,
+        [
+            (json!("stop"), json!("NOPE"), json!("unknown station")),
+            (json!("remove"), json!("NOPE"), json!("unknown station")),
+            (json!("spawn"), json!("CP1"), json!("phases must be 1 to 3")),
+            (
+                Value::Null,
+                Value::Null,
+                json!("expected ident at line 1 column 2")
+            ),
+        ]
+    );
+}
+
+async fn rejections(lines: &[&str]) -> Vec<Value> {
+    let mut child = Command::new(env!("CARGO_BIN_EXE_ocppd"))
+        .args(["--csms", "ws://127.0.0.1:1"])
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .kill_on_drop(true)
+        .spawn()
+        .unwrap();
+    let mut stdin = child.stdin.take().unwrap();
+    for line in lines {
+        stdin
+            .write_all(format!("{line}\n").as_bytes())
+            .await
+            .unwrap();
+    }
+    drop(stdin);
+    let output = bounded(child.wait_with_output()).await.unwrap();
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    stdout
+        .lines()
+        .map(|line| serde_json::from_str::<Value>(line).unwrap())
+        .filter(|event| event["kind"] == "command_rejected")
+        .collect()
+}
