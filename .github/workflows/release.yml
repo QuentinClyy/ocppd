@@ -86,10 +86,16 @@ jobs:
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - run: |
+          previous=$(git describe --tags --abbrev=0 "$GITHUB_REF_NAME^" 2>/dev/null || true)
+          sh .github/release-notes.sh "$previous" "$GITHUB_REF_NAME" > notes.md
       - uses: actions/download-artifact@v8
         with:
           merge-multiple: true
-      - run: gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --generate-notes ocppd-*
+      - run: gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --notes-file notes.md ocppd-*.tar.gz*
         env:
           GH_TOKEN: ${{ github.token }}
   image:
