@@ -73,3 +73,36 @@ func (m Model) move(key string) Model {
 	}
 	return m
 }
+
+func (m Model) target() (target, bool) {
+	r, ok := m.selected()
+	if !ok {
+		return target{}, false
+	}
+	s := m.fleet.Stations[r.station]
+	at := target{station: s.ID}
+	switch {
+	case r.connector != stationRow:
+		at.connector = s.Connectors[r.connector].ID
+	case len(s.Connectors) == 1:
+		at.connector = s.Connectors[0].ID
+	}
+	return at, true
+}
+
+func (m Model) fleetTop() int {
+	total := len(rows(m.fleet, m.expanded))
+	return follow(m.fleetScroll, min(m.cursor, max(total-1, 0)), m.layout().fleetRows, total)
+}
+
+func (m Model) scrollFleet(lines int) Model {
+	total := len(rows(m.fleet, m.expanded))
+	height := m.layout().fleetRows
+	if total == 0 || height == 0 {
+		return m
+	}
+	top := min(max(m.fleetTop()+lines, 0), max(total-height, 0))
+	m.cursor = min(max(min(m.cursor, total-1), top), top+height-1)
+	m.fleetScroll = top
+	return m
+}

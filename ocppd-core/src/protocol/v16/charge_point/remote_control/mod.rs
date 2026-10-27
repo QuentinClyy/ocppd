@@ -1,15 +1,17 @@
-use super::registration::Registration;
+pub(super) mod trigger;
+
 use crate::api::io::Output;
+use crate::protocol::v16::charge_point::provisioning::registration::Registration;
 use crate::protocol::v16::charge_point::security::security_event::RESET_OR_REBOOT;
 use crate::protocol::v16::charge_point::transaction::Transaction;
 use crate::protocol::v16::charge_point::{ChargePoint, survives_disconnect};
 use crate::protocol::v16::event::EventKind;
-use crate::protocol::v16::messages::core::remote_control::{
+use crate::protocol::v16::messages::datatypes::generic_status::GenericStatus;
+use crate::protocol::v16::messages::remote_control::{
     AvailabilityStatus, AvailabilityType, ChangeAvailabilityRequest, RemoteStartTransactionRequest,
     RemoteStopTransactionRequest, ResetRequest, ResetType, UnlockConnectorRequest, UnlockStatus,
 };
-use crate::protocol::v16::messages::core::transaction::Reason;
-use crate::protocol::v16::messages::datatypes::generic_status::GenericStatus;
+use crate::protocol::v16::messages::transaction::Reason;
 
 impl ChargePoint {
     pub(crate) fn remote_start(
@@ -209,5 +211,5 @@ impl ChargePoint {
 }
 
 #[cfg(test)]
-#[path = "remote_control.test.rs"]
+#[path = "mod.test.rs"]
 mod tests;

@@ -1,5 +1,5 @@
-use super::ChargePoint;
-use super::transaction::Transaction;
+use crate::protocol::v16::charge_point::ChargePoint;
+use crate::protocol::v16::charge_point::transaction::Transaction;
 use crate::protocol::v16::messages::datatypes::meter_value::ReadingContext;
 use crate::protocol::v16::messages::firmware::DiagnosticsStatusNotificationRequest;
 use crate::protocol::v16::messages::remote_trigger::{
@@ -9,7 +9,7 @@ use crate::protocol::v16::messages::remote_trigger::{
 use serde_json::json;
 
 impl ChargePoint {
-    pub(super) fn trigger(
+    pub(crate) fn trigger(
         &mut self,
         now: u64,
         request: TriggerMessageRequest,
@@ -52,7 +52,7 @@ impl ChargePoint {
         TriggerMessageStatus::Accepted
     }
 
-    pub(super) fn extended_trigger(
+    pub(crate) fn extended_trigger(
         &mut self,
         now: u64,
         request: ExtendedTriggerMessageRequest,
@@ -106,5 +106,5 @@ impl ChargePoint {
 }
 
 #[cfg(test)]
-#[path = "remote_trigger.test.rs"]
+#[path = "trigger.test.rs"]
 mod tests;

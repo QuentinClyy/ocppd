@@ -1,7 +1,7 @@
 use super::ChargePoint;
 use crate::api::io::Output;
 use crate::protocol::v16::event::{EventKind, ReservationEnd};
-use crate::protocol::v16::messages::core::status::ChargePointStatus;
+use crate::protocol::v16::messages::availability::ChargePointStatus;
 use crate::protocol::v16::messages::datatypes::generic_status::GenericStatus;
 use crate::protocol::v16::messages::datatypes::id_tag::IdToken;
 use crate::protocol::v16::messages::reservation::{

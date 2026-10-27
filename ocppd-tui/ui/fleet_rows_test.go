@@ -1,10 +1,10 @@
 package ui
 
 import (
+	"fmt"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
-
 	"github.com/QuentinClyy/ocppd/ocppd-tui/fleet"
 )
 
@@ -67,6 +67,14 @@ func keyMsg(key string) tea.KeyPressMsg {
 		return tea.KeyPressMsg{Code: rune(key[5]), Mod: tea.ModCtrl}
 	}
 	return tea.KeyPressMsg{Code: []rune(key)[0], Text: key}
+}
+
+func manyStations(count int) Model {
+	m := New(func(string) error { return nil })
+	for n := range count {
+		m.fleet.Apply(fmt.Sprintf(`{"station":"CP%d","at":1,"kind":"status_changed","connector":1,"status":"Available"}`, n+1))
+	}
+	return m
 }
 
 func Test_given_new_stations_when_listed_then_one_collapsed_row_each(t *testing.T) {
@@ -186,5 +194,42 @@ func Test_given_a_connector_row_when_enter_then_its_station_closes_and_the_curso
 
 	if r, _ := m.selected(); r != (row{0, stationRow}) || m.expanded["CP1"] {
 		t.Fatalf("got %v, expanded %v", r, m.expanded)
+	}
+}
+
+func Test_given_more_stations_than_rows_when_the_wheel_scrolls_down_over_them_then_the_view_moves_and_drags_the_cursor(t *testing.T) {
+	m := sized(manyStations(30), 80, 24)
+
+	m = wheelAt(m, tea.MouseWheelDown, 10, m.layout().fleetY, 2)
+
+	if m.fleetTop() != 6 || m.cursor != 6 {
+		t.Fatalf("got top %d, cursor %d", m.fleetTop(), m.cursor)
+	}
+}
+
+func Test_given_more_stations_than_rows_when_the_wheel_scrolls_far_down_then_the_last_row_ends_the_pane(t *testing.T) {
+	m := sized(manyStations(30), 80, 24)
+	l := m.layout()
+
+	m = wheelAt(m, tea.MouseWheelDown, 10, l.fleetY, 100)
+
+	if m.fleetTop() != 30-l.fleetRows {
+		t.Fatalf("got top %d, want %d", m.fleetTop(), 30-l.fleetRows)
+	}
+}
+
+func Test_given_more_stations_than_rows_when_j_passes_the_bottom_then_the_view_follows_and_stays_when_k(t *testing.T) {
+	m := sized(manyStations(30), 80, 24)
+	rowsShown := m.layout().fleetRows
+	keys := make([]string, rowsShown)
+	for index := range keys {
+		keys[index] = "j"
+	}
+
+	down := pressAll(m, keys...)
+	up := pressAll(down, "k")
+
+	if down.fleetTop() != 1 || up.fleetTop() != 1 {
+		t.Fatalf("got down %d, up %d", down.fleetTop(), up.fleetTop())
 	}
 }

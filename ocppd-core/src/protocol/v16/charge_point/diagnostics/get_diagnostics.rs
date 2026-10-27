@@ -59,5 +59,5 @@ impl ChargePoint {
 }
 
 #[cfg(test)]
-#[path = "diagnostics.test.rs"]
+#[path = "get_diagnostics.test.rs"]
 mod tests;

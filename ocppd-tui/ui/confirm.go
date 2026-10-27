@@ -1,7 +1,5 @@
 package ui
 
-import "encoding/json"
-
 const shutdown = `{"command":"shutdown"}`
 
 type confirmation struct {
@@ -36,18 +34,4 @@ func (m Model) confirmKey(key string) Model {
 
 func (c *confirmation) bar() string {
 	return " " + warn.Render(c.question) + "  " + accent.Render("y") + " yes  " + accent.Render("n") + " no"
-}
-
-type greeting struct {
-	Kind    string
-	Csms    string
-	Version string
-}
-
-func parseGreeting(line string) (greeting, bool) {
-	var parsed greeting
-	if json.Unmarshal([]byte(line), &parsed) != nil || parsed.Kind != "daemon" {
-		return greeting{}, false
-	}
-	return parsed, true
 }

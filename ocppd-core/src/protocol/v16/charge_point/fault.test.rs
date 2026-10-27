@@ -1,7 +1,7 @@
 use crate::api::intent::{EvSpec, Intent};
 use crate::fixtures::v16::fake_csms::{Csms, MINUTE, authorize};
 use crate::fixtures::v16::replies::status;
-use crate::protocol::v16::messages::core::status::ChargePointStatus;
+use crate::protocol::v16::messages::availability::ChargePointStatus;
 use serde_json::json;
 
 fn fault(csms: &mut Csms, now: u64) {

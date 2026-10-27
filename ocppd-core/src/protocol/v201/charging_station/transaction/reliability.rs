@@ -5,7 +5,7 @@ use crate::protocol::v201::charging_station::ChargingStation;
 use crate::protocol::v201::charging_station::device_model::table::{OCPP_COMM_CTRLR, TX_CTRLR};
 use crate::protocol::v201::event::EventKind;
 use crate::protocol::v201::messages::datatypes::id_token::AuthorizationStatus;
-use crate::protocol::v201::messages::transactions::{
+use crate::protocol::v201::messages::transaction::{
     GetTransactionStatusRequest, GetTransactionStatusResponse, TransactionEventResponse,
     TriggerReason,
 };

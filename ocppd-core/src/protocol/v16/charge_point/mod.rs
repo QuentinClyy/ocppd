@@ -1,10 +1,13 @@
-mod configuration;
-mod core;
+mod availability;
 mod csms_call;
+mod diagnostics;
 mod fault;
 mod firmware;
 mod local_auth;
-mod remote_trigger;
+mod metering;
+mod provisioning;
+mod receive;
+mod remote_control;
 mod reservation;
 pub mod security;
 mod smart_charging;
@@ -14,30 +17,27 @@ use crate::api::event::{Event, Kind, LinkEvent};
 use crate::api::io::{Input, Output};
 use crate::protocol::shared::file_transfer::FailingTransfers;
 use crate::protocol::v16::event::EventKind;
-use crate::protocol::v16::messages::core::boot::BootNotificationRequest;
-use crate::protocol::v16::messages::core::remote_control::ResetType;
-use crate::protocol::v16::messages::core::status::{
-    ChargePointErrorCode, ChargePointStatus, StatusNotificationRequest,
-};
+use crate::protocol::v16::messages::availability::ChargePointStatus;
+use crate::protocol::v16::messages::provisioning::boot::BootNotificationRequest;
+use crate::protocol::v16::messages::remote_control::ResetType;
 use crate::station::Station;
-use crate::station::connector::Fault;
 use crate::wire::ci_string::{CiString, TooLong};
-use crate::wire::frame::{self, Frame};
-use crate::wire::outbox::{Call, Outbox, Sent};
+
+use crate::wire::outbox::Outbox;
 use crate::wire::payload;
-use configuration::Configuration;
-use core::registration::Registration;
-use firmware::firmware_update::FirmwareUpdate;
+use diagnostics::log_upload::LogUpload;
+use firmware::FirmwareUpdate;
 use local_auth::id_tags::IdTags;
-use local_auth::local_list::LocalList;
+use local_auth::list::LocalList;
+use provisioning::configuration::Configuration;
+use provisioning::registration::Registration;
 use reservation::Reservation;
 use security::certificates::Certificates;
 use security::charge_point_certificate::ChargePointCertificate;
-use security::log_upload::LogUpload;
 use security::security_event::{STARTUP_OF_THE_DEVICE, is_critical};
 use serde::Serialize;
 use serde::de::DeserializeOwned;
-use serde_json::{Value, json};
+use serde_json::Value;
 use smart_charging::charging_profiles::ChargingProfiles;
 use transaction::Transaction;
 use transaction::held::Held;
@@ -203,91 +203,6 @@ impl ChargePoint {
         self.sample_meters(out, now);
         self.expire_held(out, now);
         self.expire_reservations(out, now);
-    }
-
-    fn receive(&mut self, out: &mut Vec<Output>, now: u64, text: &str) {
-        let frame = match frame::parse(text) {
-            Ok(frame) => frame,
-            Err(err) => {
-                let reason = err.to_string();
-                self.emit(
-                    out,
-                    now,
-                    EventKind::Link(LinkEvent::FrameRejected { reason }),
-                );
-                return;
-            }
-        };
-        match frame {
-            Frame::Call {
-                id,
-                action,
-                payload,
-            } => self.csms_call(out, now, id, &action, payload),
-            Frame::CallResult { id, payload } => match self.outbox.resolve(&id) {
-                Some(sent) => self.call_succeeded(out, now, &sent.call, payload),
-                None => self.emit(out, now, EventKind::Link(LinkEvent::UnknownResponse { id })),
-            },
-            Frame::CallError { id, code, .. } => match self.outbox.resolve(&id) {
-                Some(sent) => {
-                    let action = sent.call.action.clone();
-                    self.emit(
-                        out,
-                        now,
-                        EventKind::Link(LinkEvent::CallFailed { action, code }),
-                    );
-                    self.call_failed(out, now, sent);
-                }
-                None => self.emit(out, now, EventKind::Link(LinkEvent::UnknownResponse { id })),
-            },
-        }
-    }
-
-    fn call_succeeded(&mut self, out: &mut Vec<Output>, now: u64, call: &Call, payload: Value) {
-        match call.action.as_str() {
-            "BootNotification" => self.booted(out, now, payload),
-            "SignCertificate" => self.sign_certificate_reply(out, now, payload),
-            "Authorize" if call.connector_id == 0 => self.held_reply(out, now, payload),
-            "Authorize" | "StartTransaction" => self.transaction_reply(out, now, call, payload),
-            _ => {}
-        }
-    }
-
-    fn call_failed(&mut self, out: &mut Vec<Output>, now: u64, sent: Sent) {
-        let Some(sent) = self.retry_transaction_message(out, now, sent) else {
-            return;
-        };
-        let call = &sent.call;
-        match call.action.as_str() {
-            "BootNotification" => self.boot_failed(now),
-            "Authorize" if call.connector_id == 0 => self.held = None,
-            "Authorize" | "StartTransaction" => self.transaction_failed(call),
-            _ => {}
-        }
-    }
-
-    fn error_code(&self, connector_id: u32) -> ChargePointErrorCode {
-        let index = connector_id.checked_sub(1).map(|index| index as usize);
-        let fault = index.and_then(|index| self.station.connectors.get(index)?.fault);
-        match fault {
-            Some(Fault::Internal) => ChargePointErrorCode::InternalError,
-            Some(Fault::ConnectorLock) => ChargePointErrorCode::ConnectorLockFailure,
-            None => ChargePointErrorCode::NoError,
-        }
-    }
-
-    pub(super) fn status_notification(&mut self, connector_id: u32, status: ChargePointStatus) {
-        let request = StatusNotificationRequest {
-            connector_id,
-            error_code: self.error_code(connector_id),
-            info: None,
-            status,
-            timestamp: None,
-            vendor_id: None,
-            vendor_error_code: None,
-        };
-        self.outbox
-            .push("StatusNotification", connector_id, json!(request));
     }
 
     pub(super) fn decode<T: DeserializeOwned + Serialize>(

@@ -1,8 +1,8 @@
 use crate::identity::Identities;
+use crate::link;
 use crate::model::Model;
 use crate::protocol::{Protocol, Version};
 use crate::rejection::Rejection;
-use crate::shell;
 use ocppd_core::api::event::Event;
 use ocppd_core::api::intent::Intent;
 use serde::Deserialize;
@@ -167,7 +167,7 @@ pub fn spawn(
                     continue;
                 }
                 let (intents, receiver) = unbounded_channel();
-                let task = tokio::spawn(shell::run(protocol, url, events.clone(), receiver));
+                let task = tokio::spawn(link::run(protocol, url, events.clone(), receiver));
                 stations.insert(id, Running { intents, task });
             }
             Err(err) => rejections.push(reject(err.to_string())),

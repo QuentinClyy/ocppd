@@ -10,7 +10,7 @@ use crate::protocol::v201::messages::authorization::{AuthorizeRequest, Authorize
 use crate::protocol::v201::messages::datatypes::id_token::{
     AuthorizationStatus, IdToken, IdTokenType,
 };
-use crate::protocol::v201::messages::transactions::{StoppedReason, TriggerReason};
+use crate::protocol::v201::messages::transaction::{StoppedReason, TriggerReason};
 use crate::wire::ci_string::CiString;
 use crate::wire::outbox::Call;
 use serde_json::{Value, json};

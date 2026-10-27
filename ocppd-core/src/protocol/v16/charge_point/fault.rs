@@ -1,7 +1,7 @@
 use super::ChargePoint;
 use super::transaction::Transaction;
 use crate::api::io::Output;
-use crate::protocol::v16::messages::core::transaction::Reason;
+use crate::protocol::v16::messages::transaction::Reason;
 use crate::station::connector::Fault;
 
 impl ChargePoint {

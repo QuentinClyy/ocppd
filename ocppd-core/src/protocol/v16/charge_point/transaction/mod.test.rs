@@ -2,7 +2,7 @@ use crate::api::intent::{EvSpec, Intent};
 use crate::api::io::Input;
 use crate::fixtures::v16::fake_csms::{Csms, MINUTE, authorize, register};
 use crate::protocol::v16::event::EventKind;
-use crate::protocol::v16::messages::core::status::ChargePointStatus;
+use crate::protocol::v16::messages::availability::ChargePointStatus;
 use serde_json::json;
 
 fn plugged() -> Csms {

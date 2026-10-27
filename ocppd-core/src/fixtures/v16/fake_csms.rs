@@ -3,7 +3,7 @@ use crate::api::io::{Input, Output};
 use crate::fixtures::v16::raw::v16_kind;
 use crate::protocol::v16::charge_point::ChargePoint;
 use crate::protocol::v16::event::EventKind;
-use crate::protocol::v16::messages::core::status::ChargePointStatus;
+use crate::protocol::v16::messages::availability::ChargePointStatus;
 use crate::station::Station;
 use crate::station::connector::Connector;
 use crate::wire::frame::Frame;

@@ -1,13 +1,13 @@
 use crate::api::event::LinkEvent;
-use crate::protocol::v16::messages::core::boot::RegistrationStatus;
-use crate::protocol::v16::messages::core::remote_control::ResetType;
-use crate::protocol::v16::messages::core::status::ChargePointStatus;
-use crate::protocol::v16::messages::core::transaction::Reason;
+use crate::protocol::v16::messages::availability::ChargePointStatus;
 use crate::protocol::v16::messages::datatypes::id_tag::AuthorizationStatus;
 use crate::protocol::v16::messages::firmware::DiagnosticsStatus;
+use crate::protocol::v16::messages::provisioning::boot::RegistrationStatus;
+use crate::protocol::v16::messages::remote_control::ResetType;
 use crate::protocol::v16::messages::security::certificates::CertificateUse;
 use crate::protocol::v16::messages::security::log::UploadLogStatus;
 use crate::protocol::v16::messages::security::signed_firmware::SignedFirmwareStatus;
+use crate::protocol::v16::messages::transaction::Reason;
 use serde::Serialize;
 
 #[derive(Debug, Clone, PartialEq, Serialize)]

@@ -5,7 +5,7 @@ use crate::protocol::v201::charging_station::metering::{
 };
 use crate::protocol::v201::event::EventKind;
 use crate::protocol::v201::messages::datatypes::meter_value::{MeterValue, ReadingContext};
-use crate::protocol::v201::messages::transactions::{TransactionEventType, TriggerReason};
+use crate::protocol::v201::messages::transaction::{TransactionEventType, TriggerReason};
 
 const TX_STARTED_MEASURANDS: &str = "TxStartedMeasurands";
 const TX_UPDATED_MEASURANDS: &str = "TxUpdatedMeasurands";

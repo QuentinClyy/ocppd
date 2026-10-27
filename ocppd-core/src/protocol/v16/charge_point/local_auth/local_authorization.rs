@@ -1,5 +1,5 @@
 use crate::protocol::v16::charge_point::ChargePoint;
-use crate::protocol::v16::charge_point::configuration::{
+use crate::protocol::v16::charge_point::provisioning::configuration::{
     AUTHORIZATION_CACHE_ENABLED, LOCAL_AUTH_LIST_ENABLED, LOCAL_AUTHORIZE_OFFLINE,
     LOCAL_PRE_AUTHORIZE,
 };

@@ -11,7 +11,7 @@ use crate::api::io::Output;
 use crate::protocol::v201::messages::datatypes::charging_profile::ChargingProfile;
 use crate::protocol::v201::messages::datatypes::id_token::IdToken;
 use crate::protocol::v201::messages::datatypes::meter_value::MeterValue;
-use crate::protocol::v201::messages::transactions::{
+use crate::protocol::v201::messages::transaction::{
     ChargingState, StoppedReason, TransactionEventType, TriggerReason,
 };
 use crate::wire::ci_string::CiString;

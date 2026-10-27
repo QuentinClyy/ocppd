@@ -6,8 +6,8 @@ use crate::fixtures::v16::raw::{
 };
 use crate::protocol::v16::charge_point::ChargePoint;
 use crate::protocol::v16::event::EventKind;
-use crate::protocol::v16::messages::core::boot::RegistrationStatus;
-use crate::protocol::v16::messages::core::status::ChargePointStatus;
+use crate::protocol::v16::messages::availability::ChargePointStatus;
+use crate::protocol::v16::messages::provisioning::boot::RegistrationStatus;
 use crate::station::Station;
 use serde_json::json;
 use std::collections::BTreeSet;

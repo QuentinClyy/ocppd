@@ -7,7 +7,7 @@ use crate::protocol::v201::messages::availability::{
     ChangeAvailabilityRequest, ChangeAvailabilityResponse, ChangeAvailabilityStatus,
     OperationalStatus,
 };
-use crate::protocol::v201::messages::transactions::{StoppedReason, TriggerReason};
+use crate::protocol::v201::messages::transaction::{StoppedReason, TriggerReason};
 use crate::station::connector::Fault;
 
 #[derive(Clone, Copy, PartialEq)]

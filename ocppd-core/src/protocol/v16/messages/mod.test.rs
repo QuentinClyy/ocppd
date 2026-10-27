@@ -1,6 +1,6 @@
-use super::boot::*;
+use super::availability::*;
 use super::meter_values::*;
-use super::status::*;
+use super::provisioning::boot::*;
 use super::transaction::*;
 use crate::fixtures::round_trip::decodes;
 use serde_json::json;

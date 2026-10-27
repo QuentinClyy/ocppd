@@ -4,7 +4,7 @@ use crate::protocol::v201::charging_station::ChargingStation;
 use crate::protocol::v201::event::EventKind;
 use crate::protocol::v201::messages::datatypes::component::Evse;
 use crate::protocol::v201::messages::datatypes::meter_value::MeterValue;
-use crate::protocol::v201::messages::transactions::{
+use crate::protocol::v201::messages::transaction::{
     ChargingState, TransactionEventRequest, TransactionEventType, TransactionInfo, TriggerReason,
 };
 use crate::wire::date_time::DateTime;

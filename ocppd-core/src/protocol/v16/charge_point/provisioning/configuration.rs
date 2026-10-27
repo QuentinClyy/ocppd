@@ -1,8 +1,8 @@
-use crate::protocol::v16::messages::core::configuration::{
+use crate::protocol::v16::messages::datatypes::meter_value::Measurand;
+use crate::protocol::v16::messages::provisioning::configuration::{
     ChangeConfigurationRequest, ConfigurationStatus, GetConfigurationRequest,
     GetConfigurationResponse, KeyValue,
 };
-use crate::protocol::v16::messages::datatypes::meter_value::Measurand;
 use crate::wire::ci_string::{CiString, TooLong};
 use serde_json::Value;
 

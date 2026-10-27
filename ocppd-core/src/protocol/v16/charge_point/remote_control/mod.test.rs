@@ -5,7 +5,7 @@ use crate::fixtures::v16::fake_csms::{Csms, MINUTE, authorize};
 use crate::fixtures::v16::plugged::plugged;
 use crate::fixtures::v16::replies::status;
 use crate::protocol::v16::event::EventKind;
-use crate::protocol::v16::messages::core::status::ChargePointStatus;
+use crate::protocol::v16::messages::availability::ChargePointStatus;
 use serde_json::json;
 
 fn start_in_flight() -> Csms {

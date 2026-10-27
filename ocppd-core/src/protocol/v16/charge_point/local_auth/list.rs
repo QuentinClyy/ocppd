@@ -55,5 +55,5 @@ impl LocalList {
 }
 
 #[cfg(test)]
-#[path = "local_list.test.rs"]
+#[path = "list.test.rs"]
 mod tests;

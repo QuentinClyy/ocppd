@@ -1,25 +1,15 @@
 use super::ChargePoint;
-use super::configuration::{
+use super::local_auth::id_tags::IdTags;
+use super::local_auth::list::Limits;
+use super::provisioning::configuration::{
     AUTHORIZATION_KEY, LOCAL_AUTH_LIST_MAX_LENGTH, SECURITY_PROFILE, SEND_LOCAL_LIST_MAX_LENGTH,
 };
-use super::local_auth::id_tags::IdTags;
-use super::local_auth::local_list::Limits;
 use super::security::security_event::RECONFIGURATION_OF_SECURITY_PARAMETERS;
 use crate::api::event::LinkEvent;
 use crate::api::io::Output;
 use crate::protocol::v16::event::EventKind;
-use crate::protocol::v16::messages::core::configuration::{
-    ChangeConfigurationRequest, ChangeConfigurationResponse, ConfigurationStatus,
-    GetConfigurationRequest,
-};
-use crate::protocol::v16::messages::core::data_transfer::{
+use crate::protocol::v16::messages::data_transfer::{
     DataTransferRequest, DataTransferResponse, DataTransferStatus,
-};
-use crate::protocol::v16::messages::core::remote_control::{
-    ChangeAvailabilityRequest, ChangeAvailabilityResponse, ClearCacheRequest, ClearCacheResponse,
-    RemoteStartTransactionRequest, RemoteStartTransactionResponse, RemoteStopTransactionRequest,
-    RemoteStopTransactionResponse, ResetRequest, ResetResponse, UnlockConnectorRequest,
-    UnlockConnectorResponse,
 };
 use crate::protocol::v16::messages::datatypes::generic_status::GenericStatus;
 use crate::protocol::v16::messages::firmware::{
@@ -28,6 +18,16 @@ use crate::protocol::v16::messages::firmware::{
 use crate::protocol::v16::messages::local_auth::{
     GetLocalListVersionRequest, GetLocalListVersionResponse, SendLocalListRequest,
     SendLocalListResponse, UpdateStatus,
+};
+use crate::protocol::v16::messages::provisioning::configuration::{
+    ChangeConfigurationRequest, ChangeConfigurationResponse, ConfigurationStatus,
+    GetConfigurationRequest,
+};
+use crate::protocol::v16::messages::remote_control::{
+    ChangeAvailabilityRequest, ChangeAvailabilityResponse, ClearCacheRequest, ClearCacheResponse,
+    RemoteStartTransactionRequest, RemoteStartTransactionResponse, RemoteStopTransactionRequest,
+    RemoteStopTransactionResponse, ResetRequest, ResetResponse, UnlockConnectorRequest,
+    UnlockConnectorResponse,
 };
 use crate::protocol::v16::messages::remote_trigger::{
     ExtendedTriggerMessageRequest, ExtendedTriggerMessageResponse, TriggerMessageRequest,

@@ -1,8 +1,8 @@
 use crate::api::io::Output;
 use crate::protocol::v16::charge_point::ChargePoint;
-use crate::protocol::v16::charge_point::configuration::HEARTBEAT_INTERVAL;
+use crate::protocol::v16::charge_point::provisioning::configuration::HEARTBEAT_INTERVAL;
 use crate::protocol::v16::event::EventKind;
-use crate::protocol::v16::messages::core::boot::{
+use crate::protocol::v16::messages::provisioning::boot::{
     BootNotificationResponse, HeartbeatRequest, RegistrationStatus,
 };
 use crate::station::jitter::fraction;

@@ -264,5 +264,5 @@ pub fn now_ms() -> u64 {
 }
 
 #[cfg(test)]
-#[path = "shell.test.rs"]
+#[path = "link.test.rs"]
 mod tests;

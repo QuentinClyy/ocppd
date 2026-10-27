@@ -10,7 +10,7 @@ use crate::protocol::v201::messages::provisioning::boot::BootReason;
 use crate::protocol::v201::messages::remote_control::{
     MessageTrigger, TriggerMessageRequest, TriggerMessageStatus,
 };
-use crate::protocol::v201::messages::transactions::{TransactionEventType, TriggerReason};
+use crate::protocol::v201::messages::transaction::{TransactionEventType, TriggerReason};
 use crate::wire::date_time::DateTime;
 use serde_json::json;
 

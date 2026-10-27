@@ -19,7 +19,7 @@ impl Rejection {
     ) -> Rejection {
         Rejection {
             station: station.map(str::to_owned),
-            at: crate::shell::now_ms(),
+            at: crate::link::now_ms(),
             kind: "command_rejected",
             command: command.map(str::to_owned),
             reason: reason.into(),

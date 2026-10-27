@@ -6,10 +6,10 @@ use crate::protocol::v16::charge_point::security::security_event::{
 };
 use crate::protocol::v16::charge_point::transaction::Transaction;
 use crate::protocol::v16::event::EventKind;
-use crate::protocol::v16::messages::core::remote_control::ResetType;
 use crate::protocol::v16::messages::firmware::{
     FirmwareStatus, FirmwareStatusNotificationRequest, UpdateFirmwareRequest,
 };
+use crate::protocol::v16::messages::remote_control::ResetType;
 use crate::protocol::v16::messages::security::signed_firmware::{
     SignedFirmwareStatus, SignedFirmwareStatusNotificationRequest, SignedUpdateFirmwareRequest,
     UpdateFirmwareStatus,
@@ -281,5 +281,5 @@ fn plain(status: SignedFirmwareStatus) -> Option<FirmwareStatus> {
 }
 
 #[cfg(test)]
-#[path = "firmware_update.test.rs"]
+#[path = "firmware.test.rs"]
 mod tests;

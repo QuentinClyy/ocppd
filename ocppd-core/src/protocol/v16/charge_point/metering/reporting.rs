@@ -1,12 +1,12 @@
 use super::meter_values::{Reading, meter_value};
 use crate::api::io::Output;
 use crate::protocol::v16::charge_point::ChargePoint;
-use crate::protocol::v16::charge_point::configuration::METER_VALUE_SAMPLE_INTERVAL;
+use crate::protocol::v16::charge_point::provisioning::configuration::METER_VALUE_SAMPLE_INTERVAL;
 use crate::protocol::v16::charge_point::transaction::Transaction;
 use crate::protocol::v16::event::EventKind;
-use crate::protocol::v16::messages::core::meter_values::MeterValuesRequest;
-use crate::protocol::v16::messages::core::status::ChargePointStatus;
+use crate::protocol::v16::messages::availability::ChargePointStatus;
 use crate::protocol::v16::messages::datatypes::meter_value::{Measurand, ReadingContext};
+use crate::protocol::v16::messages::meter_values::MeterValuesRequest;
 use serde_json::json;
 
 impl ChargePoint {

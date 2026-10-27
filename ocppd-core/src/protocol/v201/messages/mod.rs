@@ -14,4 +14,4 @@ pub mod reservation;
 pub mod security;
 pub mod smart_charging;
 pub mod tariff_cost;
-pub mod transactions;
+pub mod transaction;

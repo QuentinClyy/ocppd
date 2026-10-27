@@ -58,5 +58,5 @@ pub enum ChargePointStatus {
 }
 
 #[cfg(test)]
-#[path = "status.test.rs"]
+#[path = "availability.test.rs"]
 mod tests;

@@ -1,7 +1,7 @@
 use crate::api::intent::EvSpec;
 use crate::api::io::Input;
 use crate::fixtures::v16::fake_csms::{Csms, MINUTE, register};
-use crate::protocol::v16::messages::core::status::ChargePointStatus;
+use crate::protocol::v16::messages::availability::ChargePointStatus;
 use serde_json::{Value, json};
 
 fn three_minutes() -> Csms {
