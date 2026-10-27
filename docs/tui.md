@@ -71,7 +71,7 @@ line and `G` back to the newest.
 | `tab` | log: the selected station / all stations |
 | `q` | quit; the daemon and its stations keep running |
 | `Q` | stop the daemon and every station: `y` confirms |
-| `esc` / `?` | open / close the key help |
+| `esc` / `?` | open / close the key help; `j` / `k` scroll it on a short terminal |
 
 The TUI captures the mouse: the wheel scrolls the pane under it, a click
 focuses a pane and selects a row, a click on the selected row opens or closes
@@ -87,5 +87,8 @@ it, and dragging the divider resizes the panes. Hold Shift to select text.
 - **ocpp**, **vendor**, **model**, **phases**, **max A**, **connectors**,
   **csms**: an empty field keeps ocppd's default, shown in grey.
 
-`tab` / `⇧tab` move between fields, `enter` spawns, `esc` cancels. Passwords
-show as `•`.
+`tab` / `⇧tab` move between fields and `enter` spawns. `esc` switches to
+normal mode, vim style: `j` / `k` move between fields, `h` / `l` switch a
+choice, `gg` / `G` go to the first / last field, `i` or `a` types again,
+`enter` spawns, and `esc` or `q` cancels. Passwords show as `•`. On a small
+terminal the form shrinks to fit and scrolls to the focused field.

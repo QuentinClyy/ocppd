@@ -1,9 +1,11 @@
 package ui
 
 import (
+	"strings"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/charmbracelet/x/ansi"
 )
 
 func clickAt(m Model, x, y int) Model {
@@ -104,5 +106,18 @@ func Test_given_the_help_open_when_a_row_is_clicked_then_the_cursor_stays(t *tes
 
 	if m.cursor != 0 {
 		t.Fatalf("got %d", m.cursor)
+	}
+}
+
+func Test_given_a_wide_screen_when_the_divider_is_dragged_past_the_columns_then_every_row_meets_it(t *testing.T) {
+	m := expandAll(sized(collapsed(), 160, 30))
+	m = clickAt(m, m.fleetSize()-1, 10)
+
+	m = dragTo(m, 49, 10)
+
+	for index, line := range screen(m, 160, 30)[2:6] {
+		if at := strings.Index(line, "│"); ansi.StringWidth(line[:at]) != 49 {
+			t.Fatalf("row %d: divider at %d in %q", index, ansi.StringWidth(line[:at]), line)
+		}
 	}
 }

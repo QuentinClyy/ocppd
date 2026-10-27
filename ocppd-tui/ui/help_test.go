@@ -12,7 +12,7 @@ func Test_given_help_when_opened_then_the_stations_and_global_bindings_are_liste
 
 	m = press(m, "?")
 
-	text := ansi.Strip(strings.Join(screen(m, 80, 30), "\n"))
+	text := ansi.Strip(strings.Join(screen(m, 80, 40), "\n"))
 	for _, b := range bindingsFor(fleetPane) {
 		if !strings.Contains(text, b.keys) || !strings.Contains(text, b.help) {
 			t.Fatalf("missing %q %q in\n%s", b.keys, b.help, text)
@@ -41,7 +41,7 @@ func Test_given_any_width_when_the_key_bar_is_built_then_it_fits_and_ends_with_h
 }
 
 func Test_given_the_help_box_when_drawn_then_every_line_has_the_same_width(t *testing.T) {
-	lines := helpLines(fleetPane)
+	lines := box("keys", helpLines(fleetPane), helpWidth)
 
 	for _, line := range lines {
 		if ansi.StringWidth(line) != helpWidth {
@@ -66,5 +66,27 @@ func Test_given_the_log_focused_when_the_key_bar_is_built_then_it_has_no_driver_
 
 	if strings.Contains(bar, "plug") || !strings.Contains(bar, "j/k scroll") {
 		t.Fatalf("got %q", bar)
+	}
+}
+
+func Test_given_a_narrow_terminal_when_help_opens_then_the_box_fits_the_width(t *testing.T) {
+	m := press(sized(twoStations(), 40, 30), "?")
+
+	for _, line := range screen(m, 40, 30)[2:28] {
+		if strings.Contains(line, "│") && !strings.HasSuffix(strings.TrimRight(line, " "), "│") {
+			t.Fatalf("cut box line %q", line)
+		}
+	}
+}
+
+func Test_given_a_short_terminal_with_help_open_when_j_then_it_scrolls_to_later_keys(t *testing.T) {
+	m := press(sized(twoStations(), 80, 12), "?")
+	before := strings.Join(screen(m, 80, 12), "\n")
+
+	m = press(m, "j", "j", "j", "j", "j", "j", "j", "j", "j", "j", "j", "j", "j", "j", "j", "j", "j", "j", "j", "j", "j", "j", "j", "j", "j", "j", "j", "j", "j", "j")
+
+	after := strings.Join(screen(m, 80, 12), "\n")
+	if strings.Contains(before, "close this help") || !strings.Contains(after, "close this help") {
+		t.Fatalf("before\n%s\nafter\n%s", before, after)
 	}
 }

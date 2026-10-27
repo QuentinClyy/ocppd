@@ -16,8 +16,7 @@ func (m Model) key(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	case m.confirm != nil:
 		return m.confirmKey(key), nil
 	case m.help:
-		m.help = key != "esc" && key != "?" && key != "q"
-		return m, nil
+		return m.helpKey(key), nil
 	}
 	wasG := m.pendingG
 	m.pendingG = false
@@ -130,7 +129,12 @@ func (m Model) promptKey(msg tea.KeyPressMsg) Model {
 }
 
 func (m Model) formKey(msg tea.KeyPressMsg) Model {
-	if msg.String() == "esc" {
+	key := msg.String()
+	switch {
+	case key == "esc" && !m.form.normal:
+		m.form.normal = true
+		return m
+	case key == "esc" || key == "q" && m.form.normal:
 		m.form = nil
 		return m
 	}

@@ -26,6 +26,8 @@ type form struct {
 	connectors string
 	csms       string
 	focus      int
+	normal     bool
+	pendingG   bool
 	err        string
 }
 
@@ -77,6 +79,9 @@ func (f *form) slots() []slot {
 func (f *form) edit(key tea.KeyPressMsg) bool {
 	slots := f.slots()
 	f.focus = min(f.focus, len(slots)-1)
+	if f.normal {
+		return f.normalKey(key.String(), slots)
+	}
 	current := slots[f.focus]
 	switch key.String() {
 	case "enter":
@@ -104,6 +109,40 @@ func (f *form) edit(key tea.KeyPressMsg) bool {
 	default:
 		if current.text != nil {
 			*current.text += key.Text
+		}
+	}
+	f.err = ""
+	return false
+}
+
+func (f *form) normalKey(key string, slots []slot) bool {
+	wasG := f.pendingG
+	f.pendingG = false
+	current := slots[f.focus]
+	switch key {
+	case "enter":
+		return true
+	case "j", "down", "tab":
+		f.focus = min(f.focus+1, len(slots)-1)
+	case "k", "up", "shift+tab":
+		f.focus = max(f.focus-1, 0)
+	case "g":
+		if wasG {
+			f.focus = 0
+		}
+		f.pendingG = !wasG
+	case "G":
+		f.focus = len(slots) - 1
+	case "h", "l", "left", "right":
+		if current.choice != nil {
+			current.choice.index = (current.choice.index + 1) % len(current.choice.options)
+		}
+	case "i", "a":
+		f.normal = false
+	case "ctrl+n":
+		if f.isListed() {
+			f.stations = append(f.stations, credential{})
+			f.focus = 2*len(f.stations) - 1
 		}
 	}
 	f.err = ""

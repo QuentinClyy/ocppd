@@ -102,10 +102,10 @@ func Test_given_phases_that_are_not_a_number_when_spawned_then_an_error_names_th
 	}
 }
 
-func Test_given_the_spawn_form_when_esc_then_it_closes_without_sending(t *testing.T) {
+func Test_given_the_spawn_form_when_esc_twice_then_it_closes_without_sending(t *testing.T) {
 	m, sent := recording()
 
-	m = press(m, keys([]string{"n", "tab"}, typed("EVB1"), []string{"esc"})...)
+	m = press(m, keys([]string{"n", "tab"}, typed("EVB1"), []string{"esc", "esc"})...)
 
 	if m.form != nil || len(*sent) != 0 {
 		t.Fatalf("form %v, sent %v", m.form, *sent)
@@ -126,10 +126,86 @@ func Test_given_a_typed_password_when_the_form_is_drawn_then_only_dots_show(t *t
 func Test_given_the_form_when_drawn_then_every_line_has_the_same_width(t *testing.T) {
 	f := newForm()
 	f.err = "add at least one station id"
+	lines, _ := f.lines()
 
-	for _, line := range f.lines() {
+	for _, line := range box("spawn", lines, formWidth) {
 		if ansi.StringWidth(line) != formWidth {
 			t.Fatalf("got %d: %q", ansi.StringWidth(line), ansi.Strip(line))
 		}
+	}
+}
+
+func Test_given_the_spawn_form_when_esc_then_j_then_the_next_field_is_focused_and_nothing_typed(t *testing.T) {
+	m, _ := recording()
+
+	m = press(m, "n", "esc", "j")
+
+	if m.form == nil || m.form.focus != 1 || m.form.stations[0].id != "" {
+		t.Fatalf("got %+v", m.form)
+	}
+}
+
+func Test_given_normal_mode_when_q_then_the_form_closes(t *testing.T) {
+	m, _ := recording()
+
+	m = press(m, "n", "esc", "q")
+
+	if m.form != nil {
+		t.Fatalf("got %+v", m.form)
+	}
+}
+
+func Test_given_normal_mode_on_an_id_when_i_then_typing_fills_it(t *testing.T) {
+	m, sent := recording()
+
+	press(m, keys([]string{"n", "esc", "j", "i"}, typed("EVB1"), []string{"enter"})...)
+
+	want := `{"command":"spawn","ocpp":"1.6","stations":[{"id":"EVB1"}]}`
+	if len(*sent) != 1 || (*sent)[0] != want {
+		t.Fatalf("got %v", *sent)
+	}
+}
+
+func Test_given_normal_mode_on_the_stations_choice_when_l_then_prefix_mode(t *testing.T) {
+	m, _ := recording()
+
+	m = press(m, "n", "esc", "l")
+
+	if m.form.isListed() {
+		t.Fatal("still listed")
+	}
+}
+
+func Test_given_normal_mode_when_G_then_gg_then_the_last_then_the_first_field(t *testing.T) {
+	m, _ := recording()
+	m = press(m, "n", "esc")
+	last := len(m.form.slots()) - 1
+
+	bottom := press(m, "G").form.focus
+	top := press(m, "G", "g", "g").form.focus
+
+	if bottom != last || top != 0 {
+		t.Fatalf("got bottom %d (want %d), top %d", bottom, last, top)
+	}
+}
+
+func Test_given_normal_mode_when_enter_then_the_spawn_is_sent(t *testing.T) {
+	m, sent := recording()
+
+	press(m, keys([]string{"n", "tab"}, typed("A"), []string{"esc", "enter"})...)
+
+	if len(*sent) != 1 {
+		t.Fatalf("got %v", *sent)
+	}
+}
+
+func Test_given_a_short_terminal_when_the_last_field_is_focused_then_it_shows(t *testing.T) {
+	m, _ := recording()
+	m = press(sized(m, 80, 12), "n", "esc", "G")
+
+	text := strings.Join(screen(m, 80, 12), "\n")
+
+	if !strings.Contains(text, "csms") || strings.Contains(text, "stations ") {
+		t.Fatalf("got\n%s", text)
 	}
 }

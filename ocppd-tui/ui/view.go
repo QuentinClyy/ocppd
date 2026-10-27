@@ -29,9 +29,10 @@ func render(m Model) string {
 	var lines []string
 	switch {
 	case m.form != nil:
-		lines = centered(m.form.lines(), m.width, m.height-4)
+		fields, focused := m.form.lines()
+		lines = m.modal("spawn", fields, focused-m.modalRows()+1, formWidth)
 	case m.help:
-		lines = centered(helpLines(m.focus), m.width, m.height-4)
+		lines = m.modal("keys", helpLines(m.focus), m.helpTop, helpWidth)
 	default:
 		lines = m.body(m.layout(), rule)
 	}
@@ -40,11 +41,11 @@ func render(m Model) string {
 	case m.prompt != nil:
 		bar = m.prompt.view()
 	case m.form != nil:
-		bar = formBar()
+		bar = m.form.bar()
 	case m.confirm != nil:
 		bar = m.confirm.bar()
 	case m.help:
-		bar = " " + accent.Render("esc") + " close"
+		bar = " " + accent.Render("j/k") + " scroll  " + accent.Render("esc") + " close"
 	}
 	screen := append([]string{header, rule}, lines...)
 	screen = append(screen, rule, bar)

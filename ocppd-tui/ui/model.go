@@ -23,6 +23,7 @@ type Model struct {
 	byStation   bool
 	logOffset   int
 	help        bool
+	helpTop     int
 	focus       pane
 	zoomed      bool
 	dragging    bool

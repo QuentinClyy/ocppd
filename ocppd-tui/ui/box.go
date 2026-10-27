@@ -6,6 +6,8 @@ import (
 	"github.com/charmbracelet/x/ansi"
 )
 
+const minModalWidth = 16
+
 func box(title string, lines []string, width int) []string {
 	top := "┌─ " + bold.Render(title) + " " + strings.Repeat("─", max(width-5-ansi.StringWidth(title), 0)) + "┐"
 	framed := []string{top}
@@ -24,4 +26,15 @@ func centered(framed []string, width, height int) []string {
 		}
 	}
 	return lines
+}
+
+func (m Model) modal(title string, lines []string, top, width int) []string {
+	rows := m.modalRows()
+	top = min(max(top, 0), max(len(lines)-rows, 0))
+	framed := box(title, window(lines, top, rows), max(min(width, m.width-2), minModalWidth))
+	return centered(framed, m.width, m.height-4)
+}
+
+func (m Model) modalRows() int {
+	return max(m.height-6, 1)
 }

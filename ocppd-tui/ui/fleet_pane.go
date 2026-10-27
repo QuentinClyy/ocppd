@@ -20,6 +20,6 @@ func (m Model) fleetPane(a area) []string {
 		content[index] = " " + line
 	}
 	content = scrollbar(content, a.width, len(visible), m.fleetTop(), track)
-	title := pad(" "+m.title(fleetPane, fleetHeader(nameWidth)), a.width-1) + track
+	title := pad(ansi.Truncate(" "+m.title(fleetPane, fleetHeader(nameWidth)), a.width-1, ""), a.width-1) + track
 	return append([]string{title}, content...)
 }
