@@ -21,6 +21,9 @@ func (m Model) key(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	}
 	wasG := m.pendingG
 	m.pendingG = false
+	if direction, ok := focusKeys[key]; ok {
+		return m.focusToward(direction), nil
+	}
 	switch key {
 	case "q":
 		return m, tea.Quit
@@ -30,25 +33,51 @@ func (m Model) key(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		m.form = newForm()
 	case "Q":
 		m.confirm = stopping()
-	case "d":
-		if at, ok := m.target(); ok {
-			m.confirm = removal(at.station)
-		}
 	case "tab":
 		m.byStation = !m.byStation
 	case "ctrl+u":
 		m = m.scrollLog(m.logPage())
 	case "ctrl+d":
 		m = m.scrollLog(-m.logPage())
+	case "z":
+		m.zoomed = !m.zoomed
+	case "+":
+		m = m.grow(1)
+	case "-":
+		m = m.grow(-1)
+	case "=":
+		m.sideWidth, m.bottomRows = 0, 0
 	case "g":
 		if wasG {
-			return m.move("g"), nil
+			return m.paneKey("gg"), nil
 		}
 		m.pendingG = true
+	default:
+		return m.paneKey(key), nil
+	}
+	return m, nil
+}
+
+func (m Model) paneKey(key string) Model {
+	switch m.focus {
+	case fleetPane:
+		return m.fleetKey(key)
+	case logPane:
+		return m.logKey(key)
+	}
+	return m
+}
+
+func (m Model) fleetKey(key string) Model {
+	switch key {
+	case "d":
+		if at, ok := m.target(); ok {
+			m.confirm = removal(at.station)
+		}
 	case "a":
 		at, ok := m.target()
 		if ok && at.connector == 0 {
-			return m.move("l"), nil
+			return m.open()
 		}
 		if ok {
 			m.prompt = &prompt{at: at}
@@ -56,17 +85,31 @@ func (m Model) key(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	case "p", "s", "u", "f", "c", "x":
 		at, ok := m.target()
 		if !ok {
-			return m, nil
+			return m
 		}
 		line, ok := command(key, at)
 		if !ok {
-			return m.move("l"), nil
+			return m.open()
 		}
-		return m.sendLine(line), nil
+		return m.sendLine(line)
 	default:
-		return m.move(key), nil
+		return m.move(key)
 	}
-	return m, nil
+	return m
+}
+
+func (m Model) logKey(key string) Model {
+	switch key {
+	case "j", "down":
+		return m.scrollLog(-1)
+	case "k", "up":
+		return m.scrollLog(1)
+	case "gg":
+		return m.scrollLog(len(m.logLines()))
+	case "G":
+		m.logOffset = 0
+	}
+	return m
 }
 
 func (m Model) promptKey(msg tea.KeyPressMsg) Model {
@@ -101,25 +144,4 @@ func (m Model) formKey(msg tea.KeyPressMsg) Model {
 	}
 	m.form = nil
 	return m.sendLine(line)
-}
-
-func (m Model) wheel(msg tea.MouseWheelMsg) Model {
-	var older int
-	switch msg.Button {
-	case tea.MouseWheelUp:
-		older = wheelStep
-	case tea.MouseWheelDown:
-		older = -wheelStep
-	default:
-		return m
-	}
-	l := m.layout()
-	overLog := msg.Y >= l.logY-1
-	if l.wide {
-		overLog = msg.X >= l.split
-	}
-	if overLog {
-		return m.scrollLog(older)
-	}
-	return m.scrollFleet(-older)
 }

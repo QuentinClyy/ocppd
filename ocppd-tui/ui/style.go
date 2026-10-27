@@ -10,6 +10,7 @@ var (
 	accent      = lipgloss.NewStyle().Foreground(lipgloss.Color("#7aa2f7"))
 	bold        = lipgloss.NewStyle().Bold(true)
 	selected    = lipgloss.NewStyle().Background(lipgloss.Color("#23395b")).Foreground(lipgloss.Color("#d7dae0"))
+	idle        = lipgloss.NewStyle().Background(lipgloss.Color("#3a3f4b")).Foreground(lipgloss.Color("#d7dae0"))
 	cursorBlock = lipgloss.NewStyle().Background(lipgloss.Color("#d7dae0"))
 )
 

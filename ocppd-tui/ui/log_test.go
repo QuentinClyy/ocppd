@@ -110,7 +110,7 @@ func Test_given_a_mixed_log_when_not_filtered_then_every_line(t *testing.T) {
 
 func Test_given_a_long_log_when_the_wheel_scrolls_up_over_it_then_older_lines_by_three(t *testing.T) {
 	m := withLog(sized(manyStations(1), 80, 24), 50)
-	logY := m.layout().logY
+	logY, _ := content(m, logPane)
 
 	m = wheelAt(m, tea.MouseWheelUp, 10, logY, 1)
 
@@ -121,23 +121,24 @@ func Test_given_a_long_log_when_the_wheel_scrolls_up_over_it_then_older_lines_by
 
 func Test_given_a_long_log_when_the_wheel_scrolls_far_up_then_the_first_line_tops_a_full_pane(t *testing.T) {
 	m := withLog(sized(manyStations(1), 80, 24), 50)
-	l := m.layout()
+	logY, logRows := content(m, logPane)
 
-	m = wheelAt(m, tea.MouseWheelUp, 10, l.logY, 100)
+	m = wheelAt(m, tea.MouseWheelUp, 10, logY, 100)
 
-	if m.logOffset != 50-l.logRows {
-		t.Fatalf("got offset %d, want %d", m.logOffset, 50-l.logRows)
+	if m.logOffset != 50-logRows {
+		t.Fatalf("got offset %d, want %d", m.logOffset, 50-logRows)
 	}
 	lines := strings.Split(ansi.Strip(render(m)), "\n")
-	if !strings.HasPrefix(lines[l.logY], " line 0") || !strings.HasPrefix(lines[l.logY+l.logRows-1], fmt.Sprintf(" line %d", l.logRows-1)) {
-		t.Fatalf("got %q .. %q", lines[l.logY], lines[l.logY+l.logRows-1])
+	if !strings.HasPrefix(lines[logY], " line 0") || !strings.HasPrefix(lines[logY+logRows-1], fmt.Sprintf(" line %d", logRows-1)) {
+		t.Fatalf("got %q .. %q", lines[logY], lines[logY+logRows-1])
 	}
 }
 
 func Test_given_the_bottom_of_the_log_when_the_wheel_scrolls_down_then_it_stays_at_the_bottom(t *testing.T) {
 	m := withLog(sized(manyStations(1), 80, 24), 50)
+	logY, _ := content(m, logPane)
 
-	m = wheelAt(m, tea.MouseWheelDown, 10, m.layout().logY, 1)
+	m = wheelAt(m, tea.MouseWheelDown, 10, logY, 1)
 
 	if m.logOffset != 0 {
 		t.Fatalf("got %d", m.logOffset)
@@ -146,7 +147,8 @@ func Test_given_the_bottom_of_the_log_when_the_wheel_scrolls_down_then_it_stays_
 
 func Test_given_a_scrolled_up_log_when_a_line_arrives_then_the_view_stays_on_the_same_lines(t *testing.T) {
 	m := withLog(sized(manyStations(1), 80, 24), 50)
-	m = wheelAt(m, tea.MouseWheelUp, 10, m.layout().logY, 1)
+	logY, _ := content(m, logPane)
+	m = wheelAt(m, tea.MouseWheelUp, 10, logY, 1)
 
 	m = m.addLog(entry{text: "newest"})
 

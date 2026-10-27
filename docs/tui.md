@@ -39,19 +39,25 @@ reaches a daemon elsewhere, with `OCPPD_TOKEN` set.
 - **The log** shows every event, or only the selected station's with `tab`.
 - From 150 columns, the log sits beside the stations instead of under them.
 - A `▐` scrollbar shows on a pane that has more lines than fit.
+- One pane has the focus: its title is bold, and the other's is grey.
 
 ## Keys
 
-Driver keys act on the selected connector. On a station row, they act on its
-only connector, or open the station when it has several.
+Driver keys act on the selected connector, from the stations pane. On a
+station row, they act on its only connector, or open the station when it has
+several. In the log pane, `j` / `k` scroll a line, `gg` goes to the oldest
+line and `G` back to the newest.
 
 | Key | Action |
 |---|---|
 | `j` / `k` | next / previous row |
 | `enter` | open / close a station; on a connector, close its station |
-| `l` / `h` | open / close a station, vim style |
 | `gg` / `G` | first / last row |
 | `^d` / `^u` | scroll the log down / up; the mouse wheel scrolls the pane under it |
+| `^hjkl` | focus the pane left / below / above / right; `^←` `^↓` `^↑` `^→` too |
+| `+` / `-` | grow / shrink the focused pane |
+| `=` | reset the split |
+| `z` | zoom the focused pane, hiding the other; again to show both |
 | `p` | plug in an EV |
 | `a` | present an id tag: type it, `enter` sends, `esc` cancels |
 | `s` | stop the transaction |
@@ -66,8 +72,9 @@ only connector, or open the station when it has several.
 | `Q` | stop the daemon and every station: `y` confirms |
 | `esc` / `?` | open / close the key help |
 
-The TUI captures the mouse so the wheel scrolls its panes; hold Shift to select
-text.
+The TUI captures the mouse: the wheel scrolls the pane under it, a click
+focuses a pane and selects a row, a click on the selected row opens or closes
+it, and dragging the divider resizes the panes. Hold Shift to select text.
 
 ## Spawn form
 

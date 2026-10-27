@@ -12,9 +12,12 @@ type binding struct {
 var bindings = []binding{
 	{"move", "j / k", "next / previous row", ""},
 	{"move", "enter", "open / close station", "open"},
-	{"move", "l / h", "open / close station (vim)", ""},
 	{"move", "gg / G", "first / last row", ""},
 	{"move", "^d / ^u", "scroll log down / up (or wheel)", ""},
+	{"pane", "^hjkl", "focus the pane that way (or ^arrows)", ""},
+	{"pane", "+ / -", "grow / shrink the pane (or drag)", ""},
+	{"pane", "=", "reset the split", ""},
+	{"pane", "z", "zoom the pane / show both", ""},
 	{"driver", "p", "plug in an EV", "plug"},
 	{"driver", "a", "present an id tag", "auth"},
 	{"driver", "s", "stop the transaction", "stop tx"},
