@@ -1,11 +1,13 @@
 package ui
 
+import "github.com/QuentinClyy/ocppd/ocppd-tui/ui/draw"
+
 func (m Model) logPane(a area) []string {
 	height := max(a.height-1, 0)
 	logs := m.logLines()
 	offset := m.clampLog(m.logOffset)
 	top := max(len(logs)-height-offset, 0)
-	content := scrollbar(fill(tailLines(logs, height, offset), height), a.width, len(logs), top, " ")
+	content := draw.Scrollbar(draw.Fill(draw.TailLines(logs, height, offset), height), a.width, len(logs), top, " ")
 	return append([]string{m.logTitle()}, content...)
 }
 
@@ -15,7 +17,7 @@ func (m Model) logTitle() string {
 		station = "all stations"
 	}
 	if m.focus != logPane {
-		return dim.Render(" " + station + " · log")
+		return draw.Dim.Render(" " + station + " · log")
 	}
-	return " " + bold.Render(station) + dim.Render(" · log")
+	return " " + draw.Bold.Render(station) + draw.Dim.Render(" · log")
 }

@@ -1,6 +1,9 @@
-package ui
+package popup
 
-import tea "charm.land/bubbletea/v2"
+import (
+	tea "charm.land/bubbletea/v2"
+	"github.com/QuentinClyy/ocppd/ocppd-tui/ui/draw"
+)
 
 type choice struct {
 	options []string
@@ -8,23 +11,23 @@ type choice struct {
 }
 
 type credential struct {
-	id       string
-	password string
+	id       draw.Editor
+	password draw.Editor
 }
 
-type form struct {
+type Spawn struct {
 	listed     choice
 	stations   []credential
-	prefix     string
-	count      string
-	password   string
+	prefix     draw.Editor
+	count      draw.Editor
+	password   draw.Editor
 	ocpp       choice
-	vendor     string
-	model      string
-	phases     string
-	maxCurrent string
-	connectors string
-	csms       string
+	vendor     draw.Editor
+	model      draw.Editor
+	phases     draw.Editor
+	maxCurrent draw.Editor
+	connectors draw.Editor
+	csms       draw.Editor
 	focus      int
 	normal     bool
 	pendingG   bool
@@ -33,25 +36,45 @@ type form struct {
 
 type slot struct {
 	label  string
-	text   *string
+	text   *draw.Editor
 	choice *choice
 	hint   string
 	width  int
 }
 
-func newForm() *form {
-	return &form{
+func NewSpawn() *Spawn {
+	return &Spawn{
 		listed:   choice{options: []string{"list", "prefix + count"}},
 		stations: []credential{{}},
 		ocpp:     choice{options: []string{"1.6", "2.0.1"}},
 	}
 }
 
-func (f *form) isListed() bool {
+func (f *Spawn) Key(msg tea.KeyPressMsg) (string, bool) {
+	key := msg.String()
+	switch {
+	case key == "esc" && !f.normal:
+		f.normal = true
+		return "", false
+	case key == "esc" || key == "q" && f.normal:
+		return "", true
+	}
+	if !f.edit(msg) {
+		return "", false
+	}
+	line, err := f.line()
+	if err != nil {
+		f.err = err.Error()
+		return "", false
+	}
+	return line, true
+}
+
+func (f *Spawn) isListed() bool {
 	return f.listed.index == 0
 }
 
-func (f *form) slots() []slot {
+func (f *Spawn) slots() []slot {
 	slots := []slot{{label: "entry", choice: &f.listed}}
 	if f.isListed() {
 		for index := range f.stations {
@@ -76,7 +99,7 @@ func (f *form) slots() []slot {
 	)
 }
 
-func (f *form) edit(key tea.KeyPressMsg) bool {
+func (f *Spawn) edit(key tea.KeyPressMsg) bool {
 	slots := f.slots()
 	f.focus = min(f.focus, len(slots)-1)
 	if f.normal {
@@ -95,27 +118,22 @@ func (f *form) edit(key tea.KeyPressMsg) bool {
 			f.stations = append(f.stations, credential{})
 			f.focus = 2*len(f.stations) - 1
 		}
-	case "backspace":
-		if current.text != nil {
-			runes := []rune(*current.text)
-			*current.text = string(runes[:max(len(runes)-1, 0)])
-		}
 	case "space", "left", "right":
 		if current.choice != nil {
 			current.choice.index = (current.choice.index + 1) % len(current.choice.options)
-		} else if current.text != nil && key.Text != "" {
-			*current.text += key.Text
+		} else {
+			*current.text = current.text.Edit(key)
 		}
 	default:
 		if current.text != nil {
-			*current.text += key.Text
+			*current.text = current.text.Edit(key)
 		}
 	}
 	f.err = ""
 	return false
 }
 
-func (f *form) normalKey(key string, slots []slot) bool {
+func (f *Spawn) normalKey(key string, slots []slot) bool {
 	wasG := f.pendingG
 	f.pendingG = false
 	current := slots[f.focus]

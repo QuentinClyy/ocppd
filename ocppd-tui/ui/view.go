@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/QuentinClyy/ocppd/ocppd-tui/ui/draw"
 	"github.com/charmbracelet/x/ansi"
 )
 
@@ -14,27 +15,26 @@ const (
 )
 
 func render(m Model) string {
-	rule := " " + dim.Render(strings.Repeat("─", max(m.width-2, 0)))
+	rule := " " + draw.Dim.Render(strings.Repeat("─", max(m.width-2, 0)))
 	count := fmt.Sprintf("%d stations", len(m.fleet.Stations))
 	if len(m.fleet.Stations) == 1 {
 		count = "1 station"
 	}
-	right := dim.Render(count)
+	right := draw.Dim.Render(count)
 	if m.outdated() {
-		right = warn.Render("daemon "+m.daemon+" ≠ "+m.expected+" · Q restarts") + "  " + right
+		right = draw.Warn.Render("daemon "+m.daemon+" ≠ "+m.expected+" · Q restarts") + "  " + right
 	}
-	header := " " + bold.Render("ocppd") + "  " + dim.Render(m.csms)
+	header := " " + draw.Bold.Render("ocppd") + "  " + draw.Dim.Render(m.csms)
 	room := max(m.width-ansi.StringWidth(right)-2, 0)
-	header = pad(ansi.Truncate(header, room, "…"), room+1) + right
+	header = draw.Pad(ansi.Truncate(header, room, "…"), room+1) + right
 	var lines []string
 	switch {
 	case m.form != nil:
-		fields, focused := m.form.lines()
-		lines = m.modal(popup{title: bold.Render("spawn"), footer: m.form.footer(), lines: fields, top: focused - m.modalRows() + 1, width: formWidth})
+		lines = m.modal(m.form.Frame(m.modalRows()))
 	case m.details != nil:
-		lines = m.modal(m.detailsPopup())
+		lines = m.detailsFrame()
 	case m.help:
-		lines = m.modal(popup{title: bold.Render("keys"), lines: helpLines(m.focus), top: m.helpTop, width: helpWidth})
+		lines = m.modal(draw.Frame{Title: draw.Bold.Render("keys"), Lines: helpLines(m.focus), Top: m.helpTop, Width: helpWidth})
 	default:
 		lines = m.body(m.layout(), rule)
 	}
@@ -43,13 +43,13 @@ func render(m Model) string {
 	case m.prompt != nil:
 		bar = m.prompt.view()
 	case m.form != nil:
-		bar = m.form.bar()
+		bar = m.form.Bar()
 	case m.confirm != nil:
 		bar = m.confirm.bar()
 	case m.details != nil:
-		bar = m.details.bar()
+		bar = m.details.Bar()
 	case m.help:
-		bar = " " + accent.Render("j/k") + " scroll  " + accent.Render("esc") + " close"
+		bar = " " + draw.Accent.Render("j/k") + " scroll  " + draw.Accent.Render("esc") + " close"
 	}
 	screen := append([]string{header, rule}, lines...)
 	screen = append(screen, rule, bar)
@@ -99,7 +99,7 @@ func (m Model) paneLines(a area) []string {
 
 func (m Model) title(p pane, text string) string {
 	if m.focus == p {
-		return bold.Render(text)
+		return draw.Bold.Render(text)
 	}
-	return dim.Render(text)
+	return draw.Dim.Render(text)
 }

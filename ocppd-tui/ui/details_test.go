@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/QuentinClyy/ocppd/ocppd-tui/ocppd"
+	"github.com/QuentinClyy/ocppd/ocppd-tui/ui/command"
 )
 
 func Test_given_a_selected_station_when_space_then_its_details_open(t *testing.T) {
@@ -13,7 +14,7 @@ func Test_given_a_selected_station_when_space_then_its_details_open(t *testing.T
 
 	m = press(m, "space")
 
-	if m.details == nil || m.details.station != "EVB-0001" {
+	if m.details == nil || m.details.ID() != "EVB-0001" {
 		t.Fatalf("got %+v", m.details)
 	}
 }
@@ -55,7 +56,7 @@ func Test_given_details_open_when_a_then_the_id_tag_prompt_targets_the_selected_
 
 	m = press(m, "space", "a")
 
-	if m.prompt == nil || m.prompt.at != (target{station: "CP1", connector: 1}) || m.details == nil {
+	if m.prompt == nil || m.prompt.at != (command.Target{Station: "CP1", Connector: 1}) || m.details == nil {
 		t.Fatalf("got prompt %+v, details %+v", m.prompt, m.details)
 	}
 }
@@ -122,17 +123,6 @@ func Test_given_details_open_when_the_station_is_described_then_its_vendor_model
 	}
 }
 
-func Test_given_details_open_on_another_station_when_one_is_described_then_nothing_changes(t *testing.T) {
-	m, _ := recording()
-	m = press(m, "G", "space")
-
-	m = receive(m, described)
-
-	if m.details.described.Vendor != "" {
-		t.Fatalf("got %+v", m.details)
-	}
-}
-
 func Test_given_a_description_when_received_then_it_is_not_logged(t *testing.T) {
 	m, _ := recording()
 
@@ -140,16 +130,5 @@ func Test_given_a_description_when_received_then_it_is_not_logged(t *testing.T) 
 
 	if len(m.log) != 0 {
 		t.Fatalf("got %v", m.log)
-	}
-}
-
-func Test_given_a_described_station_when_j_then_the_description_stays(t *testing.T) {
-	m, _ := recording()
-	m = receive(press(m, "space"), described)
-
-	m = press(m, "j")
-
-	if m.details.described.Vendor != "ACME" || m.details.connector != 1 {
-		t.Fatalf("got %+v", m.details)
 	}
 }

@@ -1,6 +1,10 @@
 package ui
 
-import "github.com/QuentinClyy/ocppd/ocppd-tui/fleet"
+import (
+	"github.com/QuentinClyy/ocppd/ocppd-tui/fleet"
+	"github.com/QuentinClyy/ocppd/ocppd-tui/ui/command"
+	"github.com/QuentinClyy/ocppd/ocppd-tui/ui/draw"
+)
 
 const stationRow = -1
 
@@ -73,25 +77,25 @@ func (m Model) open() Model {
 	return m
 }
 
-func (m Model) target() (target, bool) {
+func (m Model) target() (command.Target, bool) {
 	r, ok := m.selected()
 	if !ok {
-		return target{}, false
+		return command.Target{}, false
 	}
 	s := m.fleet.Stations[r.station]
-	at := target{station: s.ID}
+	at := command.Target{Station: s.ID}
 	switch {
 	case r.connector != stationRow:
-		at.connector = s.Connectors[r.connector].ID
+		at.Connector = s.Connectors[r.connector].ID
 	case len(s.Connectors) == 1:
-		at.connector = s.Connectors[0].ID
+		at.Connector = s.Connectors[0].ID
 	}
 	return at, true
 }
 
 func (m Model) fleetTop() int {
 	total := len(rows(m.fleet, m.expanded))
-	return follow(m.fleetScroll, min(m.cursor, max(total-1, 0)), m.paneRows(fleetPane), total)
+	return draw.Follow(m.fleetScroll, min(m.cursor, max(total-1, 0)), m.paneRows(fleetPane), total)
 }
 
 func (m Model) scrollFleet(lines int) Model {

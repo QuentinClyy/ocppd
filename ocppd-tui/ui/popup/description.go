@@ -1,9 +1,11 @@
-package ui
+package popup
 
 import (
 	"encoding/json"
 	"slices"
 	"strings"
+
+	"github.com/QuentinClyy/ocppd/ocppd-tui/ui/command"
 )
 
 type setting struct {
@@ -51,35 +53,37 @@ func (d description) with(key, value string) (description, bool) {
 	return d, true
 }
 
-func (m Model) track(line string) Model {
-	var c change
-	if m.details == nil || json.Unmarshal([]byte(line), &c) != nil || c.Station != m.details.station {
-		return m
+func IsDescription(line string) bool {
+	_, ok := parseDescription(line)
+	return ok
+}
+
+func (p Station) Observe(line string) (Station, []string) {
+	if d, ok := parseDescription(line); ok {
+		if d.Station == p.id {
+			p.described = d
+		}
+		return p, nil
 	}
-	next := *m.details
+	var c change
+	if json.Unmarshal([]byte(line), &c) != nil || c.Station != p.id {
+		return p, nil
+	}
 	switch c.Kind {
 	case "intent_rejected":
-		if c.Connector != nil {
-			return m
+		if c.Connector == nil {
+			p.config.err = c.Reason
 		}
-		next.config.err = c.Reason
 	case "configuration_changed", "variable_changed":
 		key := c.Key
 		if c.Kind == "variable_changed" {
 			key = c.Component + "." + c.Variable
 		}
-		described, found := next.described.with(key, c.Value)
+		described, found := p.described.with(key, c.Value)
 		if !found {
-			return m.sendLine(describeLine(c.Station))
+			return p, []string{command.Describe(c.Station)}
 		}
-		next.described, next.config.err = described, ""
-	default:
-		return m
+		p.described, p.config.err = described, ""
 	}
-	m.details = &next
-	return m
-}
-
-func describeLine(station string) string {
-	return encode(map[string]any{"command": "describe", "station": station})
+	return p, nil
 }

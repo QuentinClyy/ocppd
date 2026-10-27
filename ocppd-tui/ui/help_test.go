@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/QuentinClyy/ocppd/ocppd-tui/ui/draw"
 	"github.com/charmbracelet/x/ansi"
 )
 
@@ -41,7 +42,7 @@ func Test_given_any_width_when_the_key_bar_is_built_then_it_fits_and_ends_with_h
 }
 
 func Test_given_the_help_box_when_drawn_then_every_line_has_the_same_width(t *testing.T) {
-	lines := box(bold.Render("keys"), "", helpLines(fleetPane), helpWidth)
+	lines := draw.Box(draw.Bold.Render("keys"), "", helpLines(fleetPane), helpWidth)
 
 	for _, line := range lines {
 		if ansi.StringWidth(line) != helpWidth {

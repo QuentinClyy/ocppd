@@ -1,8 +1,8 @@
-package ui
+package draw
 
 import "github.com/charmbracelet/x/ansi"
 
-func follow(top, cursor, rows, total int) int {
+func Follow(top, cursor, rows, total int) int {
 	top = min(max(top, 0), max(total-rows, 0))
 	if cursor < top {
 		top = cursor
@@ -13,12 +13,12 @@ func follow(top, cursor, rows, total int) int {
 	return max(top, 0)
 }
 
-func window(lines []string, top, height int) []string {
+func Window(lines []string, top, height int) []string {
 	top = min(top, len(lines))
 	return lines[top:min(top+height, len(lines))]
 }
 
-func tailLines(lines []string, height, offset int) []string {
+func TailLines(lines []string, height, offset int) []string {
 	end := max(len(lines)-offset, 0)
 	shown := lines[max(end-max(height, 0), 0):end]
 	out := make([]string, len(shown))
@@ -28,14 +28,14 @@ func tailLines(lines []string, height, offset int) []string {
 	return out
 }
 
-func fill(lines []string, height int) []string {
+func Fill(lines []string, height int) []string {
 	for len(lines) < height {
 		lines = append(lines, "")
 	}
 	return lines
 }
 
-func thumb(total, rows, top int) (int, int) {
+func Thumb(total, rows, top int) (int, int) {
 	if total <= rows || rows == 0 {
 		return 0, 0
 	}
@@ -44,14 +44,14 @@ func thumb(total, rows, top int) (int, int) {
 	return start, start + size
 }
 
-func scrollbar(lines []string, width, total, top int, track string) []string {
-	start, end := thumb(total, len(lines), top)
+func Scrollbar(lines []string, width, total, top int, track string) []string {
+	start, end := Thumb(total, len(lines), top)
 	for index, line := range lines {
 		mark := track
 		if index >= start && index < end {
-			mark = accent.Render("▐")
+			mark = Accent.Render("▐")
 		}
-		lines[index] = pad(ansi.Truncate(line, width-1, ""), width-1) + mark
+		lines[index] = Pad(ansi.Truncate(line, width-1, ""), width-1) + mark
 	}
 	return lines
 }

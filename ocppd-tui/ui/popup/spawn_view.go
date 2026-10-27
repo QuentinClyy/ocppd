@@ -1,13 +1,22 @@
-package ui
+package popup
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/QuentinClyy/ocppd/ocppd-tui/ui/draw"
+)
 
 const (
 	formWidth  = 66
 	labelWidth = 12
 )
 
-func (f *form) lines() ([]string, int) {
+func (f *Spawn) Frame(rows int) draw.Frame {
+	lines, focused := f.lines()
+	return draw.Frame{Title: draw.Bold.Render("spawn"), Footer: f.footer(), Lines: lines, Top: focused - rows + 1, Width: formWidth}
+}
+
+func (f *Spawn) lines() ([]string, int) {
 	slots := f.slots()
 	f.focus = min(f.focus, len(slots)-1)
 	lines := []string{""}
@@ -25,7 +34,7 @@ func (f *form) lines() ([]string, int) {
 		case "id":
 			span = 2
 			if index == 1 {
-				lines = append(lines, "", pad("", 2+labelWidth+1)+dim.Render(pad("id", 20)+"password"))
+				lines = append(lines, "", draw.Pad("", 2+labelWidth+1)+draw.Dim.Render(draw.Pad("id", 20)+"password"))
 			}
 		case "phases":
 			span = 3
@@ -38,17 +47,17 @@ func (f *form) lines() ([]string, int) {
 			lines = append(lines, "")
 		}
 		if s.label == "id" && index+span < len(slots) && slots[index+span].label != "id" {
-			lines = append(lines, pad("", 2+labelWidth+1)+accent.Render("+")+dim.Render(" add station"))
+			lines = append(lines, draw.Pad("", 2+labelWidth+1)+draw.Accent.Render("+")+draw.Dim.Render(" add station"))
 		}
 		index += span - 1
 	}
 	return append(lines, ""), focused
 }
 
-func (f *form) row(slots []slot, index, span int) string {
+func (f *Spawn) row(slots []slot, index, span int) string {
 	marker := "  "
 	if f.focus >= index && f.focus < index+span {
-		marker = accent.Render("▌ ")
+		marker = draw.Accent.Render("▌ ")
 	}
 	name := slots[index].label
 	if name == "id" {
@@ -66,32 +75,32 @@ func (f *form) row(slots []slot, index, span int) string {
 	return line
 }
 
-func (f *form) label(name string, index, width int) string {
+func (f *Spawn) label(name string, index, width int) string {
 	if index == f.focus {
-		return accent.Render(pad(name, width))
+		return draw.Accent.Render(draw.Pad(name, width))
 	}
-	return dim.Render(pad(name, width))
+	return draw.Dim.Render(draw.Pad(name, width))
 }
 
-func (f *form) value(s slot, index int) string {
+func (f *Spawn) value(s slot, index int) string {
 	focused := index == f.focus
 	if s.choice != nil {
 		return segmented(*s.choice, focused)
 	}
 	if focused && !f.normal {
-		return editingField(*s.text, s.width)
+		return draw.EditingField(*s.text, s.width)
 	}
-	return textField(*s.text, s.hint, s.width)
+	return draw.TextField(s.text.String(), s.hint, s.width)
 }
 
-func (f *form) footer() string {
+func (f *Spawn) footer() string {
 	if f.normal {
-		return statusLine(normalMode, f.err)
+		return statusLine(draw.NormalMode, f.err)
 	}
-	return statusLine(insertMode, f.err)
+	return statusLine(draw.InsertMode, f.err)
 }
 
-func (f *form) bar() string {
+func (f *Spawn) Bar() string {
 	keys := [][2]string{{"tab", "next"}, {"⇧tab", "back"}, {"ctrl+n", "add station"}, {"enter", "spawn"}, {"esc", "normal mode"}}
 	if f.normal {
 		keys = [][2]string{{"j/k", "field"}, {"h/l", "choice"}, {"gg/G", "first/last"}, {"i", "edit"}, {"enter", "spawn"}, {"esc", "cancel"}}

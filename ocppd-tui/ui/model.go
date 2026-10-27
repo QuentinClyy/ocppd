@@ -6,6 +6,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/QuentinClyy/ocppd/ocppd-tui/fleet"
 	"github.com/QuentinClyy/ocppd/ocppd-tui/ocppd"
+	"github.com/QuentinClyy/ocppd/ocppd-tui/ui/popup"
 )
 
 type Model struct {
@@ -30,8 +31,8 @@ type Model struct {
 	sideWidth   int
 	bottomRows  int
 	prompt      *prompt
-	form        *form
-	details     *details
+	form        *popup.Spawn
+	details     *popup.Station
 	confirm     *confirmation
 	stopping    bool
 	lost        bool
@@ -85,10 +86,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.csms, m.daemon = g.Csms, g.Version
 			return m, nil
 		}
-		if d, ok := parseDescription(string(msg)); ok {
-			return m.describe(d), nil
+		m = m.observe(string(msg))
+		if popup.IsDescription(string(msg)) {
+			return m, nil
 		}
-		m = m.track(string(msg))
 		m.fleet.Apply(string(msg))
 		m = m.addLog(logEntry(string(msg), m.zone))
 	case ocppd.ClosedMsg:

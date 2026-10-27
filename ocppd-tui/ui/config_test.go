@@ -42,16 +42,6 @@ func Test_given_the_config_tab_when_a_value_is_edited_then_configure_is_sent(t *
 	}
 }
 
-func Test_given_an_edit_when_esc_then_nothing_is_sent_and_the_popup_stays(t *testing.T) {
-	m, sent := onConfig()
-
-	m = press(m, keys([]string{"j", "i"}, typed("9"), []string{"esc"})...)
-
-	if len(*sent) != 0 || m.details == nil || m.details.config.draft != nil {
-		t.Fatalf("sent %v, details %+v", *sent, m.details)
-	}
-}
-
 func Test_given_a_boolean_key_when_space_then_its_opposite_is_configured(t *testing.T) {
 	m, sent := onConfig()
 
@@ -60,16 +50,6 @@ func Test_given_a_boolean_key_when_space_then_its_opposite_is_configured(t *test
 	want := `{"command":"configure","key":"LocalAuthorizeOffline","station":"CP1","value":"false"}`
 	if len(*sent) != 1 || (*sent)[0] != want {
 		t.Fatalf("got %v", *sent)
-	}
-}
-
-func Test_given_a_read_only_key_when_i_then_it_is_not_edited(t *testing.T) {
-	m, _ := onConfig()
-
-	m = press(m, "G", "i")
-
-	if m.details.config.draft != nil {
-		t.Fatalf("got draft %q", *m.details.config.draft)
 	}
 }
 

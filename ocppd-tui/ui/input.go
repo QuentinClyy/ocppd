@@ -1,6 +1,10 @@
 package ui
 
-import tea "charm.land/bubbletea/v2"
+import (
+	tea "charm.land/bubbletea/v2"
+	"github.com/QuentinClyy/ocppd/ocppd-tui/ui/command"
+	"github.com/QuentinClyy/ocppd/ocppd-tui/ui/popup"
+)
 
 const wheelStep = 3
 
@@ -31,7 +35,7 @@ func (m Model) key(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	case "?":
 		m.help = true
 	case "n":
-		m.form = newForm()
+		m.form = popup.NewSpawn()
 	case "Q":
 		m.confirm = stopping()
 	case "tab":
@@ -75,11 +79,11 @@ func (m Model) fleetKey(key string) Model {
 		return m.openDetails()
 	case "d":
 		if at, ok := m.target(); ok {
-			m.confirm = removal(at.station)
+			m.confirm = removal(at.Station)
 		}
 	case "a":
 		at, ok := m.target()
-		if ok && at.connector == 0 {
+		if ok && at.Connector == 0 {
 			return m.open()
 		}
 		if ok {
@@ -90,7 +94,7 @@ func (m Model) fleetKey(key string) Model {
 		if !ok {
 			return m
 		}
-		line, ok := command(key, at)
+		line, ok := command.Driver(key, at)
 		if !ok {
 			return m.open()
 		}
@@ -126,30 +130,20 @@ func (m Model) promptKey(msg tea.KeyPressMsg) Model {
 		return m
 	}
 	m.prompt = nil
-	if len(edited.value) == 0 {
+	if edited.value.String() == "" {
 		return m
 	}
-	return m.sendLine(authorize(edited.at, string(edited.value)))
+	return m.sendLine(command.Authorize(edited.at, edited.value.String()))
 }
 
 func (m Model) formKey(msg tea.KeyPressMsg) Model {
-	key := msg.String()
-	switch {
-	case key == "esc" && !m.form.normal:
-		m.form.normal = true
-		return m
-	case key == "esc" || key == "q" && m.form.normal:
-		m.form = nil
-		return m
-	}
-	if !m.form.edit(msg) {
-		return m
-	}
-	line, err := m.form.line()
-	if err != nil {
-		m.form.err = err.Error()
+	line, closed := m.form.Key(msg)
+	if !closed {
 		return m
 	}
 	m.form = nil
+	if line == "" {
+		return m
+	}
 	return m.sendLine(line)
 }

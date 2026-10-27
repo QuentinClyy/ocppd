@@ -8,6 +8,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/QuentinClyy/ocppd/ocppd-tui/ui/draw"
 	"github.com/charmbracelet/x/ansi"
 )
 
@@ -76,7 +77,7 @@ func Test_given_a_mixed_log_when_filtered_by_a_station_then_only_its_lines(t *te
 func Test_given_an_offset_when_the_tail_is_taken_then_older_lines_show(t *testing.T) {
 	lines := []string{"a", "b", "c", "d", "e"}
 
-	shown := tailLines(lines, 2, 2)
+	shown := draw.TailLines(lines, 2, 2)
 
 	if strings.Join(shown, ",") != " b, c" {
 		t.Fatalf("got %q", shown)

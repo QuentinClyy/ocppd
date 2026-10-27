@@ -1,23 +1,25 @@
-package ui
+package popup
 
 import (
 	"errors"
 	"strconv"
 	"strings"
+
+	"github.com/QuentinClyy/ocppd/ocppd-tui/ui/command"
 )
 
-func (f *form) line() (string, error) {
+func (f *Spawn) line() (string, error) {
 	fields := map[string]any{"command": "spawn", "ocpp": f.ocpp.options[f.ocpp.index]}
 	if f.isListed() {
 		var stations []map[string]string
 		for _, s := range f.stations {
-			id := strings.TrimSpace(s.id)
+			id := strings.TrimSpace(s.id.String())
 			if id == "" {
 				continue
 			}
 			entry := map[string]string{"id": id}
-			if s.password != "" {
-				entry["password"] = s.password
+			if password := s.password.String(); password != "" {
+				entry["password"] = password
 			}
 			stations = append(stations, entry)
 		}
@@ -26,16 +28,16 @@ func (f *form) line() (string, error) {
 		}
 		fields["stations"] = stations
 	} else {
-		count, err := whole(or(f.count, "1"))
+		count, err := whole(or(f.count.String(), "1"))
 		if err != nil || count < 1 {
 			return "", errors.New("count must be a whole number from 1")
 		}
-		fields["prefix"], fields["count"] = or(f.prefix, "CP"), count
-		if f.password != "" {
-			fields["password"] = f.password
+		fields["prefix"], fields["count"] = or(f.prefix.String(), "CP"), count
+		if password := f.password.String(); password != "" {
+			fields["password"] = password
 		}
 	}
-	for key, value := range map[string]string{"vendor": f.vendor, "model": f.model, "csms": f.csms} {
+	for key, value := range map[string]string{"vendor": f.vendor.String(), "model": f.model.String(), "csms": f.csms.String()} {
 		if text := strings.TrimSpace(value); text != "" {
 			fields[key] = text
 		}
@@ -44,9 +46,9 @@ func (f *form) line() (string, error) {
 		key, label, text string
 		isWhole          bool
 	}{
-		{"phases", "phases", f.phases, true},
-		{"max_current_a", "max A", f.maxCurrent, false},
-		{"connectors", "connectors", f.connectors, true},
+		{"phases", "phases", f.phases.String(), true},
+		{"max_current_a", "max A", f.maxCurrent.String(), false},
+		{"connectors", "connectors", f.connectors.String(), true},
 	}
 	for _, n := range numbers {
 		if strings.TrimSpace(n.text) == "" {
@@ -58,7 +60,7 @@ func (f *form) line() (string, error) {
 		}
 		fields[n.key] = value
 	}
-	return encode(fields), nil
+	return command.Encode(fields), nil
 }
 
 func parseNumber(text string, isWhole bool) (any, error) {
