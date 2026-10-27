@@ -48,6 +48,7 @@ use crate::protocol::v16::messages::smart_charging::{
     ClearChargingProfileRequest, ClearChargingProfileResponse, GetCompositeScheduleRequest,
     SetChargingProfileRequest, SetChargingProfileResponse,
 };
+use crate::wire::ci_string::CiString;
 use crate::wire::frame::Frame;
 use crate::wire::payload::{self, Violation};
 use serde::Serialize;
@@ -218,6 +219,29 @@ impl ChargePoint {
             }
         };
         out.push(Output::Send(frame));
+    }
+
+    pub(super) fn configure_locally(
+        &mut self,
+        out: &mut Vec<Output>,
+        now: u64,
+        key: &str,
+        value: &str,
+    ) {
+        let (Ok(name), Ok(text)) = (CiString::new(key), CiString::new(value)) else {
+            return self.reject(out, now, None, &format!("{key} refused: too long"));
+        };
+        let request = ChangeConfigurationRequest {
+            key: name,
+            value: text,
+        };
+        let status = self.change_configuration(out, now, &request).status;
+        if !matches!(
+            status,
+            ConfigurationStatus::Accepted | ConfigurationStatus::RebootRequired
+        ) {
+            self.reject(out, now, None, &format!("{key} refused ({status:?})"));
+        }
     }
 
     fn change_configuration(

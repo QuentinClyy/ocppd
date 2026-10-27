@@ -36,13 +36,20 @@ pub enum Intent {
     FailTransfer {
         stage: TransferStage,
     },
+    Configure {
+        key: String,
+        value: String,
+    },
 }
 
 impl Intent {
     pub fn connector(&self) -> Option<u32> {
         match self {
             Intent::Authorize { connector, .. } => *connector,
-            Intent::PowerCut | Intent::Shutdown | Intent::FailTransfer { .. } => None,
+            Intent::PowerCut
+            | Intent::Shutdown
+            | Intent::FailTransfer { .. }
+            | Intent::Configure { .. } => None,
             Intent::PlugIn { connector, .. }
             | Intent::Stop { connector }
             | Intent::Unplug { connector }

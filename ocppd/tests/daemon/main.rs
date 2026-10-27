@@ -79,6 +79,40 @@ async fn given_a_spawned_station_when_one_client_asks_to_describe_it_then_only_t
 }
 
 #[tokio::test]
+async fn given_a_spawned_station_when_a_client_configures_it_then_every_client_sees_the_change_and_describe_returns_it()
+ {
+    let daemon = daemon("configure", "ws://127.0.0.1:1").await;
+    let mut asking = connect(&daemon).await;
+    let mut other = connect(&daemon).await;
+    asking.until("daemon").await;
+    other.until("daemon").await;
+    asking
+        .send(r#"{"command":"spawn","stations":[{"id":"CP1"}]}"#)
+        .await;
+
+    asking
+        .send(r#"{"command":"configure","station":"CP1","key":"MeterValueSampleInterval","value":"15"}"#)
+        .await;
+
+    let changed = other.until("configuration_changed").await;
+    assert_eq!(
+        (changed["key"].as_str(), changed["value"].as_str()),
+        (Some("MeterValueSampleInterval"), Some("15"))
+    );
+    asking
+        .send(r#"{"command":"describe","station":"CP1"}"#)
+        .await;
+    let described = asking.until("station_described").await;
+    let interval = described["configuration"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|setting| setting["key"] == "MeterValueSampleInterval")
+        .unwrap();
+    assert_eq!(interval["value"], "15");
+}
+
+#[tokio::test]
 async fn given_no_such_station_when_described_then_the_asking_client_is_told_it_is_unknown() {
     let daemon = daemon("describe-unknown", "ws://127.0.0.1:1").await;
     let mut asking = connect(&daemon).await;

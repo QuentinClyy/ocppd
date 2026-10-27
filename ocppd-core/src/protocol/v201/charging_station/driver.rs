@@ -20,6 +20,9 @@ impl ChargingStation {
         if let Intent::FailTransfer { stage } = intent {
             return self.failing.add(stage);
         }
+        if let Intent::Configure { key, value } = &intent {
+            return self.configure_locally(out, now, key, value);
+        }
         let evse = intent.connector();
         let index = evse
             .and_then(|evse| evse.checked_sub(1))
@@ -72,7 +75,8 @@ impl ChargingStation {
             Intent::Authorize { .. }
             | Intent::PowerCut
             | Intent::Shutdown
-            | Intent::FailTransfer { .. } => {}
+            | Intent::FailTransfer { .. }
+            | Intent::Configure { .. } => {}
         }
     }
 }

@@ -50,6 +50,7 @@ echo '{"command":"spawn","prefix":"CS","count":10,"ocpp":"2.0.1"}' >&3
 | `{"command":"clear_fault","station":"CP1","connector":1}` | clear the fault and repair the lock |
 | `{"command":"power_cut","station":"CP1"}` | the power fails: transactions stop, the station goes down and boots again with its state |
 | `{"command":"fail_transfer","station":"CP1","stage":"download"}` | make the next firmware download fail; other stages are `signature`, `install` and `upload` (diagnostics or log) |
+| `{"command":"configure","station":"CP1","key":"HeartbeatInterval","value":"60"}` | change a setting while the station runs, with the same rules and effects as a change from the CSMS: a 1.6 key, or a 2.0.1 `Component.Variable`; the change shows as `configuration_changed` (1.6) or `variable_changed` (2.0.1) |
 
 `describe` answers only the client that asked, with the station's current
 configuration: 1.6 keys, or 2.0.1 variables named as in a spawn's

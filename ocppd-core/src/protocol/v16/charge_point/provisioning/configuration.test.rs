@@ -1,5 +1,5 @@
 use crate::api::event::LinkEvent;
-use crate::api::intent::EvSpec;
+use crate::api::intent::{EvSpec, Intent};
 use crate::api::io::Input;
 use crate::fixtures::v16::fake_csms::{Csms, MINUTE};
 use crate::protocol::v16::event::EventKind;
@@ -232,4 +232,73 @@ fn given_booted_charge_point_when_settings_listed_then_they_match_get_configurat
         })
         .collect();
     assert_eq!(Value::Array(listed), payload["configurationKey"]);
+}
+
+fn configure(key: &str, value: &str) -> Intent {
+    Intent::Configure {
+        key: key.into(),
+        value: value.into(),
+    }
+}
+
+#[test]
+fn given_booted_charge_point_when_configure_intent_then_the_value_changes_and_configuration_changed_is_emitted()
+ {
+    let mut csms = Csms::booted();
+
+    csms.intent(0, configure("MeterValueSampleInterval", "15"));
+
+    assert_eq!(value_of(&mut csms, "MeterValueSampleInterval"), "15");
+    assert!(csms.events.contains(&EventKind::ConfigurationChanged {
+        key: "MeterValueSampleInterval".into(),
+        value: "15".into(),
+    }));
+}
+
+#[test]
+fn given_booted_charge_point_when_configure_intent_on_a_read_only_key_then_intent_rejected() {
+    let mut csms = Csms::booted();
+
+    csms.intent(0, configure("NumberOfConnectors", "4"));
+
+    assert!(
+        csms.events
+            .contains(&EventKind::Link(LinkEvent::IntentRejected {
+                connector: None,
+                reason: "NumberOfConnectors refused (Rejected)".into(),
+            }))
+    );
+}
+
+#[test]
+fn given_booted_charge_point_when_configure_intent_on_an_unknown_key_then_intent_rejected() {
+    let mut csms = Csms::booted();
+
+    csms.intent(0, configure("NoSuchKey", "1"));
+
+    assert!(
+        csms.events
+            .contains(&EventKind::Link(LinkEvent::IntentRejected {
+                connector: None,
+                reason: "NoSuchKey refused (NotSupported)".into(),
+            }))
+    );
+}
+
+#[test]
+fn given_booted_charge_point_when_configure_intent_sets_the_authorization_key_then_its_value_is_not_emitted()
+ {
+    let mut csms = Csms::booted();
+
+    csms.intent(
+        0,
+        configure("AuthorizationKey", "00112233445566778899aabbccddeeff"),
+    );
+
+    assert!(
+        !csms
+            .events
+            .iter()
+            .any(|event| matches!(event, EventKind::ConfigurationChanged { .. }))
+    );
 }

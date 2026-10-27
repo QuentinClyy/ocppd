@@ -20,7 +20,8 @@ use crate::protocol::v201::messages::datatypes::component::{AttributeType, Evse}
 use crate::protocol::v201::messages::provisioning::report::Mutability;
 use crate::protocol::v201::messages::provisioning::variables::{
     GetVariableResult, GetVariableStatus, GetVariablesRequest, GetVariablesResponse,
-    SetVariableResult, SetVariableStatus, SetVariablesRequest, SetVariablesResponse,
+    SetVariableData, SetVariableResult, SetVariableStatus, SetVariablesRequest,
+    SetVariablesResponse,
 };
 use crate::wire::ci_string::CiString;
 use crate::wire::date_time::DateTime;
@@ -59,6 +60,42 @@ impl ChargingStation {
                 value: (entry.mutability != Mutability::WriteOnly).then(|| entry.value.clone()),
             })
             .collect()
+    }
+
+    pub(in crate::protocol::v201::charging_station) fn configure_locally(
+        &mut self,
+        out: &mut Vec<Output>,
+        now: u64,
+        key: &str,
+        value: &str,
+    ) {
+        let Some((component, variable)) = shortcut::parse(key) else {
+            return self.reject(
+                out,
+                now,
+                None,
+                &format!("{key} refused: not Component.Variable"),
+            );
+        };
+        let Ok(attribute_value) = CiString::new(value) else {
+            return self.reject(out, now, None, &format!("{key} refused: too long"));
+        };
+        let request = SetVariablesRequest {
+            set_variable_data: vec![SetVariableData {
+                attribute_type: None,
+                attribute_value,
+                component,
+                variable,
+            }],
+        };
+        let response = self.set_variables(out, now, request);
+        let status = response.set_variable_result[0].attribute_status;
+        if !matches!(
+            status,
+            SetVariableStatus::Accepted | SetVariableStatus::RebootRequired
+        ) {
+            self.reject(out, now, None, &format!("{key} refused ({status:?})"));
+        }
     }
 
     pub(in crate::protocol::v201::charging_station) fn get_variables(
