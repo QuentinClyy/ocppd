@@ -31,11 +31,11 @@ func render(m Model) string {
 	case m.form != nil:
 		lines = centered(m.form.lines(), m.width, m.height-4)
 	case m.help:
-		lines = centered(helpLines(), m.width, m.height-4)
+		lines = centered(helpLines(m.focus), m.width, m.height-4)
 	default:
 		lines = m.body(m.layout(), rule)
 	}
-	bar := keyBar(m.width)
+	bar := keyBar(m.width, m.focus)
 	switch {
 	case m.prompt != nil:
 		bar = m.prompt.view()

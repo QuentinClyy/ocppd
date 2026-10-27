@@ -30,7 +30,7 @@ reaches a daemon elsewhere, with `OCPPD_TOKEN` set.
  14:02:12  EVB-0001   transaction_started    connector=1 transaction_id=1042
  14:02:42  EVB-0001   meter_sample           connector=1 power_w=11000 soc=0.47
  ───────────────────────────────────────────────────────────────────────────────
- j/k move  enter open  p plug  a auth  s stop tx  u unplug  f fault  ? help
+ j/k move  enter open  p plug  a auth  s stop tx  u unplug  ^hjkl pane  ? help
 ```
 
 - **Stations** are listed by id, collapsed. Open one to see its connectors (a
@@ -39,7 +39,8 @@ reaches a daemon elsewhere, with `OCPPD_TOKEN` set.
 - **The log** shows every event, or only the selected station's with `tab`.
 - From 150 columns, the log sits beside the stations instead of under them.
 - A `▐` scrollbar shows on a pane that has more lines than fit.
-- One pane has the focus: its title is bold, and the other's is grey.
+- One pane has the focus: its title is bold, and the other's is grey. The key
+  bar and the help (`?`) show the focused pane's keys and the global ones.
 
 ## Keys
 

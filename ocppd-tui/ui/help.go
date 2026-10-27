@@ -1,13 +1,17 @@
 package ui
 
-import "charm.land/lipgloss/v2"
+import (
+	"strings"
+
+	"charm.land/lipgloss/v2"
+)
 
 const helpWidth = 58
 
-func helpLines() []string {
+func helpLines(p pane) []string {
 	var lines []string
 	group := ""
-	for _, b := range bindings {
+	for _, b := range bindingsFor(p) {
 		if b.group != group {
 			group = b.group
 			lines = append(lines, dim.Render(group))
@@ -17,11 +21,11 @@ func helpLines() []string {
 	return box("keys", lines, helpWidth)
 }
 
-func keyBar(width int) string {
-	items := []string{accent.Render("j/k") + " move"}
-	for _, b := range bindings {
+func keyBar(width int, p pane) string {
+	var items []string
+	for _, b := range bindingsFor(p) {
 		if b.bar != "" {
-			items = append(items, accent.Render(b.keys)+" "+b.bar)
+			items = append(items, accent.Render(strings.ReplaceAll(b.keys, " / ", "/"))+" "+b.bar)
 		}
 	}
 	help := accent.Render("?") + " help"
