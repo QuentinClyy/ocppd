@@ -14,9 +14,9 @@ func helpLines(p pane) []string {
 	for _, b := range bindingsFor(p) {
 		if b.group != group {
 			group = b.group
-			lines = append(lines, dim.Render(group))
+			lines = append(lines, " "+dim.Render(group))
 		}
-		lines = append(lines, "  "+accent.Render(pad(b.keys, 10))+b.help)
+		lines = append(lines, "   "+accent.Render(pad(b.keys, 10))+b.help)
 	}
 	return lines
 }

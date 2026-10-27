@@ -82,7 +82,7 @@ it, and dragging the divider resizes the panes. Hold Shift to select text.
 `n` opens a form that builds a spawn line (see
 [Configuration](configuration.md)):
 
-- **stations**: a list of ids, each with its own password (`ctrl+n` adds one),
+- **entry**: a list of ids, each with its own password (`ctrl+n` adds one),
   or a prefix and a count sharing one password. `←` / `→` switches.
 - **ocpp**, **vendor**, **model**, **phases**, **max A**, **connectors**,
   **csms**: an empty field keeps ocppd's default, shown in grey.
@@ -90,5 +90,6 @@ it, and dragging the divider resizes the panes. Hold Shift to select text.
 `tab` / `⇧tab` move between fields and `enter` spawns. `esc` switches to
 normal mode, vim style: `j` / `k` move between fields, `h` / `l` switch a
 choice, `gg` / `G` go to the first / last field, `i` or `a` types again,
-`enter` spawns, and `esc` or `q` cancels. Passwords show as `•`. On a small
+`enter` spawns, and `esc` or `q` cancels. The box's bottom border shows the
+mode and, when the spawn is refused, why. Passwords show as typed. On a small
 terminal the form shrinks to fit and scrolls to the focused field.

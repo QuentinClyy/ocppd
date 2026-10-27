@@ -8,13 +8,25 @@ import (
 
 const minModalWidth = 16
 
-func box(title string, lines []string, width int) []string {
-	top := "┌─ " + bold.Render(title) + " " + strings.Repeat("─", max(width-5-ansi.StringWidth(title), 0)) + "┐"
-	framed := []string{top}
+type popup struct {
+	title  string
+	footer string
+	lines  []string
+	top    int
+	width  int
+}
+
+func box(title, footer string, lines []string, width int) []string {
+	framed := []string{dim.Render("╭─ ") + bold.Render(title) + dim.Render(" "+strings.Repeat("─", max(width-5-ansi.StringWidth(title), 0))+"╮")}
 	for _, line := range lines {
-		framed = append(framed, "│ "+pad(ansi.Truncate(line, width-4, ""), width-3)+"│")
+		framed = append(framed, dim.Render("│")+pad(ansi.Truncate(line, width-2, ""), width-2)+dim.Render("│"))
 	}
-	return append(framed, "└"+strings.Repeat("─", width-2)+"┘")
+	bottom := dim.Render("╰" + strings.Repeat("─", max(width-2, 0)) + "╯")
+	if footer != "" {
+		footer = ansi.Truncate(footer, max(width-6, 0), "…")
+		bottom = dim.Render("╰─ ") + footer + dim.Render(" "+strings.Repeat("─", max(width-5-ansi.StringWidth(footer), 0))+"╯")
+	}
+	return append(framed, bottom)
 }
 
 func centered(framed []string, width, height int) []string {
@@ -28,10 +40,10 @@ func centered(framed []string, width, height int) []string {
 	return lines
 }
 
-func (m Model) modal(title string, lines []string, top, width int) []string {
+func (m Model) modal(p popup) []string {
 	rows := m.modalRows()
-	top = min(max(top, 0), max(len(lines)-rows, 0))
-	framed := box(title, window(lines, top, rows), max(min(width, m.width-2), minModalWidth))
+	top := min(max(p.top, 0), max(len(p.lines)-rows, 0))
+	framed := box(p.title, p.footer, window(p.lines, top, rows), max(min(p.width, m.width-2), minModalWidth))
 	return centered(framed, m.width, m.height-4)
 }
 

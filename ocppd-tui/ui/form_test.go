@@ -112,13 +112,13 @@ func Test_given_the_spawn_form_when_esc_twice_then_it_closes_without_sending(t *
 	}
 }
 
-func Test_given_a_typed_password_when_the_form_is_drawn_then_only_dots_show(t *testing.T) {
+func Test_given_a_typed_password_when_the_form_is_drawn_then_it_shows_as_typed(t *testing.T) {
 	m, _ := recording()
 
 	m = press(m, keys([]string{"n", "tab", "tab"}, typed("secret"))...)
 
 	text := ansi.Strip(strings.Join(screen(m, 80, 30), "\n"))
-	if strings.Contains(text, "secret") || !strings.Contains(text, "••••••") {
+	if !strings.Contains(text, "secret") || strings.Contains(text, "•") {
 		t.Fatalf("got\n%s", text)
 	}
 }
@@ -128,7 +128,7 @@ func Test_given_the_form_when_drawn_then_every_line_has_the_same_width(t *testin
 	f.err = "add at least one station id"
 	lines, _ := f.lines()
 
-	for _, line := range box("spawn", lines, formWidth) {
+	for _, line := range box("spawn", f.footer(), lines, formWidth) {
 		if ansi.StringWidth(line) != formWidth {
 			t.Fatalf("got %d: %q", ansi.StringWidth(line), ansi.Strip(line))
 		}
@@ -206,6 +206,37 @@ func Test_given_a_short_terminal_when_the_last_field_is_focused_then_it_shows(t 
 	text := strings.Join(screen(m, 80, 12), "\n")
 
 	if !strings.Contains(text, "csms") || strings.Contains(text, "stations ") {
+		t.Fatalf("got\n%s", text)
+	}
+}
+
+func Test_given_an_invalid_field_when_spawned_then_the_error_sits_in_the_bottom_border(t *testing.T) {
+	m, _ := recording()
+
+	m = press(m, keys([]string{"n", "tab"}, typed("A"), []string{"esc", "G", "k", "k", "k", "i"}, typed("x"), []string{"enter"})...)
+
+	text := strings.Join(screen(m, 80, 30), "\n")
+	if !strings.Contains(text, "╰─  INSERT  ! phases must be a number") {
+		t.Fatalf("got\n%s", text)
+	}
+}
+
+func Test_given_normal_mode_when_drawn_then_the_bottom_border_says_normal(t *testing.T) {
+	m, _ := recording()
+
+	m = press(m, "n", "esc")
+
+	if text := strings.Join(screen(m, 80, 30), "\n"); !strings.Contains(text, "╰─  NORMAL ") {
+		t.Fatalf("got\n%s", text)
+	}
+}
+
+func Test_given_two_choices_when_drawn_then_they_are_one_segmented_control(t *testing.T) {
+	m, _ := recording()
+
+	m = press(m, "n")
+
+	if text := strings.Join(screen(m, 80, 30), "\n"); !strings.Contains(text, " list │ prefix + count ") || !strings.Contains(text, " 1.6 │ 2.0.1 ") {
 		t.Fatalf("got\n%s", text)
 	}
 }

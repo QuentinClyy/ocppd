@@ -35,8 +35,8 @@ type slot struct {
 	label  string
 	text   *string
 	choice *choice
-	secret bool
 	hint   string
+	width  int
 }
 
 func newForm() *form {
@@ -52,27 +52,27 @@ func (f *form) isListed() bool {
 }
 
 func (f *form) slots() []slot {
-	slots := []slot{{label: "stations", choice: &f.listed}}
+	slots := []slot{{label: "entry", choice: &f.listed}}
 	if f.isListed() {
 		for index := range f.stations {
 			slots = append(slots,
-				slot{label: "id", text: &f.stations[index].id},
-				slot{label: "password", text: &f.stations[index].password, secret: true})
+				slot{label: "id", text: &f.stations[index].id, width: 18},
+				slot{label: "password", text: &f.stations[index].password, width: 18})
 		}
 	} else {
 		slots = append(slots,
-			slot{label: "prefix", text: &f.prefix, hint: "CP"},
-			slot{label: "count", text: &f.count, hint: "1"},
-			slot{label: "password", text: &f.password, secret: true})
+			slot{label: "prefix", text: &f.prefix, hint: "CP", width: 24},
+			slot{label: "count", text: &f.count, hint: "1", width: 6},
+			slot{label: "password", text: &f.password, width: 24})
 	}
 	return append(slots,
 		slot{label: "ocpp", choice: &f.ocpp},
-		slot{label: "vendor", text: &f.vendor, hint: "ocppd"},
-		slot{label: "model", text: &f.model, hint: "sim"},
-		slot{label: "phases", text: &f.phases, hint: "3"},
-		slot{label: "max A", text: &f.maxCurrent, hint: "32"},
-		slot{label: "connectors", text: &f.connectors, hint: "1"},
-		slot{label: "csms", text: &f.csms, hint: "default (--csms)"},
+		slot{label: "vendor", text: &f.vendor, hint: "ocppd", width: 24},
+		slot{label: "model", text: &f.model, hint: "sim", width: 24},
+		slot{label: "phases", text: &f.phases, hint: "3", width: 6},
+		slot{label: "max A", text: &f.maxCurrent, hint: "32", width: 6},
+		slot{label: "connectors", text: &f.connectors, hint: "1", width: 6},
+		slot{label: "csms", text: &f.csms, hint: "default (--csms)", width: 46},
 	)
 }
 

@@ -30,9 +30,9 @@ func render(m Model) string {
 	switch {
 	case m.form != nil:
 		fields, focused := m.form.lines()
-		lines = m.modal("spawn", fields, focused-m.modalRows()+1, formWidth)
+		lines = m.modal(popup{title: "spawn", footer: m.form.footer(), lines: fields, top: focused - m.modalRows() + 1, width: formWidth})
 	case m.help:
-		lines = m.modal("keys", helpLines(m.focus), m.helpTop, helpWidth)
+		lines = m.modal(popup{title: "keys", lines: helpLines(m.focus), top: m.helpTop, width: helpWidth})
 	default:
 		lines = m.body(m.layout(), rule)
 	}
