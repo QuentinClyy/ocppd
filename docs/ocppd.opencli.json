@@ -2,7 +2,7 @@
   "opencli": "0.1",
   "info": {
     "title": "ocppd",
-    "version": "0.3.1",
+    "version": "0.4.0",
     "summary": "Simulate OCPP 1.6 and 2.0.1 charging stations against a CSMS",
     "description": "In a terminal, opens the ocppd-tui interface when it is installed. Otherwise, or with --json, reads commands from stdin, one JSON object per line, and writes events to stdout, one JSON object per line. Logs go to stderr.",
     "license": {
@@ -25,7 +25,10 @@
           {
             "name": "url",
             "required": true,
-            "arity": { "minimum": 1, "maximum": 1 }
+            "arity": {
+              "minimum": 1,
+              "maximum": 1
+            }
           }
         ]
       },
@@ -41,25 +44,41 @@
           {
             "name": "addr",
             "required": true,
-            "arity": { "minimum": 1, "maximum": 1 }
+            "arity": {
+              "minimum": 1,
+              "maximum": 1
+            }
           }
         ]
       },
       {
         "name": "--help",
-        "aliases": ["-h"],
+        "aliases": [
+          "-h"
+        ],
         "description": "Print the help and exit"
       },
       {
         "name": "--version",
-        "aliases": ["-V"],
+        "aliases": [
+          "-V"
+        ],
         "description": "Print the version and exit"
       }
     ],
     "exitCodes": [
-      { "code": 0, "description": "stdin closed and every station stopped" },
-      { "code": 1, "description": "Runtime error" },
-      { "code": 2, "description": "Usage error" }
+      {
+        "code": 0,
+        "description": "stdin closed and every station stopped"
+      },
+      {
+        "code": 1,
+        "description": "Runtime error"
+      },
+      {
+        "code": 2,
+        "description": "Usage error"
+      }
     ],
     "examples": [
       "ocppd --csms ws://localhost:8180/steve/websocket/CentralSystemService",
