@@ -1,4 +1,4 @@
-use crate::csms::link;
+use crate::csms::link::{self, Order};
 use crate::csms::protocol::{Protocol, Version};
 use crate::shell::identity::Identities;
 use crate::shell::model::Model;
@@ -10,6 +10,7 @@ use serde_json::Value;
 use std::collections::{BTreeMap, HashMap};
 use std::time::Duration;
 use tokio::sync::mpsc::{UnboundedSender, unbounded_channel};
+use tokio::sync::oneshot;
 use tokio::task::JoinHandle;
 use tokio::time::{Instant, timeout_at};
 
@@ -57,15 +58,21 @@ pub struct Remove {
     pub station: String,
 }
 
+#[derive(Deserialize)]
+pub struct Describe {
+    pub station: String,
+}
+
 pub enum Command {
     Shutdown,
     Spawn(Spawn),
     Remove(Remove),
+    Describe(Describe),
     Routed(Routed),
 }
 
 pub struct Running {
-    intents: UnboundedSender<Intent>,
+    orders: UnboundedSender<Order>,
     task: JoinHandle<()>,
 }
 
@@ -80,6 +87,7 @@ pub fn parse(line: &str) -> Result<Command, Rejection> {
         Some("shutdown") => Ok(Command::Shutdown),
         Some("spawn") => serde_json::from_value(value).map(Command::Spawn),
         Some("remove") => serde_json::from_value(value).map(Command::Remove),
+        Some("describe") => serde_json::from_value(value).map(Command::Describe),
         _ => serde_json::from_value(value).map(|routed: Routed| {
             Command::Routed(Routed {
                 name: name.clone().unwrap_or_default(),
@@ -100,12 +108,27 @@ pub fn remove(command: &Remove, stations: &mut Stations) -> Result<(), Rejection
 
 pub fn route(command: Routed, stations: &Stations) -> Result<(), Rejection> {
     let reject = |reason| Rejection::new(Some(&command.name), Some(&command.station), reason);
-    let Some(Running { intents, .. }) = stations.get(&command.station) else {
+    let Some(Running { orders, .. }) = stations.get(&command.station) else {
         return Err(reject("unknown station"));
     };
-    intents
-        .send(command.intent)
+    orders
+        .send(Order::Intent(command.intent))
         .map_err(|_| reject("station stopped"))
+}
+
+pub fn describe(
+    command: &Describe,
+    stations: &Stations,
+) -> Result<oneshot::Receiver<String>, Rejection> {
+    let reject = |reason| Rejection::new(Some("describe"), Some(&command.station), reason);
+    let Some(Running { orders, .. }) = stations.get(&command.station) else {
+        return Err(reject("unknown station"));
+    };
+    let (reply, answer) = oneshot::channel();
+    orders
+        .send(Order::Describe(reply))
+        .map_err(|_| reject("station stopped"))?;
+    Ok(answer)
 }
 
 pub fn spawn(
@@ -166,9 +189,9 @@ pub fn spawn(
                     rejections.push(reject("csms url too long".into()));
                     continue;
                 }
-                let (intents, receiver) = unbounded_channel();
+                let (orders, receiver) = unbounded_channel();
                 let task = tokio::spawn(link::run(protocol, url, events.clone(), receiver));
-                stations.insert(id, Running { intents, task });
+                stations.insert(id, Running { orders, task });
             }
             Err(err) => rejections.push(reject(err.to_string())),
         }
@@ -180,7 +203,7 @@ pub async fn stop(stations: Stations) {
     let deadline = Instant::now() + STOP_WITHIN;
     let mut tasks = Vec::new();
     for running in stations.into_values() {
-        let _ = running.intents.send(Intent::Shutdown);
+        let _ = running.orders.send(Order::Intent(Intent::Shutdown));
         tasks.push(running.task);
     }
     for mut task in tasks {

@@ -14,6 +14,7 @@ const (
 
 func (m Model) detailsLines() []string {
 	s, _ := m.detailed()
+	d := m.details.described
 	since := dim.Render("—")
 	if s.Since != 0 {
 		since = time.UnixMilli(s.Since).In(m.zone).Format("15:04:05")
@@ -23,6 +24,9 @@ func (m Model) detailsLines() []string {
 		section("STATION"),
 		reading("ocpp", dash(s.Ocpp)) + reading("link", statusStyle(s.Link).Render(dash(s.Link))),
 		reading("boot", statusStyle(s.Boot).Render(dash(s.Boot))) + reading("since", since),
+		reading("vendor", dash(d.Vendor)) + reading("model", dash(d.Model)),
+		reading("firmware", dash(d.FirmwareVersion)),
+		"  " + dim.Render(pad("csms", labelWidth)) + " " + dash(d.Csms),
 		"",
 		section("CONNECTORS"),
 	}

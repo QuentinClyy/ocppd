@@ -85,6 +85,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.csms, m.daemon = g.Csms, g.Version
 			return m, nil
 		}
+		if d, ok := parseDescription(string(msg)); ok {
+			return m.describe(d), nil
+		}
 		m.fleet.Apply(string(msg))
 		m = m.addLog(logEntry(string(msg), m.zone))
 	case ocppd.ClosedMsg:

@@ -3,6 +3,7 @@ use crate::shell::commands::{self, Command, Stations};
 use crate::shell::rejection::Rejection;
 use ocppd_core::api::event::Event;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
+use tokio::sync::oneshot;
 
 pub const SHUTDOWN: &str = r#"{"command":"shutdown"}"#;
 
@@ -73,6 +74,13 @@ async fn dispatch(
                 }
                 Err(rejection) => vec![rejection],
             },
+            Ok(Command::Describe(command)) => match commands::describe(&command, &stations) {
+                Ok(answer) => {
+                    tokio::spawn(forward(answer, client.clone(), command.station));
+                    Vec::new()
+                }
+                Err(rejection) => vec![rejection],
+            },
             Ok(Command::Routed(command)) => commands::route(command, &stations)
                 .err()
                 .into_iter()
@@ -84,6 +92,18 @@ async fn dispatch(
         }
     }
     Ended::Closed
+}
+
+async fn forward(answer: oneshot::Receiver<String>, client: Client, station: String) {
+    match answer.await {
+        Ok(line) => {
+            let _ = client.send(line);
+        }
+        Err(_) => reply(
+            &client,
+            &Rejection::new(Some("describe"), Some(&station), "station stopped"),
+        ),
+    }
 }
 
 fn reply(client: &Client, rejection: &Rejection) {

@@ -214,3 +214,22 @@ fn given_booted_charge_point_when_invalid_csms_calls_received_then_the_ocpp_j_4_
         );
     }
 }
+
+#[test]
+fn given_booted_charge_point_when_settings_listed_then_they_match_get_configuration() {
+    let mut csms = Csms::booted();
+    let payload = result(csms.call(0, "GetConfiguration", json!({})));
+
+    let settings = csms.charge_point.settings();
+
+    let listed: Vec<Value> = settings
+        .iter()
+        .map(|setting| match &setting.value {
+            Some(value) => {
+                json!({"key": setting.key, "readonly": setting.readonly, "value": value})
+            }
+            None => json!({"key": setting.key, "readonly": setting.readonly}),
+        })
+        .collect();
+    assert_eq!(Value::Array(listed), payload["configurationKey"]);
+}

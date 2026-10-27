@@ -5,6 +5,7 @@ import "github.com/QuentinClyy/ocppd/ocppd-tui/fleet"
 type details struct {
 	station   string
 	connector int
+	described description
 }
 
 func (m Model) openDetails() Model {
@@ -12,7 +13,18 @@ func (m Model) openDetails() Model {
 	if !ok {
 		return m
 	}
-	m.details = &details{station: m.fleet.Stations[r.station].ID, connector: max(r.connector, 0)}
+	id := m.fleet.Stations[r.station].ID
+	m.details = &details{station: id, connector: max(r.connector, 0)}
+	return m.sendLine(encode(map[string]any{"command": "describe", "station": id}))
+}
+
+func (m Model) describe(d description) Model {
+	if m.details == nil || m.details.station != d.Station {
+		return m
+	}
+	next := *m.details
+	next.described = d
+	m.details = &next
 	return m
 }
 
@@ -33,11 +45,14 @@ func (m Model) detailsKey(key string) Model {
 	}
 	last := max(len(s.Connectors)-1, 0)
 	selected := min(m.details.connector, last)
+	next := *m.details
 	switch key {
 	case "j", "down":
-		m.details = &details{station: s.ID, connector: min(selected+1, last)}
+		next.connector = min(selected+1, last)
+		m.details = &next
 	case "k", "up":
-		m.details = &details{station: s.ID, connector: max(selected-1, 0)}
+		next.connector = max(selected-1, 0)
+		m.details = &next
 	case "a":
 		if len(s.Connectors) > 0 {
 			m.prompt = &prompt{at: target{station: s.ID, connector: s.Connectors[selected].ID}}

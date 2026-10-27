@@ -1,4 +1,5 @@
 use crate::api::io::Output;
+use crate::api::setting::Setting;
 use crate::protocol::v201::charging_station::ChargingStation;
 use crate::protocol::v201::charging_station::device_model::shortcut;
 use crate::protocol::v201::charging_station::device_model::table::{
@@ -16,6 +17,7 @@ use crate::protocol::v201::charging_station::security::{
 use crate::protocol::v201::event::EventKind;
 use crate::protocol::v201::messages::availability::ConnectorStatus;
 use crate::protocol::v201::messages::datatypes::component::{AttributeType, Evse};
+use crate::protocol::v201::messages::provisioning::report::Mutability;
 use crate::protocol::v201::messages::provisioning::variables::{
     GetVariableResult, GetVariableStatus, GetVariablesRequest, GetVariablesResponse,
     SetVariableResult, SetVariableStatus, SetVariablesRequest, SetVariablesResponse,
@@ -43,6 +45,20 @@ impl ChargingStation {
                 self.device_model.set(&component, &variable, value) == SetVariableStatus::Accepted
             }
         }
+    }
+
+    pub fn settings(&mut self, now: u64) -> Vec<Setting> {
+        self.refresh_device_model(now);
+        self.device_model
+            .entries()
+            .iter()
+            .filter(|entry| entry.component.evse.is_none())
+            .map(|entry| Setting {
+                key: shortcut::name(&entry.component, &entry.variable),
+                readonly: entry.mutability == Mutability::ReadOnly,
+                value: (entry.mutability != Mutability::WriteOnly).then(|| entry.value.clone()),
+            })
+            .collect()
     }
 
     pub(in crate::protocol::v201::charging_station) fn get_variables(
@@ -188,3 +204,7 @@ impl ChargingStation {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "variables.test.rs"]
+mod tests;

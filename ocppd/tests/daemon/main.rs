@@ -4,8 +4,10 @@ use futures_util::StreamExt;
 use harness::{
     answer_until_closed, bounded, client, connect, daemon, fake_csms, ocpp16, tcp_daemon,
 };
+use std::time::Duration;
 use tokio::net::TcpStream;
 use tokio::process::Command;
+use tokio::time::timeout;
 
 #[tokio::test]
 async fn given_two_clients_when_they_connect_then_each_gets_the_daemon_line_first() {
@@ -40,6 +42,57 @@ async fn given_a_command_that_cannot_run_when_one_client_sends_it_then_only_that
         "unknown station"
     );
     assert!(other.quiet().await);
+}
+
+#[tokio::test]
+async fn given_a_spawned_station_when_one_client_asks_to_describe_it_then_only_that_client_gets_its_model_and_configuration()
+ {
+    let daemon = daemon("describe", "ws://127.0.0.1:1").await;
+    let mut asking = connect(&daemon).await;
+    let mut other = connect(&daemon).await;
+    asking.until("daemon").await;
+    other.until("daemon").await;
+    asking
+        .send(r#"{"command":"spawn","stations":[{"id":"CP1"}],"vendor":"ACME","configuration":{"HeartbeatInterval":"60"}}"#)
+        .await;
+
+    asking
+        .send(r#"{"command":"describe","station":"CP1"}"#)
+        .await;
+
+    let described = asking.until("station_described").await;
+    assert_eq!(described["vendor"], "ACME");
+    assert_eq!(described["ocpp"], "1.6");
+    assert_eq!(described["csms"], "ws://127.0.0.1:1/CP1");
+    let heartbeat = described["configuration"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|setting| setting["key"] == "HeartbeatInterval")
+        .unwrap();
+    assert_eq!(heartbeat["value"], "60");
+    let mut kinds = Vec::new();
+    while let Ok(Some(line)) = timeout(Duration::from_millis(300), other.next()).await {
+        kinds.push(line["kind"].clone());
+    }
+    assert!(!kinds.contains(&"station_described".into()));
+}
+
+#[tokio::test]
+async fn given_no_such_station_when_described_then_the_asking_client_is_told_it_is_unknown() {
+    let daemon = daemon("describe-unknown", "ws://127.0.0.1:1").await;
+    let mut asking = connect(&daemon).await;
+    asking.until("daemon").await;
+
+    asking
+        .send(r#"{"command":"describe","station":"NOPE"}"#)
+        .await;
+
+    let rejected = asking.until("command_rejected").await;
+    assert_eq!(
+        (rejected["command"].as_str(), rejected["reason"].as_str()),
+        (Some("describe"), Some("unknown station"))
+    );
 }
 
 #[tokio::test]

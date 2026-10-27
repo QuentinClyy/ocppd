@@ -1,3 +1,4 @@
+use crate::api::setting::Setting;
 use crate::protocol::v16::messages::datatypes::meter_value::Measurand;
 use crate::protocol::v16::messages::provisioning::configuration::{
     ChangeConfigurationRequest, ConfigurationStatus, GetConfigurationRequest,
@@ -163,6 +164,18 @@ impl Configuration {
             configuration_key: Some(known).filter(|known| !known.is_empty()),
             unknown_key: Some(unknown).filter(|unknown| !unknown.is_empty()),
         }
+    }
+
+    pub fn settings(&self) -> Vec<Setting> {
+        self.keys
+            .iter()
+            .map(Key::key_value)
+            .map(|key| Setting {
+                key: key.key.into(),
+                readonly: key.readonly,
+                value: key.value.map(String::from),
+            })
+            .collect()
     }
 
     pub fn change(&mut self, request: &ChangeConfigurationRequest) -> ConfigurationStatus {

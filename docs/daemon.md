@@ -49,9 +49,9 @@ it first, within 5 seconds:
    in time order. It is enough to rebuild the state of the fleet.
 3. Every event from then on.
 
-A command that cannot run is answered with `command_rejected`, to the client
-that sent it only. A client that falls more than 10,000 lines behind is
-disconnected.
+A command that cannot run is answered with `command_rejected`, and `describe`
+with `station_described`, to the client that sent it only. A client that falls
+more than 10,000 lines behind is disconnected.
 
 ## Stopping it
 

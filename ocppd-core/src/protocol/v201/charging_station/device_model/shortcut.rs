@@ -17,6 +17,18 @@ pub fn parse(text: &str) -> Option<(Component, Variable)> {
     Some((component, variable))
 }
 
+pub fn name(component: &Component, variable: &Variable) -> String {
+    let named = |name: &str, instance: Option<&CiString<50>>| match instance {
+        Some(instance) => format!("{name}[{}]", instance.as_str()),
+        None => name.to_owned(),
+    };
+    format!(
+        "{}.{}",
+        named(component.name.as_str(), component.instance.as_ref()),
+        named(variable.name.as_str(), variable.instance.as_ref())
+    )
+}
+
 fn named(text: &str) -> Option<(&str, Option<&str>)> {
     let (name, instance) = match text.split_once('[') {
         Some((name, rest)) => (name, Some(rest.strip_suffix(']')?)),
