@@ -60,6 +60,7 @@ line and `G` back to the newest.
 | `+` / `-` | grow / shrink the focused pane |
 | `=` | reset the split |
 | `z` | zoom the focused pane, hiding the other; again to show both |
+| `/` | filter the focused pane: stations by id or OCPP version (`2.0.1`), the log by text; `enter` keeps the filter, `esc` clears it |
 | `p` | plug in an EV |
 | `a` | present an id tag: type it, `enter` sends, `esc` cancels |
 | `s` | stop the transaction |

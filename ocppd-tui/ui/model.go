@@ -6,6 +6,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/QuentinClyy/ocppd/ocppd-tui/fleet"
 	"github.com/QuentinClyy/ocppd/ocppd-tui/ocppd"
+	"github.com/QuentinClyy/ocppd/ocppd-tui/ui/draw"
 	"github.com/QuentinClyy/ocppd/ocppd-tui/ui/popup"
 )
 
@@ -26,6 +27,8 @@ type Model struct {
 	help        bool
 	helpTop     int
 	focus       pane
+	filters     [paneCount]draw.Editor
+	filtering   bool
 	zoomed      bool
 	dragging    bool
 	sideWidth   int

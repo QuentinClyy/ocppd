@@ -11,7 +11,7 @@ func (m Model) fleetPane(a area) []string {
 	if a.x+a.width < m.width {
 		nameWidth, track = wideName, draw.Dim.Render("│")
 	}
-	visible := rows(m.fleet, m.expanded)
+	visible := m.visibleRows()
 	cursor := min(m.cursor, max(len(visible)-1, 0))
 	lines := fleetLines(m.fleet, visible, m.expanded, cursor, nameWidth)
 	if m.focus != fleetPane && cursor < len(lines) {

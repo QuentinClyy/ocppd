@@ -16,8 +16,12 @@ func (m Model) logTitle() string {
 	if station == "" {
 		station = "all stations"
 	}
-	if m.focus != logPane {
-		return draw.Dim.Render(" LOGS · " + station)
+	filter := ""
+	if text := m.filters[logPane].String(); text != "" {
+		filter = draw.Dim.Render(" · /" + text)
 	}
-	return " LOGS · " + draw.Bold.Render(station)
+	if m.focus != logPane {
+		return draw.Dim.Render(" LOGS · "+station) + filter
+	}
+	return " LOGS · " + draw.Bold.Render(station) + filter
 }

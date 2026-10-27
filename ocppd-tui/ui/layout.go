@@ -5,6 +5,7 @@ type pane int
 const (
 	fleetPane pane = iota
 	logPane
+	paneCount
 )
 
 const (
@@ -43,7 +44,7 @@ func (m Model) split() layout {
 		}}
 	}
 	available := max(body-3, 0)
-	fallback := min(len(rows(m.fleet, m.expanded)), max(available*2/3, 1), available)
+	fallback := min(len(m.visibleRows()), max(available*2/3, 1), available)
 	low := min(minPaneRows, available)
 	fleetRows := between(m.bottomRows, fallback, low, max(available-minPaneRows, low))
 	return layout{areas: []area{

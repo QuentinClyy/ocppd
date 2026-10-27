@@ -43,7 +43,7 @@ func (m Model) click(msg tea.MouseClickMsg) Model {
 }
 
 func (m Model) clickRow(index int) Model {
-	total := len(rows(m.fleet, m.expanded))
+	total := len(m.visibleRows())
 	clicked := m.fleetTop() + index
 	switch {
 	case index < 0 || clicked >= total:
