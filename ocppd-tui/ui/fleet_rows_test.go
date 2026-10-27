@@ -93,7 +93,7 @@ func Test_given_new_stations_when_listed_then_one_collapsed_row_each(t *testing.
 	m := New(func(string) error { return nil })
 	m.fleet = twoStations().fleet
 
-	visible := rows(m.fleet, m.expanded)
+	visible := rows(m.fleet, m.expanded, "")
 
 	if len(visible) != 2 || visible[0] != (row{0, stationRow}) || visible[1] != (row{1, stationRow}) {
 		t.Fatalf("got %v", visible)
@@ -103,7 +103,7 @@ func Test_given_new_stations_when_listed_then_one_collapsed_row_each(t *testing.
 func Test_given_expanded_stations_when_listed_then_their_connectors_follow_them(t *testing.T) {
 	m := twoStations()
 
-	visible := rows(m.fleet, m.expanded)
+	visible := rows(m.fleet, m.expanded, "")
 
 	want := []row{{0, stationRow}, {0, 0}, {0, 1}, {1, stationRow}, {1, 0}}
 	if len(visible) != len(want) {

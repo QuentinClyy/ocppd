@@ -1,6 +1,8 @@
 package ui
 
 import (
+	"strings"
+
 	"github.com/QuentinClyy/ocppd/ocppd-tui/fleet"
 	"github.com/QuentinClyy/ocppd/ocppd-tui/ui/command"
 	"github.com/QuentinClyy/ocppd/ocppd-tui/ui/draw"
@@ -13,9 +15,12 @@ type row struct {
 	connector int
 }
 
-func rows(f fleet.Fleet, expanded map[string]bool) []row {
+func rows(f fleet.Fleet, expanded map[string]bool, filter string) []row {
 	var visible []row
 	for index, s := range f.Stations {
+		if !matches(s.ID+" "+s.Ocpp, filter) {
+			continue
+		}
 		visible = append(visible, row{index, stationRow})
 		if !expanded[s.ID] {
 			continue
@@ -27,8 +32,16 @@ func rows(f fleet.Fleet, expanded map[string]bool) []row {
 	return visible
 }
 
+func matches(text, filter string) bool {
+	return strings.Contains(strings.ToLower(text), strings.ToLower(filter))
+}
+
+func (m Model) visibleRows() []row {
+	return rows(m.fleet, m.expanded, m.filters[fleetPane].String())
+}
+
 func (m Model) selected() (row, bool) {
-	visible := rows(m.fleet, m.expanded)
+	visible := m.visibleRows()
 	if len(visible) == 0 {
 		return row{}, false
 	}
@@ -36,7 +49,7 @@ func (m Model) selected() (row, bool) {
 }
 
 func (m Model) move(key string) Model {
-	visible := rows(m.fleet, m.expanded)
+	visible := m.visibleRows()
 	if len(visible) == 0 {
 		return m
 	}
@@ -70,7 +83,7 @@ func (m Model) open() Model {
 	}
 	s := m.fleet.Stations[r.station]
 	if m.expanded[s.ID] && len(s.Connectors) > 0 {
-		m.cursor = min(m.cursor, len(rows(m.fleet, m.expanded))-1) + 1
+		m.cursor = min(m.cursor, len(m.visibleRows())-1) + 1
 	} else {
 		m.expanded[s.ID] = true
 	}
@@ -94,12 +107,12 @@ func (m Model) target() (command.Target, bool) {
 }
 
 func (m Model) fleetTop() int {
-	total := len(rows(m.fleet, m.expanded))
+	total := len(m.visibleRows())
 	return draw.Follow(m.fleetScroll, min(m.cursor, max(total-1, 0)), m.paneRows(fleetPane), total)
 }
 
 func (m Model) scrollFleet(lines int) Model {
-	total := len(rows(m.fleet, m.expanded))
+	total := len(m.visibleRows())
 	height := m.paneRows(fleetPane)
 	if total == 0 || height == 0 {
 		return m

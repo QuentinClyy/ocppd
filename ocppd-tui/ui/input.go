@@ -3,6 +3,7 @@ package ui
 import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/QuentinClyy/ocppd/ocppd-tui/ui/command"
+	"github.com/QuentinClyy/ocppd/ocppd-tui/ui/draw"
 	"github.com/QuentinClyy/ocppd/ocppd-tui/ui/popup"
 )
 
@@ -15,6 +16,8 @@ func (m Model) key(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return m, tea.Quit
 	case m.prompt != nil:
 		return m.promptKey(msg), nil
+	case m.filtering:
+		return m.filterKey(msg), nil
 	case m.form != nil:
 		return m.formKey(msg), nil
 	case m.confirm != nil:
@@ -44,6 +47,8 @@ func (m Model) key(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		m = m.scrollLog(m.logPage())
 	case "ctrl+d":
 		m = m.scrollLog(-m.logPage())
+	case "/":
+		m.filtering = true
 	case "z":
 		m.zoomed = !m.zoomed
 	case "+":
@@ -115,6 +120,18 @@ func (m Model) logKey(key string) Model {
 		return m.scrollLog(len(m.logLines()))
 	case "G":
 		m.logOffset = 0
+	}
+	return m
+}
+
+func (m Model) filterKey(msg tea.KeyPressMsg) Model {
+	switch msg.String() {
+	case "enter":
+		m.filtering = false
+	case "esc":
+		m.filters[m.focus], m.filtering = draw.Editor{}, false
+	default:
+		m.filters[m.focus] = m.filters[m.focus].Edit(msg)
 	}
 	return m
 }

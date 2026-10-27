@@ -9,18 +9,15 @@ import (
 )
 
 const (
-	wideWidth  = 150
-	narrowName = 24
-	wideName   = 20
+	wideWidth   = 150
+	narrowName  = 24
+	wideName    = 20
+	filterWidth = 40
 )
 
 func render(m Model) string {
 	rule := " " + draw.Dim.Render(strings.Repeat("─", max(m.width-2, 0)))
-	count := fmt.Sprintf("%d stations", len(m.fleet.Stations))
-	if len(m.fleet.Stations) == 1 {
-		count = "1 station"
-	}
-	right := draw.Dim.Render(count)
+	right := draw.Dim.Render(m.stationCount())
 	if m.outdated() {
 		right = draw.Warn.Render("daemon "+m.daemon+" ≠ "+m.expected+" · Q restarts") + "  " + right
 	}
@@ -42,6 +39,8 @@ func render(m Model) string {
 	switch {
 	case m.prompt != nil:
 		bar = m.prompt.view()
+	case m.filtering:
+		bar = " " + draw.Accent.Render("/") + " " + m.filters[m.focus].View(filterWidth) + "   " + draw.Accent.Render("enter") + " keep  " + draw.Accent.Render("esc") + " clear"
 	case m.form != nil:
 		bar = m.form.Bar()
 	case m.confirm != nil:
@@ -57,6 +56,24 @@ func render(m Model) string {
 		screen[index] = ansi.Truncate(line, m.width, "")
 	}
 	return strings.Join(screen, "\n")
+}
+
+func (m Model) stationCount() string {
+	count := fmt.Sprintf("%d stations", len(m.fleet.Stations))
+	if len(m.fleet.Stations) == 1 {
+		count = "1 station"
+	}
+	filter := m.filters[fleetPane].String()
+	if filter == "" {
+		return count
+	}
+	shown := 0
+	for _, r := range m.visibleRows() {
+		if r.connector == stationRow {
+			shown++
+		}
+	}
+	return fmt.Sprintf("%d of %s · /%s", shown, count, filter)
 }
 
 func (m Model) body(l layout, rule string) []string {

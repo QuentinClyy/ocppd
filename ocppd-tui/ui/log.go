@@ -68,19 +68,9 @@ func appendLog(log []entry, line entry) []entry {
 	return log
 }
 
-func filtered(log []entry, station string) []string {
-	var lines []string
-	for _, line := range log {
-		if station == "" || line.station == station {
-			lines = append(lines, line.line())
-		}
-	}
-	return lines
-}
-
 func (m Model) addLog(line entry) Model {
 	m.log = appendLog(m.log, line)
-	if m.logOffset > 0 && (m.logStation() == "" || m.logStation() == line.station) {
+	if m.logOffset > 0 && m.showsLog(line) {
 		m.logOffset++
 	}
 	return m
@@ -107,6 +97,17 @@ func (m Model) logStation() string {
 	return m.fleet.Stations[r.station].ID
 }
 
+func (m Model) showsLog(e entry) bool {
+	station := m.logStation()
+	return (station == "" || e.station == station) && matches(e.line(), m.filters[logPane].String())
+}
+
 func (m Model) logLines() []string {
-	return filtered(m.log, m.logStation())
+	var lines []string
+	for _, e := range m.log {
+		if m.showsLog(e) {
+			lines = append(lines, e.line())
+		}
+	}
+	return lines
 }

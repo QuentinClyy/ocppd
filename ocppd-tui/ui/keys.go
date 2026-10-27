@@ -35,6 +35,7 @@ var globalBindings = []binding{
 	{"panes", "+ / -", "grow / shrink the pane (or drag)", ""},
 	{"panes", "=", "reset the split", ""},
 	{"panes", "z", "zoom the pane / show both", "zoom"},
+	{"panes", "/", "filter the pane (stations: id or ocpp)", "filter"},
 	{"general", "^d / ^u", "scroll log down / up (or wheel)", ""},
 	{"general", "tab", "log: selected station / all", "log"},
 	{"general", "n", "spawn stations", "spawn"},

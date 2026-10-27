@@ -64,12 +64,13 @@ func Test_given_a_full_log_when_a_line_is_appended_then_the_oldest_is_dropped(t 
 	}
 }
 
-func Test_given_a_mixed_log_when_filtered_by_a_station_then_only_its_lines(t *testing.T) {
-	log := []entry{{station: "CP1", text: "a"}, {station: "CP2", text: "b"}, {text: "stderr"}, {station: "CP1", text: "c"}}
+func Test_given_a_mixed_log_when_filtered_by_the_selected_station_then_only_its_lines(t *testing.T) {
+	m, _ := recording()
+	m.log = []entry{{station: "CP1", text: "a"}, {station: "CP2", text: "b"}, {text: "stderr"}, {station: "CP1", text: "c"}}
 
-	lines := filtered(log, "CP1")
+	m = press(m, "tab")
 
-	if strings.Join(lines, ",") != "a,c" {
+	if lines := m.logLines(); strings.Join(lines, ",") != "a,c" {
 		t.Fatalf("got %v", lines)
 	}
 }
@@ -100,9 +101,10 @@ func Test_given_a_long_log_when_ctrl_u_then_ctrl_d_then_back_at_the_bottom(t *te
 }
 
 func Test_given_a_mixed_log_when_not_filtered_then_every_line(t *testing.T) {
-	log := []entry{{station: "CP1", text: "a"}, {text: "stderr"}}
+	m, _ := recording()
+	m.log = []entry{{station: "CP1", text: "a"}, {text: "stderr"}}
 
-	lines := filtered(log, "")
+	lines := m.logLines()
 
 	if strings.Join(lines, ",") != "a,stderr" {
 		t.Fatalf("got %v", lines)
