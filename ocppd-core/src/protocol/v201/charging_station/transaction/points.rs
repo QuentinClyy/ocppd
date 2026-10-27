@@ -1,7 +1,7 @@
 use super::Authorization;
 use crate::protocol::v201::charging_station::ChargingStation;
 use crate::protocol::v201::charging_station::device_model::table::TX_CTRLR;
-use crate::protocol::v201::messages::transactions::{ChargingState, StoppedReason, TriggerReason};
+use crate::protocol::v201::messages::transaction::{ChargingState, StoppedReason, TriggerReason};
 
 #[derive(Clone, Copy, PartialEq)]
 pub enum TxPoint {

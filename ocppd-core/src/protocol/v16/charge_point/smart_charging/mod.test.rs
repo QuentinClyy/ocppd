@@ -3,7 +3,7 @@ use crate::api::io::Input;
 use crate::fixtures::v16::charging_profiles::status;
 use crate::fixtures::v16::fake_csms::{Csms, MINUTE, authorize, register};
 use crate::protocol::v16::event::EventKind;
-use crate::protocol::v16::messages::core::status::ChargePointStatus;
+use crate::protocol::v16::messages::availability::ChargePointStatus;
 use serde_json::{Value, json};
 
 const EIGHT_AMPS_W: f64 = 8.0 * 230.0 * 3.0;

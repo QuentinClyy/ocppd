@@ -4,7 +4,7 @@ use crate::api::io::Input;
 use crate::fixtures::v16::fake_csms::{Csms, MINUTE};
 use crate::fixtures::v16::replies::status;
 use crate::protocol::v16::event::EventKind;
-use crate::protocol::v16::messages::core::status::ChargePointStatus;
+use crate::protocol::v16::messages::availability::ChargePointStatus;
 use crate::protocol::v16::messages::datatypes::id_tag::AuthorizationStatus;
 use serde_json::{Value, json};
 

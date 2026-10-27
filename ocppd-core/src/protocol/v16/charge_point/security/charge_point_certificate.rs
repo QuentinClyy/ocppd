@@ -3,7 +3,7 @@ use crate::api::io::Output;
 use crate::protocol::shared::x509::identity::{ClientCertificate, Identity};
 use crate::protocol::shared::x509::signing::{chain_fits, signing_request};
 use crate::protocol::v16::charge_point::ChargePoint;
-use crate::protocol::v16::charge_point::configuration::CPO_NAME;
+use crate::protocol::v16::charge_point::provisioning::configuration::CPO_NAME;
 use crate::protocol::v16::event::EventKind;
 use crate::protocol::v16::messages::datatypes::generic_status::GenericStatus;
 use crate::protocol::v16::messages::security::certificates::{

@@ -1,8 +1,8 @@
 use crate::protocol::v16::charge_point::ChargePoint;
-use crate::protocol::v16::charge_point::configuration::{
+use crate::protocol::v16::charge_point::provisioning::configuration::{
     AUTHORIZATION_KEY, SECURITY_PROFILE, hex, hex_encode,
 };
-use crate::protocol::v16::messages::core::configuration::{
+use crate::protocol::v16::messages::provisioning::configuration::{
     ChangeConfigurationRequest, ConfigurationStatus,
 };
 use crate::wire::ci_string::CiString;

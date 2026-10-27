@@ -3,7 +3,7 @@ pub(super) mod composite;
 
 use crate::api::io::Output;
 use crate::protocol::v16::charge_point::ChargePoint;
-use crate::protocol::v16::charge_point::configuration::{
+use crate::protocol::v16::charge_point::provisioning::configuration::{
     CHARGE_PROFILE_MAX_STACK_LEVEL, CHARGING_SCHEDULE_MAX_PERIODS, MAX_CHARGING_PROFILES_INSTALLED,
 };
 use crate::protocol::v16::charge_point::transaction::Transaction;

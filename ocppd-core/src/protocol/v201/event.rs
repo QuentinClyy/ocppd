@@ -7,7 +7,7 @@ use crate::protocol::v201::messages::firmware::FirmwareStatus;
 use crate::protocol::v201::messages::provisioning::boot::RegistrationStatus;
 use crate::protocol::v201::messages::provisioning::reset::ResetType;
 use crate::protocol::v201::messages::security::certificates::InstallCertificateUse;
-use crate::protocol::v201::messages::transactions::{TransactionEventType, TriggerReason};
+use crate::protocol::v201::messages::transaction::{TransactionEventType, TriggerReason};
 use serde::Serialize;
 
 #[derive(Debug, Clone, PartialEq, Serialize)]

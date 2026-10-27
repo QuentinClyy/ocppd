@@ -1,11 +1,11 @@
 use super::Transaction;
 use crate::api::io::Output;
 use crate::protocol::v16::charge_point::ChargePoint;
-use crate::protocol::v16::charge_point::configuration::CONNECTION_TIME_OUT;
+use crate::protocol::v16::charge_point::provisioning::configuration::CONNECTION_TIME_OUT;
 use crate::protocol::v16::event::EventKind;
-use crate::protocol::v16::messages::core::transaction::{AuthorizeRequest, AuthorizeResponse};
 use crate::protocol::v16::messages::datatypes::charging_profile::ChargingProfile;
 use crate::protocol::v16::messages::datatypes::id_tag::{AuthorizationStatus, IdToken};
+use crate::protocol::v16::messages::transaction::{AuthorizeRequest, AuthorizeResponse};
 use serde_json::{Value, json};
 
 pub struct Held {

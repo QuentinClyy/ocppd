@@ -2,7 +2,7 @@ use super::Transaction;
 use crate::api::intent::{EvSpec, Intent};
 use crate::api::io::Output;
 use crate::protocol::v16::charge_point::ChargePoint;
-use crate::protocol::v16::messages::core::transaction::{AuthorizeRequest, Reason};
+use crate::protocol::v16::messages::transaction::{AuthorizeRequest, Reason};
 use crate::wire::ci_string::CiString;
 use serde_json::json;
 

@@ -1,2 +1,2 @@
-pub(super) mod diagnostics;
-pub(super) mod firmware_update;
+pub(super) mod signed;
+pub(super) mod update;

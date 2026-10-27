@@ -12,7 +12,7 @@ use crate::protocol::v201::messages::remote_control::{
     RequestStopTransactionRequest, RequestStopTransactionResponse, UnlockConnectorRequest,
     UnlockConnectorResponse, UnlockStatus,
 };
-use crate::protocol::v201::messages::transactions::TriggerReason;
+use crate::protocol::v201::messages::transaction::TriggerReason;
 use crate::wire::ci_string::CiString;
 
 impl ChargingStation {

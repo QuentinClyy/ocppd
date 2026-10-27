@@ -1,7 +1,7 @@
 use crate::api::event::LinkEvent;
 use crate::api::io::Output;
 use crate::protocol::v16::charge_point::ChargePoint;
-use crate::protocol::v16::charge_point::configuration::{
+use crate::protocol::v16::charge_point::provisioning::configuration::{
     TRANSACTION_MESSAGE_ATTEMPTS, TRANSACTION_MESSAGE_RETRY_INTERVAL,
 };
 use crate::protocol::v16::event::EventKind;

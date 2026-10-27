@@ -7,7 +7,7 @@ use crate::protocol::v201::messages::provisioning::boot::BootReason;
 use crate::protocol::v201::messages::provisioning::reset::{
     ResetRequest, ResetResponse, ResetStatus, ResetType,
 };
-use crate::protocol::v201::messages::transactions::{StoppedReason, TriggerReason};
+use crate::protocol::v201::messages::transaction::{StoppedReason, TriggerReason};
 
 impl ChargingStation {
     pub(in crate::protocol::v201::charging_station) fn reset(

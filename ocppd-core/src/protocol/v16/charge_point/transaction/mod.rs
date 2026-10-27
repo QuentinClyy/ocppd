@@ -6,12 +6,12 @@ pub(super) mod retry;
 use crate::api::io::Output;
 use crate::protocol::v16::charge_point::ChargePoint;
 use crate::protocol::v16::event::EventKind;
-use crate::protocol::v16::messages::core::transaction::{
+use crate::protocol::v16::messages::datatypes::charging_profile::ChargingProfile;
+use crate::protocol::v16::messages::datatypes::id_tag::{AuthorizationStatus, IdTagInfo, IdToken};
+use crate::protocol::v16::messages::transaction::{
     AuthorizeResponse, Reason, StartTransactionRequest, StartTransactionResponse,
     StopTransactionRequest,
 };
-use crate::protocol::v16::messages::datatypes::charging_profile::ChargingProfile;
-use crate::protocol::v16::messages::datatypes::id_tag::{AuthorizationStatus, IdTagInfo, IdToken};
 use crate::wire::date_time::DateTime;
 use crate::wire::outbox::Call;
 use serde_json::{Value, json};

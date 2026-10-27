@@ -4,7 +4,7 @@ use crate::protocol::v201::messages::datatypes::meter_value::{
     Location, Measurand, MeterValue, Phase, ReadingContext, SampledValue, UnitOfMeasure,
 };
 use crate::protocol::v201::messages::meter_values::MeterValuesRequest;
-use crate::protocol::v201::messages::transactions::{TransactionEventType, TriggerReason};
+use crate::protocol::v201::messages::transaction::{TransactionEventType, TriggerReason};
 use crate::wire::ci_string::CiString;
 use crate::wire::date_time::DateTime;
 use serde_json::{Value, json};

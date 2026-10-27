@@ -159,3 +159,35 @@ func Test_given_a_tui_started_without_an_expected_version_when_rendered_then_no_
 		t.Fatalf("got %q", header)
 	}
 }
+
+func Test_given_a_shutdown_asked_for_when_the_connection_closes_then_it_quits_without_reporting_a_loss(t *testing.T) {
+	m, _ := recording()
+	m = press(m, "Q", "y")
+
+	next, cmd := m.Update(ocppd.ClosedMsg{})
+
+	if next.(Model).Lost() || cmd == nil {
+		t.Fatalf("lost %v, cmd %v", next.(Model).Lost(), cmd)
+	}
+}
+
+func Test_given_no_shutdown_when_the_connection_closes_then_it_quits_and_reports_the_loss(t *testing.T) {
+	m, _ := recording()
+
+	next, cmd := m.Update(ocppd.ClosedMsg{})
+
+	if !next.(Model).Lost() || cmd == nil {
+		t.Fatalf("lost %v, cmd %v", next.(Model).Lost(), cmd)
+	}
+}
+
+func Test_given_the_daemon_line_when_received_then_the_header_shows_its_url_and_the_log_skips_it(t *testing.T) {
+	m, _ := recording()
+
+	next, _ := m.Update(ocppd.EventMsg(`{"kind":"daemon","csms":"ws://steve/ocpp","version":"0.2.0"}`))
+
+	m = next.(Model)
+	if m.csms != "ws://steve/ocpp" || len(m.log) != 0 {
+		t.Fatalf("csms %q, log %v", m.csms, m.log)
+	}
+}

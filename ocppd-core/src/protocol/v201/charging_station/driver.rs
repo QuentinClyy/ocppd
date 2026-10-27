@@ -3,7 +3,7 @@ use super::device_model::table::{STOP_TX_ON_EV_SIDE_DISCONNECT, TX_CTRLR};
 use super::transaction::Authorization;
 use crate::api::intent::Intent;
 use crate::api::io::Output;
-use crate::protocol::v201::messages::transactions::TriggerReason;
+use crate::protocol::v201::messages::transaction::TriggerReason;
 use crate::station::connector::Fault;
 
 impl ChargingStation {

@@ -46,7 +46,7 @@ use crate::protocol::v201::messages::smart_charging::clear::ClearChargingProfile
 use crate::protocol::v201::messages::smart_charging::composite::GetCompositeScheduleRequest;
 use crate::protocol::v201::messages::smart_charging::report::GetChargingProfilesRequest;
 use crate::protocol::v201::messages::tariff_cost::CostUpdatedRequest;
-use crate::protocol::v201::messages::transactions::GetTransactionStatusRequest;
+use crate::protocol::v201::messages::transaction::GetTransactionStatusRequest;
 use crate::wire::frame::Frame;
 use crate::wire::payload::{self, Violation};
 use serde::Serialize;

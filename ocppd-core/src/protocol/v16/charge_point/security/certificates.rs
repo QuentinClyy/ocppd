@@ -2,7 +2,7 @@ use crate::api::io::Output;
 use crate::protocol::shared::x509::certificate::self_signed_root;
 use crate::protocol::shared::x509::hash::{self, Digest};
 use crate::protocol::v16::charge_point::ChargePoint;
-use crate::protocol::v16::charge_point::configuration::CERTIFICATE_STORE_MAX_LENGTH;
+use crate::protocol::v16::charge_point::provisioning::configuration::CERTIFICATE_STORE_MAX_LENGTH;
 use crate::protocol::v16::event::EventKind;
 use crate::protocol::v16::messages::security::certificates::{
     CertificateHashData, CertificateUse, DeleteCertificateRequest, DeleteCertificateResponse,

@@ -2,7 +2,7 @@ use crate::fixtures::v16::fake_csms::Csms;
 use crate::fixtures::v16::security::{KEY, result, security_events};
 use crate::fixtures::x509::authority::Authority;
 use crate::protocol::v16::event::EventKind;
-use crate::protocol::v16::messages::core::configuration::ConfigurationStatus;
+use crate::protocol::v16::messages::provisioning::configuration::ConfigurationStatus;
 use serde_json::json;
 
 fn keyed() -> Csms {

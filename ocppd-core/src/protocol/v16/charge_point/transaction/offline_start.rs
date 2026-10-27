@@ -3,8 +3,8 @@ use crate::api::event::LinkEvent;
 use crate::api::io::Output;
 use crate::protocol::v16::charge_point::ChargePoint;
 use crate::protocol::v16::event::EventKind;
-use crate::protocol::v16::messages::core::transaction::{Reason, StartTransactionResponse};
 use crate::protocol::v16::messages::datatypes::id_tag::AuthorizationStatus;
+use crate::protocol::v16::messages::transaction::{Reason, StartTransactionResponse};
 use crate::wire::frame::Frame;
 use serde_json::json;
 
