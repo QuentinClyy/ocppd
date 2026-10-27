@@ -17,6 +17,8 @@ func (m Model) key(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return m.confirmKey(key), nil
 	case m.help:
 		return m.helpKey(key), nil
+	case m.details != nil:
+		return m.detailsKey(key), nil
 	}
 	wasG := m.pendingG
 	m.pendingG = false
@@ -69,6 +71,8 @@ func (m Model) paneKey(key string) Model {
 
 func (m Model) fleetKey(key string) Model {
 	switch key {
+	case "space":
+		return m.openDetails()
 	case "d":
 		if at, ok := m.target(); ok {
 			m.confirm = removal(at.station)

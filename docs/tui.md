@@ -53,6 +53,7 @@ line and `G` back to the newest.
 |---|---|
 | `j` / `k` | next / previous row |
 | `enter` | open / close a station; on a connector, close its station |
+| `space` | station details (below) |
 | `gg` / `G` | first / last row |
 | `^d` / `^u` | scroll the log down / up; the mouse wheel scrolls the pane under it |
 | `^hjkl` | focus the pane left / below / above / right; `^←` `^↓` `^↑` `^→` too |
@@ -76,6 +77,14 @@ line and `G` back to the newest.
 The TUI captures the mouse: the wheel scrolls the pane under it, a click
 focuses a pane and selects a row, a click on the selected row opens or closes
 it, and dragging the divider resizes the panes. Hold Shift to select text.
+
+## Station details
+
+`space` opens a station's details: its OCPP version, link, boot status and
+when it connected, each connector's status, power, state of charge, meter
+reading and transaction, and the station's last three events. `j` / `k`
+pick a connector and the driver keys act on it; `esc`, `q` or `space`
+close the details.
 
 ## Spawn form
 

@@ -126,6 +126,10 @@ func (f *form) bar() string {
 	if f.normal {
 		keys = [][2]string{{"j/k", "field"}, {"h/l", "choice"}, {"gg/G", "first/last"}, {"i", "edit"}, {"enter", "spawn"}, {"esc", "cancel"}}
 	}
+	return keyHints(keys)
+}
+
+func keyHints(keys [][2]string) string {
 	var items []string
 	for _, key := range keys {
 		items = append(items, accent.Render(key[0])+" "+key[1])

@@ -21,7 +21,7 @@ func withLog(m Model, count int) Model {
 func Test_given_an_event_line_when_logged_then_time_station_kind_and_sorted_fields(t *testing.T) {
 	raw := `{"station":"CP1","at":1792893141250,"kind":"status_changed","status":"Charging","connector":1}`
 
-	line := logLine(raw, time.UTC)
+	line := logEntry(raw, time.UTC).line()
 
 	want := "01:52:21  CP1        status_changed         connector=1 status=Charging"
 	if line != want {
@@ -32,7 +32,7 @@ func Test_given_an_event_line_when_logged_then_time_station_kind_and_sorted_fiel
 func Test_given_a_nested_field_when_logged_then_it_shows_as_json(t *testing.T) {
 	raw := `{"station":"CP1","at":0,"kind":"intent_rejected","intent":{"command":"stop"}}`
 
-	line := logLine(raw, time.UTC)
+	line := logEntry(raw, time.UTC).line()
 
 	want := `00:00:00  CP1        intent_rejected        intent={"command":"stop"}`
 	if line != want {
@@ -43,7 +43,7 @@ func Test_given_a_nested_field_when_logged_then_it_shows_as_json(t *testing.T) {
 func Test_given_a_line_that_is_not_json_when_logged_then_kept_as_is(t *testing.T) {
 	raw := "not json"
 
-	line := logLine(raw, time.UTC)
+	line := logEntry(raw, time.UTC).line()
 
 	if line != raw {
 		t.Fatalf("got %q", line)
@@ -64,7 +64,7 @@ func Test_given_a_full_log_when_a_line_is_appended_then_the_oldest_is_dropped(t 
 }
 
 func Test_given_a_mixed_log_when_filtered_by_a_station_then_only_its_lines(t *testing.T) {
-	log := []entry{{"CP1", "a"}, {"CP2", "b"}, {"", "stderr"}, {"CP1", "c"}}
+	log := []entry{{station: "CP1", text: "a"}, {station: "CP2", text: "b"}, {text: "stderr"}, {station: "CP1", text: "c"}}
 
 	lines := filtered(log, "CP1")
 
@@ -99,7 +99,7 @@ func Test_given_a_long_log_when_ctrl_u_then_ctrl_d_then_back_at_the_bottom(t *te
 }
 
 func Test_given_a_mixed_log_when_not_filtered_then_every_line(t *testing.T) {
-	log := []entry{{"CP1", "a"}, {"", "stderr"}}
+	log := []entry{{station: "CP1", text: "a"}, {text: "stderr"}}
 
 	lines := filtered(log, "")
 

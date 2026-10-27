@@ -16,6 +16,7 @@ var paneBindings = map[pane][]binding{
 	fleetPane: {
 		{"stations", "j / k", "next / previous row", "move"},
 		{"stations", "enter", "open / close station", "open"},
+		{"stations", "space", "station details", "details"},
 		{"stations", "gg / G", "first / last row", ""},
 		{"stations", "d", "remove the station (dd: no question)", ""},
 		{"driver", "p", "plug in an EV", "plug"},

@@ -13,13 +13,28 @@ const logLimit = 10000
 
 type entry struct {
 	station string
+	clock   string
 	text    string
 }
 
-func logLine(raw string, zone *time.Location) string {
+func (e entry) line() string {
+	if e.clock == "" {
+		return e.text
+	}
+	return fmt.Sprintf("%s  %-10s %s", e.clock, e.station, e.text)
+}
+
+func (e entry) withoutStation() string {
+	if e.clock == "" {
+		return e.text
+	}
+	return e.clock + "  " + e.text
+}
+
+func logEntry(raw string, zone *time.Location) entry {
 	var event map[string]any
 	if err := json.Unmarshal([]byte(raw), &event); err != nil {
-		return raw
+		return entry{text: raw}
 	}
 	at, _ := event["at"].(float64)
 	station, _ := event["station"].(string)
@@ -31,7 +46,7 @@ func logLine(raw string, zone *time.Location) string {
 		}
 	}
 	clock := time.UnixMilli(int64(at)).In(zone).Format("15:04:05")
-	return fmt.Sprintf("%s  %-10s %-22s %s", clock, station, kind, strings.Join(fields, " "))
+	return entry{station: station, clock: clock, text: fmt.Sprintf("%-22s %s", kind, strings.Join(fields, " "))}
 }
 
 func text(value any) string {
@@ -57,7 +72,7 @@ func filtered(log []entry, station string) []string {
 	var lines []string
 	for _, line := range log {
 		if station == "" || line.station == station {
-			lines = append(lines, line.text)
+			lines = append(lines, line.line())
 		}
 	}
 	return lines
