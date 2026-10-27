@@ -123,7 +123,7 @@ cd ocppd-tui && gofmt -l . && go vet ./... && go test ./...
 The TUI is a Go module in `ocppd-tui/`, built on
 [Bubble Tea](https://github.com/charmbracelet/bubbletea). Rust unit tests sit
 next to the code they test, as `<file>.test.rs`, and Go tests as `<file>_test.go`. Test fixtures
-(a fake CSMS, a test certificate authority) live in `ocppd-core/tests/fixtures`.
+(a fake CSMS, a test certificate authority) live in `ocppd-core/src/fixtures`.
 The only integration tests, in `ocppd/tests`, run the binary.
 
 ## License
