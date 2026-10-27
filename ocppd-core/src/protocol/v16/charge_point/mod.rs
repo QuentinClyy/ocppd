@@ -14,6 +14,7 @@ mod transaction;
 
 use crate::api::event::{Event, Kind, LinkEvent};
 use crate::api::io::{Input, Output};
+use crate::api::setting::Setting;
 use crate::protocol::shared::file_transfer::FailingTransfers;
 use crate::protocol::v16::event::EventKind;
 use crate::protocol::v16::messages::availability::ChargePointStatus;
@@ -119,6 +120,10 @@ impl ChargePoint {
 
     pub fn station(&self) -> &Station {
         &self.station
+    }
+
+    pub fn settings(&self) -> Vec<Setting> {
+        self.configuration.settings()
     }
 
     pub fn next_deadline(&self) -> Option<u64> {

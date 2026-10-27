@@ -1,4 +1,5 @@
 use ocppd_core::api::io::{Input, Output};
+use ocppd_core::api::setting::Setting;
 use ocppd_core::protocol::shared::x509::identity::ClientCertificate;
 use ocppd_core::protocol::v16::charge_point::ChargePoint;
 use ocppd_core::protocol::v16::messages::provisioning::configuration::ConfigurationStatus;
@@ -6,6 +7,7 @@ use ocppd_core::protocol::v201::charging_station::ChargingStation;
 use ocppd_core::station::Station;
 use ocppd_core::wire::ci_string::TooLong;
 use serde::Deserialize;
+use serde_json::json;
 
 #[derive(Clone, Copy, Default, Deserialize)]
 pub enum Version {
@@ -81,6 +83,34 @@ impl Protocol {
         }
     }
 
+    pub fn settings(&mut self, now: u64) -> Vec<Setting> {
+        match self {
+            Protocol::V16(charge_point) => charge_point.settings(),
+            Protocol::V201(charging_station) => charging_station.settings(now),
+        }
+    }
+
+    pub fn description(&mut self, csms: &str, now: u64) -> String {
+        let ocpp = match self {
+            Protocol::V16(_) => "1.6",
+            Protocol::V201(_) => "2.0.1",
+        };
+        let configuration = self.settings(now);
+        let station = self.station();
+        json!({
+            "station": station.id,
+            "at": now,
+            "kind": "station_described",
+            "ocpp": ocpp,
+            "vendor": station.vendor,
+            "model": station.model,
+            "firmware_version": station.firmware_version,
+            "csms": csms,
+            "configuration": configuration,
+        })
+        .to_string()
+    }
+
     pub fn set_basic_auth_password(&mut self, password: &str) -> bool {
         match self {
             Protocol::V16(charge_point) => charge_point.set_basic_auth_password(password),
@@ -137,3 +167,7 @@ impl Protocol {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "protocol.test.rs"]
+mod tests;

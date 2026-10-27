@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
+	"github.com/QuentinClyy/ocppd/ocppd-tui/ui/draw"
 )
 
 const helpWidth = 58
@@ -14,9 +15,9 @@ func helpLines(p pane) []string {
 	for _, b := range bindingsFor(p) {
 		if b.group != group {
 			group = b.group
-			lines = append(lines, " "+dim.Render(group))
+			lines = append(lines, " "+draw.Dim.Render(group))
 		}
-		lines = append(lines, "   "+accent.Render(pad(b.keys, 10))+b.help)
+		lines = append(lines, "   "+draw.Accent.Render(draw.Pad(b.keys, 10))+b.help)
 	}
 	return lines
 }
@@ -37,10 +38,10 @@ func keyBar(width int, p pane) string {
 	var items []string
 	for _, b := range bindingsFor(p) {
 		if b.bar != "" {
-			items = append(items, accent.Render(strings.ReplaceAll(b.keys, " / ", "/"))+" "+b.bar)
+			items = append(items, draw.Accent.Render(strings.ReplaceAll(b.keys, " / ", "/"))+" "+b.bar)
 		}
 	}
-	help := accent.Render("?") + " help"
+	help := draw.Accent.Render("?") + " help"
 	bar := " "
 	for _, item := range items {
 		if lipgloss.Width(bar+item+"  "+help) > width {

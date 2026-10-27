@@ -10,6 +10,7 @@ use ocppd_core::wire::frame;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tokio::net::TcpStream;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
+use tokio::sync::oneshot;
 use tokio::time::{Instant, sleep, sleep_until};
 use tokio_tungstenite::tungstenite::client::IntoClientRequest;
 use tokio_tungstenite::tungstenite::handshake::client::Request;
@@ -25,7 +26,12 @@ const CERTIFICATE_REFUSED: &str = "certificate verify failed";
 
 type Socket = WebSocketStream<MaybeTlsStream<TcpStream>>;
 
-type Intents = Option<UnboundedReceiver<Intent>>;
+pub enum Order {
+    Intent(Intent),
+    Describe(oneshot::Sender<String>),
+}
+
+type Orders = Option<UnboundedReceiver<Order>>;
 
 struct Link {
     id: String,
@@ -36,6 +42,7 @@ struct Link {
 
 enum Wake {
     Input(Input),
+    Describe(oneshot::Sender<String>),
     Reconnect,
     Lost(String),
 }
@@ -44,7 +51,7 @@ pub async fn run(
     mut protocol: Protocol,
     url: String,
     events: UnboundedSender<Event>,
-    receiver: UnboundedReceiver<Intent>,
+    receiver: UnboundedReceiver<Order>,
 ) {
     let mut link = Link {
         id: protocol.station().id.clone(),
@@ -52,10 +59,15 @@ pub async fn run(
         failures: 0,
         reconnect_at: Instant::now(),
     };
-    let mut intents = Some(receiver);
+    let mut orders = Some(receiver);
     loop {
-        let mut input = match next_wake(&mut link, protocol.next_deadline(), &mut intents).await {
+        let mut input = match next_wake(&mut link, protocol.next_deadline(), &mut orders).await {
             Wake::Input(input) => input,
+            Wake::Describe(reply) => {
+                let csms = target(&protocol, &url, &link.id);
+                let _ = reply.send(protocol.description(&csms, now_ms()));
+                continue;
+            }
             Wake::Lost(reason) => link.lose(&reason, &protocol),
             Wake::Reconnect => {
                 let target = target(&protocol, &url, &link.id);
@@ -211,7 +223,7 @@ async fn execute(
     None
 }
 
-async fn next_wake(link: &mut Link, deadline: Option<u64>, intents: &mut Intents) -> Wake {
+async fn next_wake(link: &mut Link, deadline: Option<u64>, orders: &mut Orders) -> Wake {
     let wait = Duration::from_millis(deadline.unwrap_or(0).saturating_sub(now_ms()));
     let timer = sleep(wait);
     tokio::pin!(timer);
@@ -229,9 +241,10 @@ async fn next_wake(link: &mut Link, deadline: Option<u64>, intents: &mut Intents
             },
             _ = &mut timer, if deadline.is_some() => return Wake::Input(Input::Tick),
             _ = &mut reconnect, if offline => return Wake::Reconnect,
-            intent = next_intent(intents) => match intent {
-                Some(intent) => return Wake::Input(Input::Intent(intent)),
-                None => *intents = None,
+            order = next_order(orders) => match order {
+                Some(Order::Intent(intent)) => return Wake::Input(Input::Intent(intent)),
+                Some(Order::Describe(reply)) => return Wake::Describe(reply),
+                None => *orders = None,
             },
         }
     }
@@ -244,8 +257,8 @@ async fn next_message(socket: &mut Option<Socket>) -> Option<Result<Message, tun
     }
 }
 
-async fn next_intent(intents: &mut Intents) -> Option<Intent> {
-    match intents {
+async fn next_order(orders: &mut Orders) -> Option<Order> {
+    match orders {
         Some(receiver) => receiver.recv().await,
         None => std::future::pending().await,
     }

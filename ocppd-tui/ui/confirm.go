@@ -1,5 +1,10 @@
 package ui
 
+import (
+	"github.com/QuentinClyy/ocppd/ocppd-tui/ui/command"
+	"github.com/QuentinClyy/ocppd/ocppd-tui/ui/draw"
+)
+
 const shutdown = `{"command":"shutdown"}`
 
 type confirmation struct {
@@ -10,8 +15,7 @@ type confirmation struct {
 }
 
 func removal(station string) *confirmation {
-	command := encode(map[string]any{"command": "remove", "station": station})
-	return &confirmation{question: "remove " + station + "?", command: command, again: "d", station: station}
+	return &confirmation{question: "remove " + station + "?", command: command.Remove(station), again: "d", station: station}
 }
 
 func stopping() *confirmation {
@@ -33,5 +37,5 @@ func (m Model) confirmKey(key string) Model {
 }
 
 func (c *confirmation) bar() string {
-	return " " + warn.Render(c.question) + "  " + accent.Render("y") + " yes  " + accent.Render("n") + " no"
+	return " " + draw.Warn.Render(c.question) + "  " + draw.Accent.Render("y") + " yes  " + draw.Accent.Render("n") + " no"
 }

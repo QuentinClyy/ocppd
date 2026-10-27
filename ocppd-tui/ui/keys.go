@@ -1,9 +1,6 @@
 package ui
 
-import (
-	"encoding/json"
-	"slices"
-)
+import "slices"
 
 type binding struct {
 	group string
@@ -16,6 +13,7 @@ var paneBindings = map[pane][]binding{
 	fleetPane: {
 		{"stations", "j / k", "next / previous row", "move"},
 		{"stations", "enter", "open / close station", "open"},
+		{"stations", "space", "station details", "details"},
 		{"stations", "gg / G", "first / last row", ""},
 		{"stations", "d", "remove the station (dd: no question)", ""},
 		{"driver", "p", "plug in an EV", "plug"},
@@ -47,37 +45,4 @@ var globalBindings = []binding{
 
 func bindingsFor(p pane) []binding {
 	return append(slices.Clone(paneBindings[p]), globalBindings...)
-}
-
-var connectorCommands = map[string]string{
-	"p": "plug_in",
-	"s": "stop",
-	"u": "unplug",
-	"f": "fault",
-	"c": "clear_fault",
-}
-
-type target struct {
-	station   string
-	connector int
-}
-
-func command(key string, at target) (string, bool) {
-	if key == "x" {
-		return encode(map[string]any{"command": "power_cut", "station": at.station}), true
-	}
-	name, ok := connectorCommands[key]
-	if !ok || at.connector == 0 {
-		return "", false
-	}
-	return encode(map[string]any{"command": name, "station": at.station, "connector": at.connector}), true
-}
-
-func authorize(at target, idTag string) string {
-	return encode(map[string]any{"command": "authorize", "station": at.station, "connector": at.connector, "id_tag": idTag})
-}
-
-func encode(fields map[string]any) string {
-	line, _ := json.Marshal(fields)
-	return string(line)
 }

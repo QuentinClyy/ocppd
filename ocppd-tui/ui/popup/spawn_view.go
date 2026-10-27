@@ -1,8 +1,9 @@
-package ui
+package popup
 
 import (
 	"fmt"
-	"strings"
+
+	"github.com/QuentinClyy/ocppd/ocppd-tui/ui/draw"
 )
 
 const (
@@ -10,7 +11,12 @@ const (
 	labelWidth = 12
 )
 
-func (f *form) lines() ([]string, int) {
+func (f *Spawn) Frame(rows int) draw.Frame {
+	lines, focused := f.lines()
+	return draw.Frame{Title: draw.Bold.Render("spawn"), Footer: f.footer(), Lines: lines, Top: focused - rows + 1, Width: formWidth}
+}
+
+func (f *Spawn) lines() ([]string, int) {
 	slots := f.slots()
 	f.focus = min(f.focus, len(slots)-1)
 	lines := []string{""}
@@ -28,7 +34,7 @@ func (f *form) lines() ([]string, int) {
 		case "id":
 			span = 2
 			if index == 1 {
-				lines = append(lines, "", pad("", 2+labelWidth+1)+dim.Render(pad("id", 20)+"password"))
+				lines = append(lines, "", draw.Pad("", 2+labelWidth+1)+draw.Dim.Render(draw.Pad("id", 20)+"password"))
 			}
 		case "phases":
 			span = 3
@@ -41,17 +47,17 @@ func (f *form) lines() ([]string, int) {
 			lines = append(lines, "")
 		}
 		if s.label == "id" && index+span < len(slots) && slots[index+span].label != "id" {
-			lines = append(lines, pad("", 2+labelWidth+1)+accent.Render("+")+dim.Render(" add station"))
+			lines = append(lines, draw.Pad("", 2+labelWidth+1)+draw.Accent.Render("+")+draw.Dim.Render(" add station"))
 		}
 		index += span - 1
 	}
 	return append(lines, ""), focused
 }
 
-func (f *form) row(slots []slot, index, span int) string {
+func (f *Spawn) row(slots []slot, index, span int) string {
 	marker := "  "
 	if f.focus >= index && f.focus < index+span {
-		marker = accent.Render("▌ ")
+		marker = draw.Accent.Render("▌ ")
 	}
 	name := slots[index].label
 	if name == "id" {
@@ -69,66 +75,35 @@ func (f *form) row(slots []slot, index, span int) string {
 	return line
 }
 
-func (f *form) label(name string, index, width int) string {
+func (f *Spawn) label(name string, index, width int) string {
 	if index == f.focus {
-		return accent.Render(pad(name, width))
+		return draw.Accent.Render(draw.Pad(name, width))
 	}
-	return dim.Render(pad(name, width))
+	return draw.Dim.Render(draw.Pad(name, width))
 }
 
-func (f *form) value(s slot, index int) string {
+func (f *Spawn) value(s slot, index int) string {
 	focused := index == f.focus
 	if s.choice != nil {
 		return segmented(*s.choice, focused)
 	}
-	text := tail(*s.text, s.width-2)
-	switch {
-	case focused && !f.normal:
-		return field.Render(" "+text) + cursorBlock.Render(" ") + field.Render(pad("", s.width-2-len([]rune(text))))
-	case text == "":
-		return fieldHint.Render(pad(" "+s.hint, s.width))
+	if focused && !f.normal {
+		return draw.EditingField(*s.text, s.width)
 	}
-	return field.Render(pad(" "+text, s.width))
+	return draw.TextField(s.text.String(), s.hint, s.width)
 }
 
-func segmented(c choice, focused bool) string {
-	parts := make([]string, len(c.options))
-	for index, option := range c.options {
-		style := dim
-		switch {
-		case index == c.index && focused:
-			style = chosen
-		case index == c.index:
-			style = selected
-		}
-		parts[index] = style.Render(" " + option + " ")
-	}
-	return strings.Join(parts, dim.Render("│"))
-}
-
-func section(title string) string {
-	return "  " + heading.Render(title)
-}
-
-func (f *form) footer() string {
-	mode := insertBadge.Render(" INSERT ")
+func (f *Spawn) footer() string {
 	if f.normal {
-		mode = normalBadge.Render(" NORMAL ")
+		return statusLine(draw.NormalMode, f.err)
 	}
-	if f.err == "" {
-		return mode
-	}
-	return mode + " " + warn.Render("! "+f.err)
+	return statusLine(draw.InsertMode, f.err)
 }
 
-func (f *form) bar() string {
+func (f *Spawn) Bar() string {
 	keys := [][2]string{{"tab", "next"}, {"⇧tab", "back"}, {"ctrl+n", "add station"}, {"enter", "spawn"}, {"esc", "normal mode"}}
 	if f.normal {
 		keys = [][2]string{{"j/k", "field"}, {"h/l", "choice"}, {"gg/G", "first/last"}, {"i", "edit"}, {"enter", "spawn"}, {"esc", "cancel"}}
 	}
-	var items []string
-	for _, key := range keys {
-		items = append(items, accent.Render(key[0])+" "+key[1])
-	}
-	return " " + strings.Join(items, "  ")
+	return keyHints(keys)
 }

@@ -140,3 +140,35 @@ func Test_given_a_station_that_never_connected_when_the_csms_refuses_it_then_it_
 		t.Fatalf("got %+v", stations)
 	}
 }
+
+func Test_given_a_connected_station_when_applied_then_it_is_up_since_the_event(t *testing.T) {
+	f := applied(`{"station":"CP1","at":1792893141250,"kind":"connected"}`)
+
+	s := f.Stations[0]
+
+	if s.Since != 1792893141250 {
+		t.Fatalf("got %+v", s)
+	}
+}
+
+func Test_given_a_connected_station_when_disconnected_then_it_is_no_longer_up_since(t *testing.T) {
+	f := applied(
+		`{"station":"CP1","at":1,"kind":"connected"}`,
+		`{"station":"CP1","at":2,"kind":"disconnected"}`,
+	)
+
+	if f.Stations[0].Since != 0 {
+		t.Fatalf("got %+v", f.Stations[0])
+	}
+}
+
+func Test_given_a_transaction_when_stopped_then_the_meter_keeps_its_reading(t *testing.T) {
+	f := applied(
+		`{"station":"CP1","at":3,"kind":"meter_sample","connector":1,"register_wh":9200.0,"power_w":11000.0,"soc":0.47}`,
+		`{"station":"CP1","at":4,"kind":"transaction_stopped","connector":1,"transaction_id":1042,"reason":"Local"}`,
+	)
+
+	if c := f.Stations[0].Connectors[0]; c.MeterWh != 9200 {
+		t.Fatalf("got %+v", c)
+	}
+}

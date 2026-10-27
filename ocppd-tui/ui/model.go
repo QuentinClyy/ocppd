@@ -6,6 +6,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/QuentinClyy/ocppd/ocppd-tui/fleet"
 	"github.com/QuentinClyy/ocppd/ocppd-tui/ocppd"
+	"github.com/QuentinClyy/ocppd/ocppd-tui/ui/popup"
 )
 
 type Model struct {
@@ -30,7 +31,8 @@ type Model struct {
 	sideWidth   int
 	bottomRows  int
 	prompt      *prompt
-	form        *form
+	form        *popup.Spawn
+	details     *popup.Station
 	confirm     *confirmation
 	stopping    bool
 	lost        bool
@@ -84,8 +86,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.csms, m.daemon = g.Csms, g.Version
 			return m, nil
 		}
-		station, _ := m.fleet.Apply(string(msg))
-		m = m.addLog(entry{station, logLine(string(msg), m.zone)})
+		m = m.observe(string(msg))
+		if popup.IsDescription(string(msg)) {
+			return m, nil
+		}
+		m.fleet.Apply(string(msg))
+		m = m.addLog(logEntry(string(msg), m.zone))
 	case ocppd.ClosedMsg:
 		m.lost = !m.stopping
 		return m, tea.Quit
@@ -108,7 +114,7 @@ func (m Model) View() tea.View {
 }
 
 func (m Model) overlaid() bool {
-	return m.help || m.form != nil
+	return m.help || m.form != nil || m.details != nil
 }
 
 func (m Model) outdated() bool {

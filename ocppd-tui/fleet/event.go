@@ -8,12 +8,14 @@ import (
 type event struct {
 	Station       string  `json:"station"`
 	Kind          string  `json:"kind"`
+	At            int64   `json:"at"`
 	Status        string  `json:"status"`
 	Connector     int     `json:"connector"`
 	Evse          int     `json:"evse"`
 	TransactionID any     `json:"transaction_id"`
 	EventType     string  `json:"event_type"`
 	PowerW        float64 `json:"power_w"`
+	RegisterWh    float64 `json:"register_wh"`
 	Soc           float64 `json:"soc"`
 }
 

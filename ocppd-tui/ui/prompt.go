@@ -4,29 +4,27 @@ import (
 	"fmt"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/QuentinClyy/ocppd/ocppd-tui/ui/command"
+	"github.com/QuentinClyy/ocppd/ocppd-tui/ui/draw"
 )
 
+const promptWidth = 40
+
 type prompt struct {
-	at    target
-	value []rune
+	at    command.Target
+	value draw.Editor
 }
 
 func (p prompt) edit(key tea.KeyPressMsg) (prompt, bool) {
-	switch key.String() {
-	case "backspace":
-		if len(p.value) > 0 {
-			p.value = p.value[:len(p.value)-1]
-		}
-	case "enter":
+	if key.String() == "enter" {
 		return p, true
-	default:
-		p.value = append(p.value, []rune(key.Text)...)
 	}
+	p.value = p.value.Edit(key)
 	return p, false
 }
 
 func (p prompt) view() string {
-	label := fmt.Sprintf(" for %s · connector %d › ", p.at.station, p.at.connector)
-	return " " + accent.Render("id tag") + dim.Render(label) + string(p.value) + cursorBlock.Render(" ") +
-		"   " + accent.Render("enter") + " send  " + accent.Render("esc") + " cancel"
+	label := fmt.Sprintf(" for %s · connector %d › ", p.at.Station, p.at.Connector)
+	return " " + draw.Accent.Render("id tag") + draw.Dim.Render(label) + p.value.View(promptWidth) +
+		"   " + draw.Accent.Render("enter") + " send  " + draw.Accent.Render("esc") + " cancel"
 }

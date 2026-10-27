@@ -30,7 +30,7 @@ func Test_given_the_id_tag_prompt_when_q_is_typed_then_it_is_part_of_the_tag(t *
 
 	m = press(m, "j", "a", "q")
 
-	if m.prompt == nil || string(m.prompt.value) != "q" {
+	if m.prompt == nil || m.prompt.value.String() != "q" {
 		t.Fatalf("got %+v", m.prompt)
 	}
 }

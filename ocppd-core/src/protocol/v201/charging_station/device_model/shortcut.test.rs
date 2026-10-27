@@ -48,3 +48,13 @@ fn given_malformed_shortcuts_when_parsed_then_none() {
         assert_eq!(parsed, None, "{invalid}");
     }
 }
+
+#[test]
+fn given_instances_on_both_sides_when_named_then_the_name_parses_back_to_them() {
+    let shortcut = "EVSE[1].Power[Max]";
+    let (component, variable) = parse(shortcut).unwrap();
+
+    let named = name(&component, &variable);
+
+    assert_eq!(named, shortcut);
+}

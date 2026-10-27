@@ -8,6 +8,7 @@ type Connector struct {
 	Transaction string
 	PowerW      float64
 	Soc         float64
+	MeterWh     float64
 	Sampled     bool
 }
 
@@ -16,6 +17,7 @@ type Station struct {
 	Ocpp       string
 	Link       string
 	Boot       string
+	Since      int64
 	Connectors []Connector
 }
 
@@ -55,9 +57,9 @@ func (f *Fleet) apply(e event) {
 	s := f.station(e.Station)
 	switch e.Kind {
 	case "connected":
-		s.Link = "up"
+		s.Link, s.Since = "up", e.At
 	case "disconnected", "connect_failed":
-		s.Link = "down"
+		s.Link, s.Since = "down", 0
 	case "boot_status":
 		s.Boot = e.Status
 	case "status_changed":
@@ -78,7 +80,7 @@ func (f *Fleet) apply(e event) {
 		s.connector(e.slot()).idle()
 	case "meter_sample":
 		c := s.connector(e.slot())
-		c.PowerW, c.Soc, c.Sampled = e.PowerW, e.Soc, true
+		c.PowerW, c.Soc, c.MeterWh, c.Sampled = e.PowerW, e.Soc, e.RegisterWh, true
 	}
 }
 

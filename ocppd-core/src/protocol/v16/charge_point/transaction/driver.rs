@@ -20,6 +20,9 @@ impl ChargePoint {
         if let Intent::FailTransfer { stage } = intent {
             return self.failing.add(stage);
         }
+        if let Intent::Configure { key, value } = &intent {
+            return self.configure_locally(out, now, key, value);
+        }
         let connector = intent.connector();
         let Some(index) = connector.and_then(|connector| self.index_of(connector)) else {
             return self.reject(out, now, connector, "unknown connector");
@@ -34,7 +37,8 @@ impl ChargePoint {
             Intent::Authorize { .. }
             | Intent::PowerCut
             | Intent::Shutdown
-            | Intent::FailTransfer { .. } => {}
+            | Intent::FailTransfer { .. }
+            | Intent::Configure { .. } => {}
         }
     }
 
