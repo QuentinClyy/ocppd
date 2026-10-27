@@ -1,121 +1,11 @@
-use futures_util::{SinkExt, StreamExt};
-use serde_json::{Value, json};
-use std::path::PathBuf;
-use std::process::Stdio;
-use std::time::Duration;
-use tokio::io::{AsyncBufReadExt, AsyncRead, AsyncWrite, AsyncWriteExt, BufReader, Lines};
-use tokio::net::{TcpListener, TcpStream, UnixStream};
-use tokio::process::{Child, Command};
-use tokio::time::{sleep, timeout};
-use tokio_tungstenite::WebSocketStream;
-use tokio_tungstenite::tungstenite::Message;
-use tokio_tungstenite::tungstenite::handshake::server::{ErrorResponse, Request, Response};
-use tokio_tungstenite::tungstenite::http::HeaderValue;
+mod harness;
 
-struct Daemon {
-    child: Child,
-    socket: PathBuf,
-}
-
-impl Drop for Daemon {
-    fn drop(&mut self) {
-        let _ = std::fs::remove_file(&self.socket);
-    }
-}
-
-struct Client<S> {
-    lines: Lines<BufReader<tokio::io::ReadHalf<S>>>,
-    write: tokio::io::WriteHalf<S>,
-}
-
-async fn bounded<T>(future: impl Future<Output = T>) -> T {
-    timeout(Duration::from_secs(10), future)
-        .await
-        .expect("scenario timed out")
-}
-
-fn socket_path(name: &str) -> PathBuf {
-    std::env::temp_dir().join(format!("ocppd-daemon-{}-{name}.sock", std::process::id()))
-}
-
-async fn daemon(name: &str, csms: &str) -> Daemon {
-    let socket = socket_path(name);
-    let child = Command::new(env!("CARGO_BIN_EXE_ocppd"))
-        .args([
-            "--csms",
-            csms,
-            "--listen",
-            &format!("unix:{}", socket.display()),
-        ])
-        .env_remove("OCPPD_TOKEN")
-        .stdin(Stdio::null())
-        .kill_on_drop(true)
-        .spawn()
-        .unwrap();
-    bounded(async {
-        while UnixStream::connect(&socket).await.is_err() {
-            sleep(Duration::from_millis(20)).await;
-        }
-    })
-    .await;
-    Daemon { child, socket }
-}
-
-async fn connect(daemon: &Daemon) -> Client<UnixStream> {
-    client(UnixStream::connect(&daemon.socket).await.unwrap())
-}
-
-fn client<S: AsyncRead + AsyncWrite>(stream: S) -> Client<S> {
-    let (read, write) = tokio::io::split(stream);
-    Client {
-        lines: BufReader::new(read).lines(),
-        write,
-    }
-}
-
-impl<S: AsyncRead + AsyncWrite> Client<S> {
-    async fn send(&mut self, line: &str) {
-        self.write
-            .write_all(format!("{line}\n").as_bytes())
-            .await
-            .unwrap();
-    }
-
-    async fn next(&mut self) -> Option<Value> {
-        let line = bounded(self.lines.next_line()).await.ok()??;
-        Some(serde_json::from_str(&line).unwrap())
-    }
-
-    async fn until(&mut self, kind: &str) -> Value {
-        loop {
-            let event = self.next().await.expect("connection closed");
-            if event["kind"] == kind {
-                return event;
-            }
-        }
-    }
-
-    async fn quiet(&mut self) -> bool {
-        timeout(Duration::from_millis(300), self.lines.next_line())
-            .await
-            .is_err()
-    }
-}
-
-async fn fake_csms() -> (TcpListener, String) {
-    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
-    let url = format!("ws://127.0.0.1:{}", listener.local_addr().unwrap().port());
-    (listener, url)
-}
-
-#[allow(clippy::result_large_err)]
-fn ocpp16(_: &Request, mut response: Response) -> Result<Response, ErrorResponse> {
-    let protocol = HeaderValue::from_static("ocpp1.6");
-    response
-        .headers_mut()
-        .insert("Sec-WebSocket-Protocol", protocol);
-    Ok(response)
-}
+use futures_util::StreamExt;
+use harness::{
+    answer_until_closed, bounded, client, connect, daemon, fake_csms, ocpp16, tcp_daemon,
+};
+use tokio::net::TcpStream;
+use tokio::process::Command;
 
 #[tokio::test]
 async fn given_two_clients_when_they_connect_then_each_gets_the_daemon_line_first() {
@@ -242,34 +132,6 @@ async fn given_tcp_without_a_token_when_started_then_usage_error() {
     assert!(stderr.contains("OCPPD_TOKEN"), "{stderr}");
 }
 
-async fn tcp_daemon(token: &str) -> (Child, String) {
-    let port = std::net::TcpListener::bind("127.0.0.1:0")
-        .unwrap()
-        .local_addr()
-        .unwrap()
-        .port();
-    let address = format!("127.0.0.1:{port}");
-    let child = Command::new(env!("CARGO_BIN_EXE_ocppd"))
-        .args([
-            "--csms",
-            "ws://127.0.0.1:1",
-            "--listen",
-            &format!("tcp:{address}"),
-        ])
-        .env("OCPPD_TOKEN", token)
-        .stdin(Stdio::null())
-        .kill_on_drop(true)
-        .spawn()
-        .unwrap();
-    bounded(async {
-        while TcpStream::connect(&address).await.is_err() {
-            sleep(Duration::from_millis(20)).await;
-        }
-    })
-    .await;
-    (child, address)
-}
-
 #[tokio::test]
 async fn given_a_tcp_daemon_when_clients_say_hello_then_only_the_one_with_the_token_gets_the_daemon_line()
  {
@@ -286,27 +148,6 @@ async fn given_a_tcp_daemon_when_clients_say_hello_then_only_the_one_with_the_to
 
     assert_eq!(guessing.next().await, None);
     assert_eq!(knowing.next().await.unwrap()["kind"], "daemon");
-}
-
-async fn answer_until_closed(mut station: WebSocketStream<TcpStream>) -> bool {
-    while let Some(Ok(message)) = station.next().await {
-        let frame: Value = match message {
-            Message::Text(text) => serde_json::from_str(&text).unwrap(),
-            Message::Close(_) => return true,
-            _ => continue,
-        };
-        let payload = match frame[2].as_str() {
-            Some("BootNotification") => {
-                json!({"status": "Accepted", "currentTime": "2026-10-20T00:00:00Z", "interval": 300})
-            }
-            _ => json!({}),
-        };
-        let reply = json!([3, frame[1], payload]).to_string();
-        if station.send(Message::text(reply)).await.is_err() {
-            return false;
-        }
-    }
-    false
 }
 
 #[tokio::test]

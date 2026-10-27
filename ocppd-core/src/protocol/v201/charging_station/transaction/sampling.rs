@@ -115,3 +115,7 @@ impl ChargingStation {
             .min()
     }
 }
+
+#[cfg(test)]
+#[path = "sampling.test.rs"]
+mod tests;

@@ -1,5 +1,5 @@
-use crate::dispatch::Request;
-use crate::hub::Control;
+use crate::clients::hub::Control;
+use crate::shell::dispatch::Request;
 use serde_json::Value;
 use std::fmt;
 use std::fs::Permissions;

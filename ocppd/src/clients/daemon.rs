@@ -1,5 +1,5 @@
-use crate::dispatch::{Request, SHUTDOWN, Shell};
-use crate::listen::{self, Address, Session};
+use crate::clients::listen::{self, Address, Session};
+use crate::shell::dispatch::{Request, SHUTDOWN, Shell};
 use serde_json::json;
 use std::path::PathBuf;
 use std::process::ExitCode;

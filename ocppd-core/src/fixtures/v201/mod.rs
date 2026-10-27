@@ -3,6 +3,7 @@ pub mod charging_profiles;
 pub mod display;
 pub mod firmware;
 pub mod local_auth;
+pub mod metering;
 pub mod monitors;
 pub mod reliability;
 pub mod remote_control;

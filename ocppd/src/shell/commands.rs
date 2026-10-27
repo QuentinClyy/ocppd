@@ -1,8 +1,8 @@
-use crate::identity::Identities;
-use crate::link;
-use crate::model::Model;
-use crate::protocol::{Protocol, Version};
-use crate::rejection::Rejection;
+use crate::csms::link;
+use crate::csms::protocol::{Protocol, Version};
+use crate::shell::identity::Identities;
+use crate::shell::model::Model;
+use crate::shell::rejection::Rejection;
 use ocppd_core::api::event::Event;
 use ocppd_core::api::intent::Intent;
 use serde::Deserialize;

@@ -1,23 +1,12 @@
 mod attach;
-mod basic_auth;
 mod cli;
-mod commands;
-mod daemon;
-mod dispatch;
-mod hub;
-mod identity;
-mod link;
-mod listen;
-mod model;
-mod protocol;
-mod rejection;
-mod snapshot;
-mod stdio;
-mod tls;
+mod clients;
+mod csms;
+mod shell;
 mod tui;
 
-use dispatch::Shell;
-use listen::Address;
+use clients::{daemon, listen::Address, stdio};
+use shell::dispatch::Shell;
 use std::process::ExitCode;
 
 #[tokio::main(flavor = "current_thread")]

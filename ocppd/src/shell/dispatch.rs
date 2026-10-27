@@ -1,6 +1,6 @@
-use crate::commands::{self, Command, Stations};
-use crate::hub::{Client, Control};
-use crate::rejection::Rejection;
+use crate::clients::hub::{Client, Control};
+use crate::shell::commands::{self, Command, Stations};
+use crate::shell::rejection::Rejection;
 use ocppd_core::api::event::Event;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
 
@@ -27,7 +27,7 @@ impl Shell {
     pub fn start() -> Shell {
         let (events, event_inbox) = unbounded_channel();
         let (control, control_inbox) = unbounded_channel();
-        tokio::spawn(crate::hub::run(event_inbox, control_inbox));
+        tokio::spawn(crate::clients::hub::run(event_inbox, control_inbox));
         let (requests, inbox) = unbounded_channel();
         Shell {
             events,

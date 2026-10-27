@@ -1,5 +1,5 @@
-use crate::dispatch::{Ended, Request, Shell};
-use crate::hub::{Client, Control};
+use crate::clients::hub::{Client, Control};
+use crate::shell::dispatch::{Ended, Request, Shell};
 use std::process::ExitCode;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};

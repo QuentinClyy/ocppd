@@ -1,5 +1,6 @@
 pub(super) mod certificates;
 pub(super) mod client_certificate;
+pub(super) mod root_renewal;
 
 use super::ChargingStation;
 use crate::api::io::{ConnectFailure, Output};

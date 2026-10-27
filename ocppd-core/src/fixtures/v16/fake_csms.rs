@@ -108,6 +108,10 @@ impl Csms {
         }
     }
 
+    pub fn tick(&mut self, now: u64) {
+        self.input(now, Input::Tick);
+    }
+
     pub fn call(&mut self, now: u64, action: &str, payload: Value) -> Frame {
         let text = json!([2, "csms-1", action, payload]).to_string();
         self.input(now, Input::Frame(text));

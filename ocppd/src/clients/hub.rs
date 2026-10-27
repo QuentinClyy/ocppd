@@ -1,4 +1,4 @@
-use crate::snapshot::Snapshot;
+use crate::clients::snapshot::Snapshot;
 use ocppd_core::api::event::Event;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 

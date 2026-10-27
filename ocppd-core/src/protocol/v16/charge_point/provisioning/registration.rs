@@ -3,7 +3,7 @@ use crate::protocol::v16::charge_point::ChargePoint;
 use crate::protocol::v16::charge_point::provisioning::configuration::HEARTBEAT_INTERVAL;
 use crate::protocol::v16::event::EventKind;
 use crate::protocol::v16::messages::provisioning::boot::{
-    BootNotificationResponse, HeartbeatRequest, RegistrationStatus,
+    BootNotificationResponse, RegistrationStatus,
 };
 use crate::station::jitter::fraction;
 use serde_json::{Value, json};
@@ -102,15 +102,6 @@ impl ChargePoint {
                 self.heartbeat(now)
             }
             _ => {}
-        }
-    }
-
-    pub(crate) fn heartbeat(&mut self, now: u64) {
-        self.outbox.push("Heartbeat", 0, json!(HeartbeatRequest {}));
-        if self.is_accepted() {
-            self.registration = Registration::Accepted {
-                last_heartbeat: now,
-            };
         }
     }
 

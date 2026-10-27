@@ -1,7 +1,6 @@
 mod availability;
 mod csms_call;
 mod diagnostics;
-mod fault;
 mod firmware;
 mod local_auth;
 mod metering;
@@ -26,7 +25,7 @@ use crate::wire::ci_string::{CiString, TooLong};
 use crate::wire::outbox::Outbox;
 use crate::wire::payload;
 use diagnostics::log_upload::LogUpload;
-use firmware::FirmwareUpdate;
+use firmware::update::FirmwareUpdate;
 use local_auth::id_tags::IdTags;
 use local_auth::list::LocalList;
 use provisioning::configuration::Configuration;

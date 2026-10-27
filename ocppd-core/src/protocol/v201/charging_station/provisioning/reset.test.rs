@@ -1,5 +1,7 @@
 use crate::api::intent::{EvSpec, Intent};
 use crate::api::io::Input;
+use crate::fixtures::v201::reliability::{charging, expected, last};
+use crate::fixtures::v201::station::MINUTE;
 use crate::fixtures::v201::station::{Run, boot};
 use crate::protocol::v201::event::EventKind;
 use crate::protocol::v201::messages::provisioning::reset::ResetType;
@@ -179,4 +181,49 @@ fn given_plugged_ev_when_shut_down_then_the_transaction_ends_as_other_and_the_st
     assert_eq!(ended["transactionInfo"]["stoppedReason"], "Other");
     assert!(!waiting, "not finished while the event is unanswered");
     assert!(run.station.finished(1_000));
+}
+
+#[test]
+fn given_charging_ev_when_reset_on_idle_then_scheduled_per_b12_fr_01() {
+    let mut run = Run::accepted(86_400);
+    charging(&mut run, 0);
+
+    let status = run.result(0, "Reset", json!({"type": "OnIdle"}))["status"].clone();
+
+    assert_eq!(status, "Scheduled");
+    assert!(!run.closed);
+}
+
+#[test]
+fn given_scheduled_reset_when_transaction_ends_then_reboots_per_b12_fr_01() {
+    let mut run = Run::accepted(86_400);
+    charging(&mut run, 0);
+    run.result(0, "Reset", json!({"type": "OnIdle"}));
+
+    run.input(MINUTE, Input::Intent(Intent::Unplug { connector: 1 }));
+    run.answer_all(MINUTE);
+
+    assert!(run.closed, "reboots once the transaction ended");
+}
+
+#[test]
+fn given_charging_ev_when_reset_immediate_then_transaction_ended_first_and_reboots_per_b12_fr_02_and_fr_04()
+ {
+    let mut run = Run::accepted(86_400);
+    charging(&mut run, 0);
+
+    let status = run.result(0, "Reset", json!({"type": "Immediate"}))["status"].clone();
+    run.answer_all(0);
+
+    assert_eq!(status, "Accepted");
+    assert_eq!(
+        last(&run),
+        expected(
+            "Ended",
+            "ResetCommand",
+            json!("EVConnected"),
+            json!("ImmediateReset")
+        )
+    );
+    assert!(run.closed);
 }

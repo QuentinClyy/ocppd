@@ -1,6 +1,6 @@
-use super::ChargePoint;
-use super::transaction::Transaction;
 use crate::api::io::Output;
+use crate::protocol::v16::charge_point::ChargePoint;
+use crate::protocol::v16::charge_point::transaction::Transaction;
 use crate::protocol::v16::messages::transaction::Reason;
 use crate::station::connector::Fault;
 

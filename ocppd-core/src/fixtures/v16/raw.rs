@@ -80,3 +80,16 @@ pub fn v16_kind(event: Event) -> EventKind {
     };
     kind
 }
+
+pub fn booted_and_reported(now: u64) -> (ChargePoint, Vec<Output>) {
+    let mut charge_point = charge_point();
+    let (boot_id, _, _) = only_call(&charge_point.handle(0, Input::Connected));
+    let outputs = charge_point.handle(now, result(&boot_id, boot_response("Accepted", 300)));
+    (charge_point, outputs)
+}
+
+pub fn drained(charge_point: &mut ChargePoint, now: u64, mut outputs: Vec<Output>) {
+    while let Some((id, _, _)) = calls(&outputs).pop() {
+        outputs = charge_point.handle(now, result(&id, json!({})));
+    }
+}

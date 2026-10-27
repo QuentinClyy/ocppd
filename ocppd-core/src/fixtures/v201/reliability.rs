@@ -1,7 +1,7 @@
 use crate::api::intent::{EvSpec, Intent};
 use crate::api::io::Input;
 use crate::fixtures::v201::station::Run;
-use serde_json::Value;
+use serde_json::{Value, json};
 
 pub fn plug_in(run: &mut Run, now: u64) {
     let ev = EvSpec::default();
@@ -40,4 +40,21 @@ pub fn configure(run: &mut Run, key: &str, value: &str) {
 
 pub fn status(run: &mut Run, request: Value) -> Value {
     run.result(0, "GetTransactionStatus", request)
+}
+
+pub fn charging(run: &mut Run, now: u64) {
+    plug_in(run, now);
+    run.answer_all(now);
+    swipe(run, now, "04A2B3C4");
+    run.answer(now, json!({"idTokenInfo": {"status": "Accepted", "groupIdToken": {"idToken": "FLEET", "type": "Central"}}}));
+    run.answer_all(now);
+}
+
+pub fn expected(
+    event_type: &str,
+    trigger: &str,
+    state: Value,
+    reason: Value,
+) -> (String, String, Value, Value) {
+    (event_type.into(), trigger.into(), state, reason)
 }

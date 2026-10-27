@@ -1,4 +1,4 @@
-use crate::protocol::Protocol;
+use crate::csms::protocol::Protocol;
 use native_tls::{Certificate, Identity, Protocol as TlsVersion, TlsConnector};
 use tokio_tungstenite::Connector;
 
