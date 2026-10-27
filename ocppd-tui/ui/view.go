@@ -24,7 +24,7 @@ func render(m Model) string {
 	if m.outdated() {
 		right = draw.Warn.Render("daemon "+m.daemon+" ≠ "+m.expected+" · Q restarts") + "  " + right
 	}
-	header := " " + draw.Bold.Render("ocppd") + "  " + draw.Dim.Render(m.csms)
+	header := " " + draw.Bold.Render("OCPPD") + "  " + draw.Dim.Render(m.csms)
 	room := max(m.width-ansi.StringWidth(right)-2, 0)
 	header = draw.Pad(ansi.Truncate(header, room, "…"), room+1) + right
 	var lines []string

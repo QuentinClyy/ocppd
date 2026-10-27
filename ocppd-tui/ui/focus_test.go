@@ -150,7 +150,7 @@ func Test_given_the_fleet_focused_when_z_then_only_the_fleet_shows(t *testing.T)
 
 	m = press(m, "z")
 
-	if text := strings.Join(screen(m, 80, 24), "\n"); strings.Contains(text, "· log") || !strings.Contains(text, "CP2") {
+	if text := strings.Join(screen(m, 80, 24), "\n"); strings.Contains(text, "LOGS ·") || !strings.Contains(text, "CP2") {
 		t.Fatalf("got\n%s", text)
 	}
 }
@@ -160,7 +160,7 @@ func Test_given_a_zoomed_fleet_when_ctrl_l_on_a_wide_screen_then_only_the_log_sh
 
 	m = press(m, "ctrl+l")
 
-	if text := ansi.Strip(render(m)); !strings.Contains(text, "all stations · log") || strings.Contains(text, "CP2") {
+	if text := ansi.Strip(render(m)); !strings.Contains(text, "LOGS · all stations") || strings.Contains(text, "CP2") {
 		t.Fatalf("got\n%s", text)
 	}
 }

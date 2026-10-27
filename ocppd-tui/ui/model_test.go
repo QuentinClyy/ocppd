@@ -65,7 +65,7 @@ func Test_given_a_wide_terminal_when_rendered_then_the_log_sits_beside_the_fleet
 
 	lines := screen(m, 160, 30)
 
-	if !strings.Contains(lines[2], "STATION") || !strings.Contains(lines[2], "│ all stations · log") {
+	if !strings.Contains(lines[2], "STATION") || !strings.Contains(lines[2], "│ LOGS · all stations") {
 		t.Fatalf("got %q", lines[2])
 	}
 }
@@ -75,7 +75,7 @@ func Test_given_the_log_filtered_when_a_station_is_selected_then_the_log_title_n
 
 	m = press(m, "tab")
 
-	if !strings.Contains(strings.Join(screen(m, 80, 24), "\n"), " EVB-0001 · log") {
+	if !strings.Contains(strings.Join(screen(m, 80, 24), "\n"), "LOGS · EVB-0001") {
 		t.Fatal("no station log title")
 	}
 }
