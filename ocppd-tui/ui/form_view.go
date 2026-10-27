@@ -1,9 +1,6 @@
 package ui
 
-import (
-	"fmt"
-	"strings"
-)
+import "fmt"
 
 const (
 	formWidth  = 66
@@ -81,44 +78,17 @@ func (f *form) value(s slot, index int) string {
 	if s.choice != nil {
 		return segmented(*s.choice, focused)
 	}
-	text := tail(*s.text, s.width-2)
-	switch {
-	case focused && !f.normal:
-		return field.Render(" "+text) + cursorBlock.Render(" ") + field.Render(pad("", s.width-2-len([]rune(text))))
-	case text == "":
-		return fieldHint.Render(pad(" "+s.hint, s.width))
+	if focused && !f.normal {
+		return editingField(*s.text, s.width)
 	}
-	return field.Render(pad(" "+text, s.width))
-}
-
-func segmented(c choice, focused bool) string {
-	parts := make([]string, len(c.options))
-	for index, option := range c.options {
-		style := dim
-		switch {
-		case index == c.index && focused:
-			style = chosen
-		case index == c.index:
-			style = selected
-		}
-		parts[index] = style.Render(" " + option + " ")
-	}
-	return strings.Join(parts, dim.Render("│"))
-}
-
-func section(title string) string {
-	return "  " + heading.Render(title)
+	return textField(*s.text, s.hint, s.width)
 }
 
 func (f *form) footer() string {
-	mode := insertBadge.Render(" INSERT ")
 	if f.normal {
-		mode = normalBadge.Render(" NORMAL ")
+		return statusLine(normalMode, f.err)
 	}
-	if f.err == "" {
-		return mode
-	}
-	return mode + " " + warn.Render("! "+f.err)
+	return statusLine(insertMode, f.err)
 }
 
 func (f *form) bar() string {
@@ -127,12 +97,4 @@ func (f *form) bar() string {
 		keys = [][2]string{{"j/k", "field"}, {"h/l", "choice"}, {"gg/G", "first/last"}, {"i", "edit"}, {"enter", "spawn"}, {"esc", "cancel"}}
 	}
 	return keyHints(keys)
-}
-
-func keyHints(keys [][2]string) string {
-	var items []string
-	for _, key := range keys {
-		items = append(items, accent.Render(key[0])+" "+key[1])
-	}
-	return " " + strings.Join(items, "  ")
 }

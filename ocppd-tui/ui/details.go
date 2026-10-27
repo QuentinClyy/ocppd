@@ -1,11 +1,21 @@
 package ui
 
-import "github.com/QuentinClyy/ocppd/ocppd-tui/fleet"
+import (
+	tea "charm.land/bubbletea/v2"
+	"github.com/QuentinClyy/ocppd/ocppd-tui/fleet"
+)
+
+const (
+	detailsTab = iota
+	configTab
+)
 
 type details struct {
 	station   string
 	connector int
 	described description
+	tab       int
+	config    configView
 }
 
 func (m Model) openDetails() Model {
@@ -15,7 +25,7 @@ func (m Model) openDetails() Model {
 	}
 	id := m.fleet.Stations[r.station].ID
 	m.details = &details{station: id, connector: max(r.connector, 0)}
-	return m.sendLine(encode(map[string]any{"command": "describe", "station": id}))
+	return m.sendLine(describeLine(id))
 }
 
 func (m Model) describe(d description) Model {
@@ -37,10 +47,24 @@ func (m Model) detailed() (fleet.Station, bool) {
 	return fleet.Station{}, false
 }
 
-func (m Model) detailsKey(key string) Model {
+func (m Model) detailsKey(msg tea.KeyPressMsg) Model {
+	key := msg.String()
 	s, ok := m.detailed()
-	if !ok || key == "esc" || key == "q" || key == "space" {
+	if !ok {
 		m.details = nil
+		return m
+	}
+	if m.details.tab == configTab {
+		return m.configKey(msg)
+	}
+	switch key {
+	case "esc", "q":
+		m.details = nil
+		return m
+	case "tab", "shift+tab":
+		next := *m.details
+		next.tab = configTab
+		m.details = &next
 		return m
 	}
 	last := max(len(s.Connectors)-1, 0)

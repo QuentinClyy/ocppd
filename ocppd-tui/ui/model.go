@@ -88,6 +88,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if d, ok := parseDescription(string(msg)); ok {
 			return m.describe(d), nil
 		}
+		m = m.track(string(msg))
 		m.fleet.Apply(string(msg))
 		m = m.addLog(logEntry(string(msg), m.zone))
 	case ocppd.ClosedMsg:

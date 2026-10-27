@@ -128,7 +128,7 @@ func Test_given_the_form_when_drawn_then_every_line_has_the_same_width(t *testin
 	f.err = "add at least one station id"
 	lines, _ := f.lines()
 
-	for _, line := range box("spawn", f.footer(), lines, formWidth) {
+	for _, line := range box(bold.Render("spawn"), f.footer(), lines, formWidth) {
 		if ansi.StringWidth(line) != formWidth {
 			t.Fatalf("got %d: %q", ansi.StringWidth(line), ansi.Strip(line))
 		}

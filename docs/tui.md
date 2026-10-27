@@ -82,9 +82,15 @@ it, and dragging the divider resizes the panes. Hold Shift to select text.
 
 `space` opens a station's details: its OCPP version, link, boot status and
 when it connected, each connector's status, power, state of charge, meter
-reading and transaction, and the station's last three events. `j` / `k`
-pick a connector and the driver keys act on it; `esc`, `q` or `space`
-close the details.
+reading and transaction, its vendor, model, firmware and CSMS url, and its
+last three events. `j` / `k` pick a connector and the driver keys act on it;
+`esc` or `q` close the details.
+
+`tab` switches to the station's configuration: its 1.6 keys or 2.0.1
+variables, read-only ones marked `ro`. `j` / `k` pick a key, `/` filters
+them, `space` flips a `true` / `false` value, and `i` or `enter` edits one:
+`enter` applies it, `esc` cancels. The station takes the change as if the
+CSMS had sent it; a refused change shows its reason in the bottom border.
 
 ## Spawn form
 

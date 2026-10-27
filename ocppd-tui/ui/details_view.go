@@ -2,6 +2,7 @@ package ui
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/QuentinClyy/ocppd/ocppd-tui/fleet"
@@ -68,6 +69,38 @@ func connectorLine(c fleet.Connector, isSelected bool) string {
 	return marker + "  " + number + statusStyle(c.Status).Render(pad(dash(c.Status), 13)) + kw + soc + meter + dash(c.Transaction)
 }
 
-func detailsBar() string {
-	return keyHints([][2]string{{"j/k", "connector"}, {"p", "plug"}, {"a", "auth"}, {"s", "stop tx"}, {"u", "unplug"}, {"f", "fault"}, {"x", "cut"}, {"esc", "close"}})
+func (m Model) detailsPopup() popup {
+	d := m.details
+	p := popup{title: tabbed(d.station, d.tab), width: detailsWidth}
+	if d.tab == detailsTab {
+		p.lines = m.detailsLines()
+		return p
+	}
+	lines, focused := d.configLines()
+	p.lines, p.top, p.footer = lines, focused-m.modalRows()+1, d.config.footer()
+	return p
+}
+
+func tabbed(station string, active int) string {
+	names := []string{"details", "config"}
+	for index, name := range names {
+		if index == active {
+			names[index] = activeTab.Render(name)
+		} else {
+			names[index] = dim.Render(name)
+		}
+	}
+	return bold.Render(station) + dim.Render(" ─ ") + strings.Join(names, dim.Render(" · "))
+}
+
+func (d details) bar() string {
+	switch {
+	case d.tab == detailsTab:
+		return keyHints([][2]string{{"j/k", "connector"}, {"p", "plug"}, {"a", "auth"}, {"s", "stop tx"}, {"u", "unplug"}, {"tab", "config"}, {"esc", "close"}})
+	case d.config.draft != nil:
+		return keyHints([][2]string{{"enter", "apply"}, {"esc", "cancel"}})
+	case d.config.filtering:
+		return keyHints([][2]string{{"enter", "done"}, {"esc", "clear"}})
+	}
+	return keyHints([][2]string{{"j/k", "key"}, {"/", "filter"}, {"space", "toggle"}, {"i", "edit"}, {"tab", "details"}, {"esc", "close"}})
 }

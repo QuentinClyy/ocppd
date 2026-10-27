@@ -17,7 +17,7 @@ type popup struct {
 }
 
 func box(title, footer string, lines []string, width int) []string {
-	framed := []string{dim.Render("╭─ ") + bold.Render(title) + dim.Render(" "+strings.Repeat("─", max(width-5-ansi.StringWidth(title), 0))+"╮")}
+	framed := []string{dim.Render("╭─ ") + title + dim.Render(" "+strings.Repeat("─", max(width-5-ansi.StringWidth(title), 0))+"╮")}
 	for _, line := range lines {
 		framed = append(framed, dim.Render("│")+pad(ansi.Truncate(line, width-2, ""), width-2)+dim.Render("│"))
 	}

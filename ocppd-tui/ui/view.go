@@ -30,11 +30,11 @@ func render(m Model) string {
 	switch {
 	case m.form != nil:
 		fields, focused := m.form.lines()
-		lines = m.modal(popup{title: "spawn", footer: m.form.footer(), lines: fields, top: focused - m.modalRows() + 1, width: formWidth})
+		lines = m.modal(popup{title: bold.Render("spawn"), footer: m.form.footer(), lines: fields, top: focused - m.modalRows() + 1, width: formWidth})
 	case m.details != nil:
-		lines = m.modal(popup{title: m.details.station, lines: m.detailsLines(), width: detailsWidth})
+		lines = m.modal(m.detailsPopup())
 	case m.help:
-		lines = m.modal(popup{title: "keys", lines: helpLines(m.focus), top: m.helpTop, width: helpWidth})
+		lines = m.modal(popup{title: bold.Render("keys"), lines: helpLines(m.focus), top: m.helpTop, width: helpWidth})
 	default:
 		lines = m.body(m.layout(), rule)
 	}
@@ -47,7 +47,7 @@ func render(m Model) string {
 	case m.confirm != nil:
 		bar = m.confirm.bar()
 	case m.details != nil:
-		bar = detailsBar()
+		bar = m.details.bar()
 	case m.help:
 		bar = " " + accent.Render("j/k") + " scroll  " + accent.Render("esc") + " close"
 	}

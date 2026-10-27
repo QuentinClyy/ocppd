@@ -18,7 +18,7 @@ func (m Model) key(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	case m.help:
 		return m.helpKey(key), nil
 	case m.details != nil:
-		return m.detailsKey(key), nil
+		return m.detailsKey(msg), nil
 	}
 	wasG := m.pendingG
 	m.pendingG = false

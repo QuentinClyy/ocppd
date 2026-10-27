@@ -17,7 +17,13 @@ var (
 	chosen      = lipgloss.NewStyle().Background(lipgloss.Color("#7aa2f7")).Foreground(lipgloss.Color("#0b0d10")).Bold(true)
 	insertBadge = chosen
 	normalBadge = lipgloss.NewStyle().Background(lipgloss.Color("#6fcf97")).Foreground(lipgloss.Color("#0b0d10")).Bold(true)
+	activeTab   = accent.Bold(true).Underline(true)
 	cursorBlock = lipgloss.NewStyle().Background(lipgloss.Color("#d7dae0"))
+)
+
+var (
+	insertMode = insertBadge.Render(" INSERT ")
+	normalMode = normalBadge.Render(" NORMAL ")
 )
 
 func statusStyle(status string) lipgloss.Style {
