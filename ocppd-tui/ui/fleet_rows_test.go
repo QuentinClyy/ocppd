@@ -63,8 +63,12 @@ func keyMsg(key string) tea.KeyPressMsg {
 		return tea.KeyPressMsg{Code: tea.KeySpace, Text: " "}
 	case "shift+tab":
 		return tea.KeyPressMsg{Code: tea.KeyTab, Mod: tea.ModShift}
-	case "ctrl+u", "ctrl+d", "ctrl+n":
+	case "ctrl+u", "ctrl+d", "ctrl+n", "ctrl+h", "ctrl+j", "ctrl+k", "ctrl+l":
 		return tea.KeyPressMsg{Code: rune(key[5]), Mod: tea.ModCtrl}
+	case "ctrl+up":
+		return tea.KeyPressMsg{Code: tea.KeyUp, Mod: tea.ModCtrl}
+	case "ctrl+right":
+		return tea.KeyPressMsg{Code: tea.KeyRight, Mod: tea.ModCtrl}
 	}
 	return tea.KeyPressMsg{Code: []rune(key)[0], Text: key}
 }
@@ -104,43 +108,24 @@ func Test_given_expanded_stations_when_listed_then_their_connectors_follow_them(
 	}
 }
 
-func Test_given_a_connector_row_when_h_then_the_cursor_goes_to_its_station(t *testing.T) {
-	m := press(twoStations(), "j", "j")
-
-	m = press(m, "h")
-
-	if r, _ := m.selected(); r != (row{0, stationRow}) {
-		t.Fatalf("got %v", r)
-	}
-}
-
-func Test_given_a_station_row_when_h_then_it_collapses(t *testing.T) {
-	m := twoStations()
-
-	m = press(m, "h")
-
-	if len(rows(m.fleet, m.expanded)) != 3 || m.expanded["CP1"] {
-		t.Fatalf("got %v", rows(m.fleet, m.expanded))
-	}
-}
-
-func Test_given_a_collapsed_station_when_l_then_it_expands_and_the_cursor_stays(t *testing.T) {
-	m := press(twoStations(), "h")
+func Test_given_a_collapsed_station_when_l_then_it_stays_collapsed(t *testing.T) {
+	m := New(func(string) error { return nil })
+	m.fleet = twoStations().fleet
 
 	m = press(m, "l")
 
-	if !m.expanded["CP1"] || m.cursor != 0 {
+	if m.expanded["CP1"] || m.cursor != 0 {
 		t.Fatalf("got cursor %d, expanded %v", m.cursor, m.expanded)
 	}
 }
 
-func Test_given_an_expanded_station_when_l_then_the_cursor_enters_its_first_connector(t *testing.T) {
+func Test_given_an_expanded_station_when_h_then_it_stays_open(t *testing.T) {
 	m := twoStations()
 
-	m = press(m, "l")
+	m = press(m, "h")
 
-	if r, _ := m.selected(); r != (row{0, 0}) {
-		t.Fatalf("got %v", r)
+	if !m.expanded["CP1"] || m.cursor != 0 {
+		t.Fatalf("got cursor %d, expanded %v", m.cursor, m.expanded)
 	}
 }
 
@@ -199,8 +184,9 @@ func Test_given_a_connector_row_when_enter_then_its_station_closes_and_the_curso
 
 func Test_given_more_stations_than_rows_when_the_wheel_scrolls_down_over_them_then_the_view_moves_and_drags_the_cursor(t *testing.T) {
 	m := sized(manyStations(30), 80, 24)
+	fleetY, _ := content(m, fleetPane)
 
-	m = wheelAt(m, tea.MouseWheelDown, 10, m.layout().fleetY, 2)
+	m = wheelAt(m, tea.MouseWheelDown, 10, fleetY, 2)
 
 	if m.fleetTop() != 6 || m.cursor != 6 {
 		t.Fatalf("got top %d, cursor %d", m.fleetTop(), m.cursor)
@@ -209,18 +195,18 @@ func Test_given_more_stations_than_rows_when_the_wheel_scrolls_down_over_them_th
 
 func Test_given_more_stations_than_rows_when_the_wheel_scrolls_far_down_then_the_last_row_ends_the_pane(t *testing.T) {
 	m := sized(manyStations(30), 80, 24)
-	l := m.layout()
+	fleetY, fleetRows := content(m, fleetPane)
 
-	m = wheelAt(m, tea.MouseWheelDown, 10, l.fleetY, 100)
+	m = wheelAt(m, tea.MouseWheelDown, 10, fleetY, 100)
 
-	if m.fleetTop() != 30-l.fleetRows {
-		t.Fatalf("got top %d, want %d", m.fleetTop(), 30-l.fleetRows)
+	if m.fleetTop() != 30-fleetRows {
+		t.Fatalf("got top %d, want %d", m.fleetTop(), 30-fleetRows)
 	}
 }
 
 func Test_given_more_stations_than_rows_when_j_passes_the_bottom_then_the_view_follows_and_stays_when_k(t *testing.T) {
 	m := sized(manyStations(30), 80, 24)
-	rowsShown := m.layout().fleetRows
+	_, rowsShown := content(m, fleetPane)
 	keys := make([]string, rowsShown)
 	for index := range keys {
 		keys[index] = "j"

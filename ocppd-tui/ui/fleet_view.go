@@ -21,7 +21,7 @@ func fleetHeader(nameWidth int) string {
 	for index, name := range names {
 		line.WriteString(pad(name, width(index, nameWidth)))
 	}
-	return dim.Render(line.String())
+	return line.String()
 }
 
 func fleetLines(f fleet.Fleet, visible []row, expanded map[string]bool, cursor, nameWidth int) []string {

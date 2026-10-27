@@ -44,7 +44,7 @@ func (m Model) move(key string) Model {
 		m.cursor = min(m.cursor+1, len(visible)-1)
 	case "k", "up":
 		m.cursor = max(m.cursor-1, 0)
-	case "g":
+	case "gg":
 		m.cursor = 0
 	case "G":
 		m.cursor = len(visible) - 1
@@ -55,21 +55,20 @@ func (m Model) move(key string) Model {
 		} else {
 			m.expanded[s.ID] = !m.expanded[s.ID]
 		}
-	case "l", "right":
-		if current.connector != stationRow {
-			return m
-		}
-		if m.expanded[s.ID] && len(s.Connectors) > 0 {
-			m.cursor++
-		} else {
-			m.expanded[s.ID] = true
-		}
-	case "h", "left":
-		if current.connector != stationRow {
-			m.cursor -= current.connector + 1
-		} else {
-			delete(m.expanded, s.ID)
-		}
+	}
+	return m
+}
+
+func (m Model) open() Model {
+	r, ok := m.selected()
+	if !ok || r.connector != stationRow {
+		return m
+	}
+	s := m.fleet.Stations[r.station]
+	if m.expanded[s.ID] && len(s.Connectors) > 0 {
+		m.cursor = min(m.cursor, len(rows(m.fleet, m.expanded))-1) + 1
+	} else {
+		m.expanded[s.ID] = true
 	}
 	return m
 }
@@ -92,12 +91,12 @@ func (m Model) target() (target, bool) {
 
 func (m Model) fleetTop() int {
 	total := len(rows(m.fleet, m.expanded))
-	return follow(m.fleetScroll, min(m.cursor, max(total-1, 0)), m.layout().fleetRows, total)
+	return follow(m.fleetScroll, min(m.cursor, max(total-1, 0)), m.paneRows(fleetPane), total)
 }
 
 func (m Model) scrollFleet(lines int) Model {
 	total := len(rows(m.fleet, m.expanded))
-	height := m.layout().fleetRows
+	height := m.paneRows(fleetPane)
 	if total == 0 || height == 0 {
 		return m
 	}

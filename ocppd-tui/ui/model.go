@@ -23,6 +23,12 @@ type Model struct {
 	byStation   bool
 	logOffset   int
 	help        bool
+	helpTop     int
+	focus       pane
+	zoomed      bool
+	dragging    bool
+	sideWidth   int
+	bottomRows  int
 	prompt      *prompt
 	form        *form
 	confirm     *confirmation
@@ -59,9 +65,20 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.fleetScroll = m.fleetTop()
 		return m, cmd
 	case tea.MouseWheelMsg:
-		if !m.help && m.form == nil {
+		if !m.overlaid() {
 			m = m.wheel(msg)
 		}
+	case tea.MouseClickMsg:
+		if !m.overlaid() {
+			m = m.click(msg)
+			m.fleetScroll = m.fleetTop()
+		}
+	case tea.MouseMotionMsg:
+		if m.dragging {
+			m = m.dragTo(msg.X, msg.Y)
+		}
+	case tea.MouseReleaseMsg:
+		m.dragging = false
 	case ocppd.EventMsg:
 		if g, ok := parseGreeting(string(msg)); ok {
 			m.csms, m.daemon = g.Csms, g.Version
@@ -88,6 +105,10 @@ func (m Model) View() tea.View {
 	view.AltScreen = true
 	view.MouseMode = tea.MouseModeCellMotion
 	return view
+}
+
+func (m Model) overlaid() bool {
+	return m.help || m.form != nil
 }
 
 func (m Model) outdated() bool {

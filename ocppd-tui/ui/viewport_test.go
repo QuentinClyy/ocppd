@@ -33,11 +33,11 @@ func Test_given_a_list_twice_the_pane_when_at_the_end_then_the_thumb_ends_the_pa
 
 func Test_given_a_long_log_following_its_tail_when_rendered_then_the_thumb_is_at_the_bottom_of_the_log_pane(t *testing.T) {
 	m := withLog(sized(manyStations(1), 80, 24), 200)
-	l := m.layout()
+	logY, logRows := content(m, logPane)
 
 	lines := strings.Split(ansi.Strip(render(m)), "\n")
 
-	last, first := lines[l.logY+l.logRows-1], lines[l.logY]
+	last, first := lines[logY+logRows-1], lines[logY]
 	if !strings.HasSuffix(last, "▐") || strings.HasSuffix(first, "▐") {
 		t.Fatalf("got first %q, last %q", first, last)
 	}

@@ -99,7 +99,7 @@ func Test_given_the_key_bindings_when_the_tui_doc_is_read_then_it_lists_every_ke
 		t.Fatal(err)
 	}
 
-	for _, b := range bindings {
+	for _, b := range append(bindingsFor(fleetPane), paneBindings[logPane]...) {
 		for _, key := range strings.Split(b.keys, " / ") {
 			if !strings.Contains(string(doc), "`"+key+"`") {
 				t.Fatalf("docs/tui.md does not list `%s` (%s)", key, b.help)

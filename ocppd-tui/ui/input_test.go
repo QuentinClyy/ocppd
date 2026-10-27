@@ -11,6 +11,11 @@ func sized(m Model, width, height int) Model {
 	return m
 }
 
+func content(m Model, p pane) (int, int) {
+	a, _ := m.layout().find(p)
+	return a.y + 1, a.height - 1
+}
+
 func wheelAt(m Model, button tea.MouseButton, x, y, times int) Model {
 	for range times {
 		next, _ := m.Update(tea.MouseWheelMsg{Button: button, X: x, Y: y})

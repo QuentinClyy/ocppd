@@ -77,7 +77,7 @@ func (m Model) scrollLog(lines int) Model {
 }
 
 func (m Model) clampLog(offset int) int {
-	return min(max(offset, 0), max(len(m.logLines())-m.layout().logRows, 0))
+	return min(max(offset, 0), max(len(m.logLines())-m.paneRows(logPane), 0))
 }
 
 func (m Model) logPage() int {

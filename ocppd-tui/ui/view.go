@@ -14,8 +14,6 @@ const (
 )
 
 func render(m Model) string {
-	visible := rows(m.fleet, m.expanded)
-	cursor := min(m.cursor, max(len(visible)-1, 0))
 	rule := " " + dim.Render(strings.Repeat("─", max(m.width-2, 0)))
 	count := fmt.Sprintf("%d stations", len(m.fleet.Stations))
 	if len(m.fleet.Stations) == 1 {
@@ -28,28 +26,26 @@ func render(m Model) string {
 	header := " " + bold.Render("ocppd") + "  " + dim.Render(m.csms)
 	room := max(m.width-ansi.StringWidth(right)-2, 0)
 	header = pad(ansi.Truncate(header, room, "…"), room+1) + right
-	l := m.layout()
 	var lines []string
 	switch {
 	case m.form != nil:
-		lines = centered(m.form.lines(), m.width, m.height-4)
+		fields, focused := m.form.lines()
+		lines = m.modal(popup{title: "spawn", footer: m.form.footer(), lines: fields, top: focused - m.modalRows() + 1, width: formWidth})
 	case m.help:
-		lines = centered(helpLines(), m.width, m.height-4)
-	case l.wide:
-		lines = m.wide(visible, cursor, l)
+		lines = m.modal(popup{title: "keys", lines: helpLines(m.focus), top: m.helpTop, width: helpWidth})
 	default:
-		lines = m.narrow(visible, cursor, l, rule)
+		lines = m.body(m.layout(), rule)
 	}
-	bar := keyBar(m.width)
+	bar := keyBar(m.width, m.focus)
 	switch {
 	case m.prompt != nil:
 		bar = m.prompt.view()
 	case m.form != nil:
-		bar = formBar()
+		bar = m.form.bar()
 	case m.confirm != nil:
 		bar = m.confirm.bar()
 	case m.help:
-		bar = " " + accent.Render("esc") + " close"
+		bar = " " + accent.Render("j/k") + " scroll  " + accent.Render("esc") + " close"
 	}
 	screen := append([]string{header, rule}, lines...)
 	screen = append(screen, rule, bar)
@@ -59,29 +55,47 @@ func render(m Model) string {
 	return strings.Join(screen, "\n")
 }
 
-func (m Model) narrow(visible []row, cursor int, l layout, rule string) []string {
-	shown := window(fleetLines(m.fleet, visible, m.expanded, cursor, narrowName), m.fleetTop(), l.fleetRows)
-	fleet := make([]string, len(shown))
-	for index, line := range shown {
-		fleet[index] = " " + line
+func (m Model) body(l layout, rule string) []string {
+	var panes [][]string
+	for _, a := range l.areas {
+		panes = append(panes, m.paneLines(a))
 	}
-	lines := append([]string{" " + fleetHeader(narrowName)}, scrollbar(fleet, m.width, len(visible), m.fleetTop(), " ")...)
-	lines = append(lines, rule, m.logTitle())
-	return append(lines, m.logPane(l, m.width)...)
-}
-
-func (m Model) wide(visible []row, cursor int, l layout) []string {
-	leftWidth := fleetWidth(wideName) + 2
-	shown := window(fleetLines(m.fleet, visible, m.expanded, cursor, wideName), m.fleetTop(), l.fleetRows)
-	left := make([]string, l.fleetRows)
-	for index, line := range shown {
-		left[index] = " " + line
+	if l.side {
+		return besides(panes)
 	}
-	left = scrollbar(left, leftWidth, len(visible), m.fleetTop(), dim.Render("│"))
-	right := m.logPane(l, m.width-leftWidth)
-	lines := []string{pad(" "+fleetHeader(wideName), leftWidth-1) + dim.Render("│") + m.logTitle()}
-	for index := range left {
-		lines = append(lines, left[index]+right[index])
+	var lines []string
+	for index, pane := range panes {
+		if index > 0 {
+			lines = append(lines, rule)
+		}
+		lines = append(lines, pane...)
 	}
 	return lines
+}
+
+func besides(panes [][]string) []string {
+	lines := make([]string, len(panes[0]))
+	for _, pane := range panes {
+		for index, line := range pane {
+			lines[index] += line
+		}
+	}
+	return lines
+}
+
+func (m Model) paneLines(a area) []string {
+	switch a.pane {
+	case fleetPane:
+		return m.fleetPane(a)
+	case logPane:
+		return m.logPane(a)
+	}
+	return nil
+}
+
+func (m Model) title(p pane, text string) string {
+	if m.focus == p {
+		return bold.Render(text)
+	}
+	return dim.Render(text)
 }

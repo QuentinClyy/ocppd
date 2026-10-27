@@ -30,7 +30,7 @@ reaches a daemon elsewhere, with `OCPPD_TOKEN` set.
  14:02:12  EVB-0001   transaction_started    connector=1 transaction_id=1042
  14:02:42  EVB-0001   meter_sample           connector=1 power_w=11000 soc=0.47
  ───────────────────────────────────────────────────────────────────────────────
- j/k move  enter open  p plug  a auth  s stop tx  u unplug  f fault  ? help
+ j/k move  enter open  p plug  a auth  s stop tx  u unplug  ^hjkl pane  ? help
 ```
 
 - **Stations** are listed by id, collapsed. Open one to see its connectors (a
@@ -39,19 +39,26 @@ reaches a daemon elsewhere, with `OCPPD_TOKEN` set.
 - **The log** shows every event, or only the selected station's with `tab`.
 - From 150 columns, the log sits beside the stations instead of under them.
 - A `▐` scrollbar shows on a pane that has more lines than fit.
+- One pane has the focus: its title is bold, and the other's is grey. The key
+  bar and the help (`?`) show the focused pane's keys and the global ones.
 
 ## Keys
 
-Driver keys act on the selected connector. On a station row, they act on its
-only connector, or open the station when it has several.
+Driver keys act on the selected connector, from the stations pane. On a
+station row, they act on its only connector, or open the station when it has
+several. In the log pane, `j` / `k` scroll a line, `gg` goes to the oldest
+line and `G` back to the newest.
 
 | Key | Action |
 |---|---|
 | `j` / `k` | next / previous row |
 | `enter` | open / close a station; on a connector, close its station |
-| `l` / `h` | open / close a station, vim style |
 | `gg` / `G` | first / last row |
 | `^d` / `^u` | scroll the log down / up; the mouse wheel scrolls the pane under it |
+| `^hjkl` | focus the pane left / below / above / right; `^←` `^↓` `^↑` `^→` too |
+| `+` / `-` | grow / shrink the focused pane |
+| `=` | reset the split |
+| `z` | zoom the focused pane, hiding the other; again to show both |
 | `p` | plug in an EV |
 | `a` | present an id tag: type it, `enter` sends, `esc` cancels |
 | `s` | stop the transaction |
@@ -64,20 +71,25 @@ only connector, or open the station when it has several.
 | `tab` | log: the selected station / all stations |
 | `q` | quit; the daemon and its stations keep running |
 | `Q` | stop the daemon and every station: `y` confirms |
-| `esc` / `?` | open / close the key help |
+| `esc` / `?` | open / close the key help; `j` / `k` scroll it on a short terminal |
 
-The TUI captures the mouse so the wheel scrolls its panes; hold Shift to select
-text.
+The TUI captures the mouse: the wheel scrolls the pane under it, a click
+focuses a pane and selects a row, a click on the selected row opens or closes
+it, and dragging the divider resizes the panes. Hold Shift to select text.
 
 ## Spawn form
 
 `n` opens a form that builds a spawn line (see
 [Configuration](configuration.md)):
 
-- **stations**: a list of ids, each with its own password (`ctrl+n` adds one),
+- **entry**: a list of ids, each with its own password (`ctrl+n` adds one),
   or a prefix and a count sharing one password. `←` / `→` switches.
 - **ocpp**, **vendor**, **model**, **phases**, **max A**, **connectors**,
   **csms**: an empty field keeps ocppd's default, shown in grey.
 
-`tab` / `⇧tab` move between fields, `enter` spawns, `esc` cancels. Passwords
-show as `•`.
+`tab` / `⇧tab` move between fields and `enter` spawns. `esc` switches to
+normal mode, vim style: `j` / `k` move between fields, `h` / `l` switch a
+choice, `gg` / `G` go to the first / last field, `i` or `a` types again,
+`enter` spawns, and `esc` or `q` cancels. The box's bottom border shows the
+mode and, when the spawn is refused, why. Passwords show as typed. On a small
+terminal the form shrinks to fit and scrolls to the focused field.
