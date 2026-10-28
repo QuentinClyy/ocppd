@@ -92,7 +92,7 @@ impl Outbox {
         let mut sent = self.queue.remove(index)?.sent;
         sent.attempts += 1;
         self.last_id += 1;
-        let id = self.last_id.to_string();
+        let id = format!("{now}{}", self.last_id);
         let frame = Frame::Call {
             id: id.clone(),
             action: sent.call.action.clone(),
@@ -175,3 +175,7 @@ impl Outbox {
         self.transaction_messages.contains(&action)
     }
 }
+
+#[cfg(test)]
+#[path = "outbox.test.rs"]
+mod tests;
