@@ -3,6 +3,7 @@ use super::table::{AVAILABILITY_STATE, CONNECTOR_STATUSES, POWER};
 use crate::protocol::v201::charging_station::diagnostics::monitoring::{LOCK, PROBLEM};
 use crate::protocol::v201::messages::provisioning::report::{DataType, Mutability};
 use crate::station::Station;
+use crate::station::charge::Current;
 
 pub fn rows(station: &Station) -> Vec<Row<'_>> {
     use DataType::{Boolean, Decimal, Integer, OptionList};
@@ -27,6 +28,10 @@ pub fn rows(station: &Station) -> Vec<Row<'_>> {
         ),
     ];
     for id in 1..=station.connectors.len() as u32 {
+        let connector_type = match station.connectors[id as usize - 1].current {
+            Current::Ac => "cType2",
+            Current::Dc => "cCCS2",
+        };
         rows.extend([
             row("EVSE", "Available", "true", ReadOnly, Boolean).evse(id, None),
             row(
@@ -56,7 +61,7 @@ pub fn rows(station: &Station) -> Vec<Row<'_>> {
             row(
                 "Connector",
                 "ConnectorType",
-                "cType2",
+                connector_type,
                 ReadOnly,
                 DataType::String,
             )

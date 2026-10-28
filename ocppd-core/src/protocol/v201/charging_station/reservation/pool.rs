@@ -4,9 +4,15 @@ use crate::protocol::v201::charging_station::ChargingStation;
 use crate::protocol::v201::event::ReservationEnd;
 use crate::protocol::v201::messages::datatypes::id_token::IdToken;
 use crate::protocol::v201::messages::reservation::ConnectorType;
+use crate::station::charge::Current;
 use crate::wire::ci_string::CiString;
 
-pub const CONNECTOR_TYPE: ConnectorType = ConnectorType::CType2;
+pub fn connector_type(current: Current) -> ConnectorType {
+    match current {
+        Current::Ac => ConnectorType::CType2,
+        Current::Dc => ConnectorType::CCcs2,
+    }
+}
 
 impl ChargingStation {
     pub(in crate::protocol::v201::charging_station) fn reserved(&self, index: usize) -> bool {
@@ -27,7 +33,8 @@ impl ChargingStation {
             return reservation.admits(id_token, group);
         }
         let mut reservations = self.reservations.iter();
-        reservations.any(|reservation| reservation.claimable(index, id_token, group))
+        let current = self.station.connectors[index].current;
+        reservations.any(|reservation| reservation.claimable(index, current, id_token, group))
             || self.free(Some(index), None) >= self.floating(None)
     }
 
@@ -42,8 +49,10 @@ impl ChargingStation {
         if !self.reservation_allows(index, id_token, group) {
             return false;
         }
+        let current = self.station.connectors[index].current;
         let position = self.reservations.iter().position(|reservation| {
-            reservation.evse == Some(index) || reservation.claimable(index, id_token, group)
+            reservation.evse == Some(index)
+                || reservation.claimable(index, current, id_token, group)
         });
         if let Some(position) = position {
             self.sessions[index].reservation_id = Some(self.reservations[position].id);
@@ -95,15 +104,21 @@ impl ChargingStation {
 }
 
 impl Reservation {
-    pub(super) fn fits(&self, index: usize) -> bool {
+    pub(super) fn fits(&self, index: usize, current: Current) -> bool {
         self.evse.is_none_or(|evse| evse == index)
             && self
                 .connector_type
-                .is_none_or(|kind| kind == CONNECTOR_TYPE)
+                .is_none_or(|kind| kind == connector_type(current))
     }
 
-    fn claimable(&self, index: usize, id_token: &IdToken, group: Option<&CiString<36>>) -> bool {
-        self.fits(index) && self.admits(id_token, group)
+    fn claimable(
+        &self,
+        index: usize,
+        current: Current,
+        id_token: &IdToken,
+        group: Option<&CiString<36>>,
+    ) -> bool {
+        self.fits(index, current) && self.admits(id_token, group)
     }
 
     fn admits(&self, id_token: &IdToken, group: Option<&CiString<36>>) -> bool {

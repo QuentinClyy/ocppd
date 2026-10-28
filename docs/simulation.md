@@ -9,8 +9,15 @@ station is simulated.
   phases (22 kW); the [station model](configuration.md#station-model) changes
   that. A 2.0.1 station has one EVSE per connector, of type `cType2`.
 - **EV charging:** an EV charges at its own maximum, within the station's
-  limits and the CSMS's charging profiles. Power is flat up to 80 % and
-  tapers after that.
+  limits and the CSMS's charging profiles. The curve depends on the station's
+  `current`:
+  - `ac`: the car's onboard charger sets the pace. Power is flat up to 97 %
+    and tapers after that.
+  - `dc`: the car's battery management sets the pace. Power is flat up to
+    50 %, falls to half at 80 % and to 5 % at 100 %.
+  - A station limit scales the curve down; it does not change its shape.
+  - A `dc` station is three-phase on the grid side. Meter values stay on that
+    side: there is no DC voltage or current, and no converter loss.
 - **Meter values:** the meter values and the EVSE `Power` variable follow that
   curve.
 - **Time:** the clock is the host's.

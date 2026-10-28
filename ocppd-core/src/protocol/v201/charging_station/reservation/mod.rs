@@ -49,7 +49,9 @@ impl ChargingStation {
             group: request.group_id_token.map(|group| group.id_token),
         };
         let evses = 0..self.sessions.len();
-        let targets: Vec<usize> = evses.filter(|&index| reservation.fits(index)).collect();
+        let connectors = &self.station.connectors;
+        let fits = |&index: &usize| reservation.fits(index, connectors[index].current);
+        let targets: Vec<usize> = evses.filter(fits).collect();
         if !setting("Enabled") || targets.is_empty() {
             return response(ReserveNowStatus::Rejected);
         }
@@ -112,7 +114,9 @@ impl ChargingStation {
     pub(super) fn reservations_tick(&mut self, out: &mut Vec<Output>, now: u64) {
         let evses = 0..self.sessions.len();
         while let Some(position) = self.reservations.iter().position(|reservation| {
-            let mut targets = evses.clone().filter(|&index| reservation.fits(index));
+            let connectors = &self.station.connectors;
+            let fits = |&index: &usize| reservation.fits(index, connectors[index].current);
+            let mut targets = evses.clone().filter(fits);
             now >= reservation.expires || !targets.any(|index| self.operative(index))
         }) {
             let reservation = &self.reservations[position];

@@ -76,3 +76,31 @@ fn given_zero_current_when_station_built_then_refused() {
         Some("voltage_v and max_current_a must be positive")
     );
 }
+
+#[test]
+fn given_dc_with_one_phase_when_station_built_then_refused() {
+    let model = Model {
+        current: Current::Dc,
+        phases: 1,
+        ..Model::default()
+    };
+
+    let station = model.station("CP1", true);
+
+    assert_eq!(station.err(), Some("dc needs phases 3"));
+}
+
+#[test]
+fn given_dc_spawn_line_when_station_built_then_every_connector_is_dc() {
+    let line = r#"{"command":"spawn","prefix":"CP","count":1,"current":"dc","connectors":2}"#;
+    let model: Model = serde_json::from_str(line).unwrap();
+
+    let station = model.station("CP1", true).unwrap();
+
+    assert!(
+        station
+            .connectors
+            .iter()
+            .all(|connector| connector.current == Current::Dc)
+    );
+}
