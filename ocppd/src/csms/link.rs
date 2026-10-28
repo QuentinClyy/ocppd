@@ -49,7 +49,6 @@ enum Wake {
 
 pub async fn run(
     mut protocol: Protocol,
-    url: String,
     events: UnboundedSender<Event>,
     receiver: UnboundedReceiver<Order>,
     starts_online: bool,
@@ -76,13 +75,13 @@ pub async fn run(
             match next_wake(&mut link, protocol.next_deadline(), dials, &mut orders).await {
                 Wake::Input(input) => input,
                 Wake::Describe(reply) => {
-                    let csms = target(&protocol, &url, &link.id);
+                    let csms = target(&protocol, &link.id);
                     let _ = reply.send(protocol.description(&csms, now_ms()));
                     continue;
                 }
                 Wake::Lost(reason) => link.lose(&reason, &protocol),
                 Wake::Reconnect => {
-                    let target = target(&protocol, &url, &link.id);
+                    let target = target(&protocol, &link.id);
                     match connect(&target, &protocol).await {
                         Ok(socket) => {
                             link.socket = Some(socket);
@@ -139,11 +138,8 @@ fn failure(err: &str) -> ConnectFailure {
     }
 }
 
-fn target(protocol: &Protocol, url: &str, id: &str) -> String {
-    match protocol.csms_url() {
-        Some(base) => format!("{}/{id}", base.trim_end_matches('/')),
-        None => url.to_owned(),
-    }
+fn target(protocol: &Protocol, id: &str) -> String {
+    format!("{}/{id}", protocol.csms_url().trim_end_matches('/'))
 }
 
 fn backoff(id: &str, failures: u32, jitter: bool) -> Duration {

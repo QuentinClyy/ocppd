@@ -148,7 +148,10 @@ impl Protocol {
 
     pub fn set_csms_url(&mut self, url: &str) -> bool {
         match self {
-            Protocol::V16(_) => true,
+            Protocol::V16(charge_point) => {
+                charge_point.set_csms_url(url);
+                true
+            }
             Protocol::V201(charging_station) => charging_station.set_csms_url(url),
         }
     }
@@ -160,10 +163,10 @@ impl Protocol {
         }
     }
 
-    pub fn csms_url(&self) -> Option<String> {
+    pub fn csms_url(&self) -> String {
         match self {
-            Protocol::V16(_) => None,
-            Protocol::V201(charging_station) => charging_station.csms_url(),
+            Protocol::V16(charge_point) => charge_point.csms_url().to_owned(),
+            Protocol::V201(charging_station) => charging_station.csms_url().unwrap_or_default(),
         }
     }
 

@@ -4,6 +4,7 @@ use futures_util::StreamExt;
 use harness::{SPAWN, bounded, first_error, launch, plugged, rejections, start};
 use serde_json::{Value, json};
 use std::time::Duration;
+use tokio::net::TcpListener;
 use tokio::time::timeout;
 use tokio_tungstenite::tungstenite::Message;
 
@@ -202,4 +203,36 @@ async fn given_a_connected_station_when_disconnect_then_connect_then_it_dials_ag
 
     let reconnected = timeout(Duration::from_secs(1), run.daemon.listener.accept()).await;
     assert!(reconnected.is_ok(), "no dial within a second of connect");
+}
+
+#[tokio::test]
+async fn given_an_offline_station_when_its_csms_is_changed_then_connect_reaches_the_new_one() {
+    let mut daemon = launch(r#"{"command":"spawn","prefix":"CP","count":1,"connect":false}"#).await;
+    daemon.event("offline").await;
+    let other = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let url = format!("ws://127.0.0.1:{}", other.local_addr().unwrap().port());
+    daemon
+        .command(&format!(
+            r#"{{"command":"set_csms","station":"CP1","url":"{url}"}}"#
+        ))
+        .await;
+    daemon.event("csms_changed").await;
+
+    daemon
+        .command(r#"{"command":"connect","station":"CP1"}"#)
+        .await;
+
+    let reached = timeout(Duration::from_secs(1), other.accept()).await;
+    assert!(reached.is_ok(), "the new csms was not dialed");
+}
+
+#[tokio::test]
+async fn given_a_connected_station_when_its_csms_is_changed_then_it_is_refused() {
+    let mut run = start(SPAWN, 300).await;
+
+    run.command(r#"{"command":"set_csms","station":"CP1","url":"ws://127.0.0.1:1"}"#)
+        .await;
+
+    let rejected = run.event("intent_rejected").await;
+    assert_eq!(rejected["reason"], "disconnect first");
 }

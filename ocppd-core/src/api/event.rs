@@ -23,6 +23,9 @@ pub enum LinkEvent {
     Disconnected,
     Offline,
     Online,
+    CsmsChanged {
+        url: String,
+    },
     ConnectFailed {
         reason: String,
     },

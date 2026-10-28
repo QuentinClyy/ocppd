@@ -291,3 +291,38 @@ fn given_charging_ev_when_disconnect_then_the_transaction_keeps_running() {
     });
     assert!(!ended);
 }
+
+fn set_csms(run: &mut Run, url: &str) {
+    run.input(0, Input::Intent(Intent::SetCsms { url: url.into() }));
+}
+
+#[test]
+fn given_booted_station_when_set_csms_then_rejected_until_disconnected() {
+    let mut run = Run::accepted(300);
+
+    set_csms(&mut run, "ws://other");
+
+    assert!(
+        run.events
+            .contains(&EventKind::Link(LinkEvent::IntentRejected {
+                connector: None,
+                reason: "disconnect first".into(),
+            }))
+    );
+}
+
+#[test]
+fn given_disconnected_station_when_set_csms_then_the_next_connection_uses_it() {
+    let mut run = Run::accepted(300);
+    run.input(0, Input::Disconnected);
+
+    set_csms(&mut run, "ws://other");
+
+    assert_eq!(run.station.csms_url().as_deref(), Some("ws://other"));
+    assert!(
+        run.events
+            .contains(&EventKind::Link(LinkEvent::CsmsChanged {
+                url: "ws://other".into()
+            }))
+    );
+}

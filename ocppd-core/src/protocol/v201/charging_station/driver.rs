@@ -20,6 +20,9 @@ impl ChargingStation {
         if intent == Intent::Connect {
             return self.release(out, now);
         }
+        if let Intent::SetCsms { url } = &intent {
+            return self.change_csms(out, now, url);
+        }
         if intent == Intent::Shutdown {
             return self.shut_down(out, now);
         }
@@ -82,6 +85,7 @@ impl ChargingStation {
             | Intent::PowerCut
             | Intent::Disconnect
             | Intent::Connect
+            | Intent::SetCsms { .. }
             | Intent::Shutdown
             | Intent::FailTransfer { .. }
             | Intent::Configure { .. } => {}

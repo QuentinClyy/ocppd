@@ -300,3 +300,38 @@ fn given_charge_point_held_offline_when_the_power_is_cut_then_it_stays_offline()
 
     assert!(!csms.charge_point.wants_connection());
 }
+
+fn set_csms(url: &str) -> Intent {
+    Intent::SetCsms { url: url.into() }
+}
+
+#[test]
+fn given_booted_charge_point_when_set_csms_then_rejected_until_disconnected() {
+    let mut csms = Csms::booted();
+
+    csms.intent(0, set_csms("ws://other"));
+
+    assert!(
+        csms.events
+            .contains(&EventKind::Link(LinkEvent::IntentRejected {
+                connector: None,
+                reason: "disconnect first".into(),
+            }))
+    );
+}
+
+#[test]
+fn given_disconnected_charge_point_when_set_csms_then_the_url_changes_and_is_reported() {
+    let mut csms = Csms::booted();
+    csms.disconnect(0);
+
+    csms.intent(0, set_csms("ws://other"));
+
+    assert_eq!(csms.charge_point.csms_url(), "ws://other");
+    assert!(
+        csms.events
+            .contains(&EventKind::Link(LinkEvent::CsmsChanged {
+                url: "ws://other".into()
+            }))
+    );
+}

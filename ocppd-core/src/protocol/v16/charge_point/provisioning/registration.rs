@@ -27,6 +27,23 @@ impl ChargePoint {
         )
     }
 
+    pub fn csms_url(&self) -> &str {
+        &self.csms_url
+    }
+
+    pub fn set_csms_url(&mut self, url: &str) {
+        self.csms_url = url.to_owned();
+    }
+
+    pub(crate) fn change_csms(&mut self, out: &mut Vec<Output>, now: u64, url: &str) {
+        if self.is_connected() {
+            return self.reject(out, now, None, "disconnect first");
+        }
+        self.set_csms_url(url);
+        let url = url.to_owned();
+        self.emit(out, now, EventKind::Link(LinkEvent::CsmsChanged { url }));
+    }
+
     pub fn wants_connection(&self) -> bool {
         !self.held_offline
     }

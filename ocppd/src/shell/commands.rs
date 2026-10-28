@@ -160,7 +160,6 @@ pub fn spawn(
             .as_deref()
             .unwrap_or(csms)
             .trim_end_matches('/');
-        let url = format!("{base}/{id}");
         let station = match command.model.station(&id, command.jitter) {
             Ok(station) => station,
             Err(err) => {
@@ -196,7 +195,7 @@ pub fn spawn(
                     continue;
                 }
                 let (orders, receiver) = unbounded_channel();
-                let link = link::run(protocol, url, events.clone(), receiver, command.connect);
+                let link = link::run(protocol, events.clone(), receiver, command.connect);
                 let task = tokio::spawn(link);
                 stations.insert(id, Running { orders, task });
             }
