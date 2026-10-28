@@ -2,6 +2,7 @@ package draw
 
 import (
 	"slices"
+	"strings"
 
 	tea "charm.land/bubbletea/v2"
 )
@@ -44,6 +45,13 @@ func (e Editor) Edit(key tea.KeyPressMsg) Editor {
 		e.runes = slices.Insert(slices.Clone(e.runes), e.cursor, typed...)
 		e.cursor += len(typed)
 	}
+	return e
+}
+
+func (e Editor) Paste(text string) Editor {
+	pasted := []rune(strings.NewReplacer("\r", "", "\n", "").Replace(strings.TrimSpace(text)))
+	e.runes = slices.Insert(slices.Clone(e.runes), e.cursor, pasted...)
+	e.cursor += len(pasted)
 	return e
 }
 

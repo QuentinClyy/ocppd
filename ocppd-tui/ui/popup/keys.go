@@ -32,6 +32,7 @@ var spawnBindings = []draw.Binding{
 	{Group: "fields", Keys: "gg / G", Help: "first / last field"},
 	{Group: "fields", Keys: "h / l", Help: "switch a choice", Bar: "choice"},
 	{Group: "fields", Keys: "i / a", Help: "type in the field", Bar: "edit"},
+	{Group: "fields", Keys: "p", Help: "paste the clipboard into the field"},
 	{Group: "fields", Keys: "ctrl+n", Help: "add a station"},
 	{Group: "form", Keys: "enter", Help: "spawn", Bar: "spawn"},
 	{Group: "form", Keys: "esc / q", Help: "cancel", Bar: "cancel"},

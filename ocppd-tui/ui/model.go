@@ -35,6 +35,7 @@ type Model struct {
 	filtering   bool
 	zoomed      bool
 	dragging    bool
+	sel         selection
 	sideWidth   int
 	bottomRows  int
 	prompt      *prompt
@@ -73,21 +74,20 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m = next.(Model)
 		m.fleetScroll = m.fleetTop()
 		return m, cmd
+	case tea.PasteMsg:
+		m = m.paste(msg.Content)
+	case tea.ClipboardMsg:
+		m = m.paste(msg.Content)
 	case tea.MouseWheelMsg:
 		if !m.overlaid() {
 			m = m.wheel(msg)
 		}
 	case tea.MouseClickMsg:
-		if !m.overlaid() {
-			m = m.click(msg)
-			m.fleetScroll = m.fleetTop()
-		}
+		m = m.press(msg)
 	case tea.MouseMotionMsg:
-		if m.dragging {
-			m = m.dragTo(msg.X, msg.Y)
-		}
+		m = m.motion(msg)
 	case tea.MouseReleaseMsg:
-		m.dragging = false
+		return m.lift()
 	case ocppd.EventMsg:
 		if g, ok := parseGreeting(string(msg)); ok {
 			m.csms, m.daemon = g.Csms, g.Version

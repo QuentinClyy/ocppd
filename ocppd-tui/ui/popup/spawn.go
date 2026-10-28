@@ -73,6 +73,19 @@ func (f *Spawn) Key(msg tea.KeyPressMsg) (string, bool) {
 	return line, true
 }
 
+func (f *Spawn) Paste(text string) {
+	slots := f.slots()
+	current := slots[min(f.focus, len(slots)-1)]
+	if current.text != nil {
+		*current.text = current.text.Paste(text)
+		f.err = ""
+	}
+}
+
+func (f *Spawn) Pastes(key string) bool {
+	return f.normal && f.pending == "" && key == "p"
+}
+
 func (f *Spawn) Typing() bool {
 	return !f.normal
 }

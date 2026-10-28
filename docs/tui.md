@@ -67,6 +67,7 @@ at the right end of the bottom bar.
 | `=` | reset the split |
 | `z` | zoom the focused pane, hiding the other; again to show both |
 | `/` | filter the focused pane: stations by id or OCPP version (`2.0.1`), the log by text; `enter` keeps the filter, `esc` clears it |
+| `drag` | select text and copy it; Shift-drag selects with the terminal |
 | `p` | plug in an EV |
 | `a` | present an id tag: type it, `enter` sends, `esc` cancels |
 | `s` | stop the transaction |
@@ -84,8 +85,19 @@ at the right end of the bottom bar.
 
 The TUI captures the mouse: the wheel scrolls the pane under it, a click
 focuses a pane and selects a row or log line, a click on the selected row opens
-or closes it, and dragging the divider resizes the panes. Hold Shift to select
-text with the terminal instead.
+or closes it, and dragging the divider resizes the panes.
+
+Dragging anywhere else selects text, inside the pane where the drag starts (or
+anywhere on screen in a form, the help or the details), and copies it on
+release, through the terminal's clipboard (OSC 52, see [The log](#the-log)).
+Hold Shift to select with the terminal instead.
+
+Pasting with the terminal (`cmd+v`, `ctrl+shift+v`) types into the field being
+edited: the form, the id tag, a filter, a setting. A paste is one line, so
+newlines are dropped, and it is ignored anywhere you are not typing. In the
+form's normal mode, `p` pastes the system clipboard into the focused field; a
+terminal that does not let programs read its clipboard ignores `p`, and
+`cmd+v` still works.
 
 ## The log
 

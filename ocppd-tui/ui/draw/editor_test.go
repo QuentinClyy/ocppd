@@ -82,3 +82,16 @@ func Test_given_text_longer_than_the_view_when_drawn_then_the_cursor_stays_visib
 		t.Fatalf("got %q", shown)
 	}
 }
+
+func Test_given_a_cursor_in_the_middle_when_text_is_pasted_then_it_lands_there_on_one_line(t *testing.T) {
+	e := editKeys(NewEditor("ws://"), "left")
+
+	e = e.Paste("\n host/a\r\nb \n")
+
+	if e.String() != "ws:/host/ab/" {
+		t.Fatalf("got %q", e.String())
+	}
+	if after := e.Edit(keyMsg("X")).String(); after != "ws:/host/abX/" {
+		t.Fatalf("cursor moved wrongly: %q", after)
+	}
+}

@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
 )
 
@@ -180,5 +181,45 @@ func Test_given_a_typed_id_when_left_twice_and_typing_then_the_text_goes_in_at_t
 	want := `{"command":"spawn","ocpp":"1.6","stations":[{"id":"EV-0B1"}]}`
 	if len(*sent) != 1 || (*sent)[0] != want {
 		t.Fatalf("got %v", *sent)
+	}
+}
+
+func paste(m Model, msg tea.Msg) Model {
+	next, _ := m.Update(msg)
+	return next.(Model)
+}
+
+func Test_given_the_spawn_csms_field_when_a_url_is_pasted_then_it_is_spawned_with_it(t *testing.T) {
+	m, sent := recording()
+	m = press(m, keys([]string{"n", "tab"}, typed("A"), []string{"esc", "G", "k", "i"})...)
+
+	m = paste(m, tea.PasteMsg{Content: "ws://csms.example/ocpp\n"})
+	press(m, "enter")
+
+	if len(*sent) != 1 || !strings.Contains((*sent)[0], `"csms":"ws://csms.example/ocpp"`) {
+		t.Fatalf("got %v", *sent)
+	}
+}
+
+func Test_given_the_spawn_form_in_normal_mode_when_p_is_pressed_then_the_clipboard_is_read_and_pasted(t *testing.T) {
+	m, sent := recording()
+	m = press(m, keys([]string{"n", "tab"}, typed("A"), []string{"esc"})...)
+
+	_, cmd := m.key(keyMsg("p"))
+	m = paste(m, tea.ClipboardMsg{Content: "B"})
+	press(m, "enter")
+
+	if cmd == nil || len(*sent) != 1 || !strings.Contains((*sent)[0], `"id":"AB"`) {
+		t.Fatalf("cmd %v, got %v", cmd, *sent)
+	}
+}
+
+func Test_given_the_station_list_when_text_is_pasted_then_nothing_acts_on_it(t *testing.T) {
+	m, sent := recording()
+
+	m = paste(m, tea.PasteMsg{Content: "Qn"})
+
+	if m.form != nil || m.confirm != nil || len(*sent) != 0 {
+		t.Fatalf("form %v, confirm %v, sent %v", m.form, m.confirm, *sent)
 	}
 }

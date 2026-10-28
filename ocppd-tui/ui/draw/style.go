@@ -14,6 +14,7 @@ var (
 	Heading     = lipgloss.NewStyle().Foreground(lipgloss.Color("#8a919c")).Bold(true)
 	Field       = lipgloss.NewStyle().Background(lipgloss.Color("#262a38"))
 	FieldHint   = Field.Foreground(lipgloss.Color("#8a919c"))
+	Highlight   = lipgloss.NewStyle().Reverse(true)
 	Chosen      = lipgloss.NewStyle().Background(lipgloss.Color("#7aa2f7")).Foreground(lipgloss.Color("#0b0d10")).Bold(true)
 	insertBadge = Chosen
 	normalBadge = lipgloss.NewStyle().Background(lipgloss.Color("#6fcf97")).Foreground(lipgloss.Color("#0b0d10")).Bold(true)

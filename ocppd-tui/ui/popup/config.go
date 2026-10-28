@@ -91,6 +91,19 @@ func (p Station) configKey(msg tea.KeyPressMsg, online bool) Result {
 	return Result{Popup: &p}
 }
 
+func (p Station) Paste(text string) Station {
+	c := &p.config
+	switch {
+	case p.tab != configTab:
+	case c.draft != nil:
+		draft := c.draft.Paste(text)
+		c.draft = &draft
+	case c.filtering:
+		c.filter, c.row = c.filter.Paste(text), 0
+	}
+	return p
+}
+
 func (p Station) editKey(msg tea.KeyPressMsg) Result {
 	c := &p.config
 	key := msg.String()
