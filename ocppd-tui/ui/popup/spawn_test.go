@@ -119,3 +119,16 @@ func Test_given_connect_switched_to_no_when_spawned_then_the_line_spawns_offline
 		t.Fatalf("got %s", line)
 	}
 }
+
+func Test_given_dc_current_when_spawned_then_the_line_has_it_and_the_default_does_not(t *testing.T) {
+	f := NewSpawn()
+	f.stations[0].id = draw.NewEditor("EVB1")
+	ac, _ := f.line()
+	f.current.index = 1
+
+	dc, err := f.line()
+
+	if err != nil || strings.Contains(ac, "current") || !strings.Contains(dc, `"current":"dc"`) {
+		t.Fatalf("ac %q, dc %q, %v", ac, dc, err)
+	}
+}

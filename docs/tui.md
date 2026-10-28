@@ -129,7 +129,7 @@ filter.
 
 - **entry**: a list of ids, each with its own password (`ctrl+n` adds one),
   or a prefix and a count sharing one password. `←` / `→` switches.
-- **ocpp**, **vendor**, **model**, **phases**, **max A**, **connectors**,
+- **ocpp**, **current** (`←` / `→` switches `ac` and `dc`), **vendor**, **model**, **phases**, **max A**, **connectors**,
   **csms**: an empty field keeps ocppd's default, shown in grey.
 - **connect**: `no` spawns the stations offline; `o` brings each one online.
 
