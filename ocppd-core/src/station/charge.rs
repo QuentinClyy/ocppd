@@ -4,7 +4,7 @@ const MS_PER_HOUR: f64 = 3_600_000.0;
 
 type Curve = &'static [(f64, f64)];
 
-const AC_CURVE: Curve = &[(0.0, 1.0), (0.97, 1.0), (1.0, 0.02)];
+const AC_CURVE: Curve = &[(0.0, 1.0), (0.99, 1.0), (1.0, 0.1)];
 const DC_CURVE: Curve = &[(0.0, 1.0), (0.5, 1.0), (0.8, 0.5), (1.0, 0.05)];
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Deserialize)]

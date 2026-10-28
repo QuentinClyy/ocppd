@@ -11,7 +11,7 @@ station is simulated.
 - **EV charging:** an EV charges at its own maximum, within the station's
   limits and the CSMS's charging profiles. The curve depends on the station's
   `current`:
-  - `ac`: the car's onboard charger sets the pace. Power is flat up to 97 %
+  - `ac`: the car's onboard charger sets the pace. Power is flat up to 99 %
     and tapers after that.
   - `dc`: the car's battery management sets the pace. Power is flat up to
     50 %, falls to half at 80 % and to 5 % at 100 %.

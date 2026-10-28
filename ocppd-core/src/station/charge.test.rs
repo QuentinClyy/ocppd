@@ -39,7 +39,7 @@ fn fast_ev() -> Ev {
 }
 
 fn knee() -> u64 {
-    1_000 + (0.77 * 60_000.0 / 11_000.0 * HOUR as f64) as u64
+    1_000 + (0.79 * 60_000.0 / 11_000.0 * HOUR as f64) as u64
 }
 
 fn half_target() -> Ev {
@@ -78,7 +78,7 @@ fn given_station_limit_below_the_ev_when_an_hour_passes_then_the_limit_caps_the_
 }
 
 #[test]
-fn given_ac_ev_charging_when_it_reaches_97_percent_then_still_full_power() {
+fn given_ac_ev_charging_when_it_reaches_99_percent_then_still_full_power() {
     let session = charging(22_000.0);
 
     let at_knee = sample(&session, &ev(), knee());
@@ -87,13 +87,13 @@ fn given_ac_ev_charging_when_it_reaches_97_percent_then_still_full_power() {
 }
 
 #[test]
-fn given_ac_ev_past_97_percent_when_20_minutes_pass_then_power_tapers() {
+fn given_ac_ev_past_99_percent_when_5_minutes_pass_then_power_tapers() {
     let session = charging(22_000.0);
 
-    let later = sample(&session, &ev(), knee() + HOUR / 3);
+    let later = sample(&session, &ev(), knee() + HOUR / 12);
 
     assert!(later.power_w < 11_000.0 && later.power_w > 0.0, "{later:?}");
-    assert!(later.soc > 0.97 && later.soc < 1.0);
+    assert!(later.soc > 0.99 && later.soc < 1.0);
 }
 
 #[test]
