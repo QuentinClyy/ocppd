@@ -227,3 +227,33 @@ func Test_given_more_stations_than_rows_when_j_passes_the_bottom_then_the_view_f
 		t.Fatalf("got down %d, up %d", down.fleetTop(), up.fleetTop())
 	}
 }
+
+func Test_given_a_count_when_j_then_the_cursor_moves_that_many_rows(t *testing.T) {
+	m, _ := recording()
+
+	m = press(m, "3", "j")
+
+	if m.cursor != 3 {
+		t.Fatalf("got %d", m.cursor)
+	}
+}
+
+func Test_given_a_count_when_G_then_the_cursor_goes_to_that_row(t *testing.T) {
+	m, _ := recording()
+
+	m = press(m, "2", "G")
+
+	if m.cursor != 1 {
+		t.Fatalf("got %d", m.cursor)
+	}
+}
+
+func Test_given_a_count_past_the_end_when_gg_then_the_cursor_stops_on_the_last_row(t *testing.T) {
+	m, _ := recording()
+
+	m = press(m, "9", "9", "g", "g")
+
+	if m.cursor != len(m.visibleRows())-1 {
+		t.Fatalf("got %d", m.cursor)
+	}
+}

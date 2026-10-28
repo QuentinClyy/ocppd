@@ -48,7 +48,7 @@ func (m Model) selected() (row, bool) {
 	return visible[min(m.cursor, len(visible)-1)], true
 }
 
-func (m Model) move(key string) Model {
+func (m Model) move(key string, count int) Model {
 	visible := m.visibleRows()
 	if len(visible) == 0 {
 		return m
@@ -58,13 +58,16 @@ func (m Model) move(key string) Model {
 	s := m.fleet.Stations[current.station]
 	switch key {
 	case "j", "down":
-		m.cursor = min(m.cursor+1, len(visible)-1)
+		m.cursor = min(m.cursor+max(count, 1), len(visible)-1)
 	case "k", "up":
-		m.cursor = max(m.cursor-1, 0)
+		m.cursor = max(m.cursor-max(count, 1), 0)
 	case "gg":
-		m.cursor = 0
+		m.cursor = min(max(count-1, 0), len(visible)-1)
 	case "G":
 		m.cursor = len(visible) - 1
+		if count > 0 {
+			m.cursor = min(count-1, len(visible)-1)
+		}
 	case "enter":
 		if current.connector != stationRow {
 			m.cursor -= current.connector + 1

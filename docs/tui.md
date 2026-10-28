@@ -46,8 +46,11 @@ reaches a daemon elsewhere, with `OCPPD_TOKEN` set.
 
 Driver keys act on the selected connector, from the stations pane. On a
 station row, they act on its only connector, or open the station when it has
-several. In the log pane, `j` / `k` scroll a line, `gg` goes to the oldest
-line and `G` back to the newest.
+several.
+
+Moves take a count, vim style: `5j` moves five rows, `12G` or `12gg` goes to
+row 12, `3+` grows the pane three steps. The count and any half-typed key show
+at the right end of the bottom bar.
 
 | Key | Action |
 |---|---|
@@ -55,6 +58,7 @@ line and `G` back to the newest.
 | `enter` | open / close a station; on a connector, close its station |
 | `space` | station details (below) |
 | `gg` / `G` | first / last row |
+| `5j` | a count before a move repeats it |
 | `^d` / `^u` | scroll the log down / up; the mouse wheel scrolls the pane under it |
 | `^hjkl` | focus the pane left / below / above / right; `^←` `^↓` `^↑` `^→` too |
 | `+` / `-` | grow / shrink the focused pane |
@@ -76,8 +80,22 @@ line and `G` back to the newest.
 | `esc` / `?` | open / close the key help; `j` / `k` scroll it on a short terminal |
 
 The TUI captures the mouse: the wheel scrolls the pane under it, a click
-focuses a pane and selects a row, a click on the selected row opens or closes
-it, and dragging the divider resizes the panes. Hold Shift to select text.
+focuses a pane and selects a row or log line, a click on the selected row opens
+or closes it, and dragging the divider resizes the panes. Hold Shift to select
+text with the terminal instead.
+
+## The log
+
+The log has a cursor line, like the stations. `j` / `k` move it, `gg` goes to
+the oldest line and `G` back to the newest; on the newest line, the log follows
+new events, and above it the cursor stays on its line as events arrive.
+
+`V` (or `v`) starts selecting lines from the cursor, `j` / `k` extend the
+selection and `y` copies it; `esc` cancels. `yy` or `Y` copies the cursor line,
+`3yy` three lines from it down. Lines are copied as shown, through the
+terminal's clipboard (OSC 52): Windows Terminal, kitty, WezTerm, iTerm2 and
+tmux with `set-clipboard on` support it. Changing the filter or pressing `tab`
+ends the selection and puts the cursor back on the newest line.
 
 ## Station details
 

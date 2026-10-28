@@ -34,20 +34,36 @@ func (m Model) helpKey(key string) Model {
 	return m
 }
 
-func keyBar(width int, p pane) string {
+func keyBar(width int, p pane, showcmd string) string {
 	var items []string
 	for _, b := range bindingsFor(p) {
 		if b.bar != "" {
 			items = append(items, draw.Accent.Render(strings.ReplaceAll(b.keys, " / ", "/"))+" "+b.bar)
 		}
 	}
+	room := width
+	if showcmd != "" {
+		room -= lipgloss.Width(showcmd) + 2
+	}
 	help := draw.Accent.Render("?") + " help"
 	bar := " "
 	for _, item := range items {
-		if lipgloss.Width(bar+item+"  "+help) > width {
+		if lipgloss.Width(bar+item+"  "+help) > room {
 			break
 		}
 		bar += item + "  "
 	}
-	return bar + help
+	return withShowcmd(bar+help, width, showcmd)
+}
+
+func withShowcmd(bar string, width int, showcmd string) string {
+	if showcmd == "" {
+		return bar
+	}
+	return draw.Pad(bar, width-lipgloss.Width(showcmd)-1) + draw.Dim.Render(showcmd)
+}
+
+func visualBar(width int, showcmd string) string {
+	bar := " " + draw.Bold.Render("-- VISUAL LINE --") + "  " + draw.Accent.Render("y") + " yank  " + draw.Accent.Render("esc") + " cancel"
+	return withShowcmd(bar, width, showcmd)
 }

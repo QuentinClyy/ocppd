@@ -25,8 +25,10 @@ var paneBindings = map[pane][]binding{
 		{"driver", "x", "power cut, then reboot", ""},
 	},
 	logPane: {
-		{"log", "j / k", "scroll down / up", "scroll"},
+		{"log", "j / k", "next / previous line", "move"},
 		{"log", "gg / G", "oldest / newest line", ""},
+		{"log", "V / v", "select lines, then y copies them", ""},
+		{"log", "yy / Y", "copy the line", ""},
 	},
 }
 
@@ -36,6 +38,7 @@ var globalBindings = []binding{
 	{"panes", "=", "reset the split", ""},
 	{"panes", "z", "zoom the pane / show both", "zoom"},
 	{"panes", "/", "filter the pane (stations: id or ocpp)", "filter"},
+	{"general", "5j", "a count repeats a move; 12G goes to row 12", ""},
 	{"general", "^d / ^u", "scroll log down / up (or wheel)", ""},
 	{"general", "tab", "log: selected station / all", "log"},
 	{"general", "n", "spawn stations", "spawn"},

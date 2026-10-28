@@ -70,19 +70,17 @@ func appendLog(log []entry, line entry) []entry {
 
 func (m Model) addLog(line entry) Model {
 	m.log = appendLog(m.log, line)
-	if m.logOffset > 0 && m.showsLog(line) {
+	if !m.showsLog(line) {
+		return m
+	}
+	if m.visual {
+		m.logAnchor++
+	}
+	if m.logCursor > 0 || m.visual {
+		m.logCursor++
 		m.logOffset++
 	}
 	return m
-}
-
-func (m Model) scrollLog(lines int) Model {
-	m.logOffset = m.clampLog(m.clampLog(m.logOffset) + lines)
-	return m
-}
-
-func (m Model) clampLog(offset int) int {
-	return min(max(offset, 0), max(len(m.logLines())-m.paneRows(logPane), 0))
 }
 
 func (m Model) logPage() int {

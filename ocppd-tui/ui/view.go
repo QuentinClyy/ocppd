@@ -2,6 +2,7 @@ package ui
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/QuentinClyy/ocppd/ocppd-tui/ui/draw"
@@ -35,8 +36,17 @@ func render(m Model) string {
 	default:
 		lines = m.body(m.layout(), rule)
 	}
-	bar := keyBar(m.width, m.focus)
+	bar := keyBar(m.width, m.focus, m.pending)
 	switch {
+	case m.yanked > 0:
+		bar = " " + plural(m.yanked, "line") + " yanked"
+	case m.visual:
+		newest, oldest := m.selection()
+		showcmd := m.pending
+		if showcmd == "" {
+			showcmd = strconv.Itoa(oldest - newest + 1)
+		}
+		bar = visualBar(m.width, showcmd)
 	case m.prompt != nil:
 		bar = m.prompt.view()
 	case m.filtering:
@@ -58,11 +68,15 @@ func render(m Model) string {
 	return strings.Join(screen, "\n")
 }
 
-func (m Model) stationCount() string {
-	count := fmt.Sprintf("%d stations", len(m.fleet.Stations))
-	if len(m.fleet.Stations) == 1 {
-		count = "1 station"
+func plural(count int, noun string) string {
+	if count == 1 {
+		return "1 " + noun
 	}
+	return fmt.Sprintf("%d %ss", count, noun)
+}
+
+func (m Model) stationCount() string {
+	count := plural(len(m.fleet.Stations), "station")
 	filter := m.filters[fleetPane].String()
 	if filter == "" {
 		return count

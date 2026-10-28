@@ -57,13 +57,13 @@ func Test_given_the_log_focused_on_a_narrow_screen_when_ctrl_up_then_the_fleet_t
 	}
 }
 
-func Test_given_the_log_focused_when_k_then_the_log_scrolls_and_the_cursor_stays(t *testing.T) {
+func Test_given_the_log_focused_when_k_then_the_log_cursor_moves_and_the_fleet_cursor_stays(t *testing.T) {
 	m := press(withLog(sized(twoStations(), 80, 24), 50), "ctrl+j")
 
 	m = press(m, "k", "k")
 
-	if m.logOffset != 2 || m.cursor != 0 {
-		t.Fatalf("got offset %d, cursor %d", m.logOffset, m.cursor)
+	if m.logCursor != 2 || m.cursor != 0 {
+		t.Fatalf("got log cursor %d, cursor %d", m.logCursor, m.cursor)
 	}
 }
 
