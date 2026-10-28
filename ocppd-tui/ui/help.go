@@ -1,53 +1,45 @@
 package ui
 
 import (
-	"strings"
-
-	"charm.land/lipgloss/v2"
 	"github.com/QuentinClyy/ocppd/ocppd-tui/ui/draw"
+	"github.com/QuentinClyy/ocppd/ocppd-tui/ui/motion"
 )
 
 const helpWidth = 58
 
-func helpLines(p pane) []string {
-	var lines []string
-	group := ""
-	for _, b := range bindingsFor(p) {
-		if b.group != group {
-			group = b.group
-			lines = append(lines, " "+draw.Dim.Render(group))
-		}
-		lines = append(lines, "   "+draw.Accent.Render(draw.Pad(b.keys, 10))+b.help)
+func (m Model) helpBindings() []draw.Binding {
+	switch {
+	case m.form != nil:
+		return m.form.Bindings()
+	case m.details != nil:
+		return m.details.Bindings()
 	}
-	return lines
+	return bindingsFor(m.focus)
 }
 
 func (m Model) helpKey(key string) Model {
+	pending, count, key := motion.Feed(m.pending, key, "g")
+	m.pending = pending
+	last := max(len(draw.HelpLines(m.helpBindings()))-m.modalRows(), 0)
+	if top, ok := motion.Move(key, count, m.helpTop, last); ok {
+		m.helpTop = top
+		return m
+	}
 	switch key {
-	case "j", "down":
-		m.helpTop = min(m.helpTop+1, max(len(helpLines(m.focus))-m.modalRows(), 0))
-	case "k", "up":
-		m.helpTop = max(m.helpTop-1, 0)
 	case "esc", "?", "q":
 		m.help, m.helpTop = false, 0
 	}
 	return m
 }
 
-func keyBar(width int, p pane) string {
-	var items []string
-	for _, b := range bindingsFor(p) {
-		if b.bar != "" {
-			items = append(items, draw.Accent.Render(strings.ReplaceAll(b.keys, " / ", "/"))+" "+b.bar)
-		}
+func (m Model) opensPopupHelp(key string) bool {
+	if key != "?" {
+		return false
 	}
-	help := draw.Accent.Render("?") + " help"
-	bar := " "
-	for _, item := range items {
-		if lipgloss.Width(bar+item+"  "+help) > width {
-			break
-		}
-		bar += item + "  "
-	}
-	return bar + help
+	return m.form != nil && !m.form.Typing() || m.details != nil && !m.details.Typing()
+}
+
+func visualBar(width int, showcmd string) string {
+	bar := " " + draw.Bold.Render("-- VISUAL LINE --") + "  " + draw.Accent.Render("y") + " yank  " + draw.Accent.Render("esc") + " cancel"
+	return draw.WithShowcmd(bar, width, showcmd)
 }

@@ -121,3 +121,14 @@ func Test_given_a_wide_screen_when_the_divider_is_dragged_past_the_columns_then_
 		}
 	}
 }
+
+func Test_given_a_long_log_when_a_line_is_clicked_then_the_log_cursor_moves_to_it(t *testing.T) {
+	m := withLog(sized(manyStations(1), 80, 24), 50)
+	logY, logRows := content(m, logPane)
+
+	m = clickAt(m, 10, logY)
+
+	if m.focus != logPane || m.logCursor != logRows-1 {
+		t.Fatalf("got focus %v, cursor %d", m.focus, m.logCursor)
+	}
+}

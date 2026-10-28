@@ -39,7 +39,16 @@ func (m Model) click(msg tea.MouseClickMsg) Model {
 	if a.pane == fleetPane {
 		return m.clickRow(msg.Y - a.y - 1)
 	}
-	return m
+	return m.clickLog(msg.Y - a.y - 1)
+}
+
+func (m Model) clickLog(index int) Model {
+	total := len(m.logLines())
+	clicked := max(total-m.paneRows(logPane)-m.clampLog(m.logOffset), 0) + index
+	if index < 0 || clicked >= total {
+		return m
+	}
+	return m.moveLog(total - 1 - clicked)
 }
 
 func (m Model) clickRow(index int) Model {
@@ -49,7 +58,7 @@ func (m Model) clickRow(index int) Model {
 	case index < 0 || clicked >= total:
 		return m
 	case clicked == min(m.cursor, total-1):
-		return m.move("enter")
+		return m.move("enter", 0)
 	}
 	m.cursor = clicked
 	return m

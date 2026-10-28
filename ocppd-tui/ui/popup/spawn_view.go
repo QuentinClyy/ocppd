@@ -100,10 +100,13 @@ func (f *Spawn) footer() string {
 	return statusLine(draw.InsertMode, f.err)
 }
 
-func (f *Spawn) Bar() string {
-	keys := [][2]string{{"tab", "next"}, {"⇧tab", "back"}, {"ctrl+n", "add station"}, {"enter", "spawn"}, {"esc", "normal mode"}}
+func (f *Spawn) Bindings() []draw.Binding {
+	return spawnBindings
+}
+
+func (f *Spawn) Bar(width int) string {
 	if f.normal {
-		keys = [][2]string{{"j/k", "field"}, {"h/l", "choice"}, {"gg/G", "first/last"}, {"i", "edit"}, {"enter", "spawn"}, {"esc", "cancel"}}
+		return draw.KeyBar(width, spawnBindings, f.pending)
 	}
-	return keyHints(keys)
+	return keyHints([][2]string{{"tab", "next"}, {"⇧tab", "back"}, {"ctrl+n", "add station"}, {"enter", "spawn"}, {"esc", "normal mode"}})
 }

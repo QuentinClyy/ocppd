@@ -91,14 +91,19 @@ func tabbed(station string, active int) string {
 	return draw.Bold.Render(station) + draw.Dim.Render(" ─ ") + strings.Join(names, draw.Dim.Render(" · "))
 }
 
-func (p Station) Bar() string {
+func (p Station) Bindings() []draw.Binding {
+	if p.tab == configTab {
+		return configBindings
+	}
+	return detailsBindings
+}
+
+func (p Station) Bar(width int) string {
 	switch {
-	case p.tab == detailsTab:
-		return keyHints([][2]string{{"j/k", "connector"}, {"p", "plug"}, {"a", "auth"}, {"s", "stop tx"}, {"u", "unplug"}, {"tab", "config"}, {"esc", "close"}})
-	case p.config.draft != nil:
+	case p.tab == configTab && p.config.draft != nil:
 		return keyHints([][2]string{{"enter", "apply"}, {"esc", "cancel"}})
-	case p.config.filtering:
+	case p.tab == configTab && p.config.filtering:
 		return keyHints([][2]string{{"enter", "done"}, {"esc", "clear"}})
 	}
-	return keyHints([][2]string{{"j/k", "key"}, {"/", "filter"}, {"space", "toggle"}, {"i", "edit"}, {"tab", "details"}, {"esc", "close"}})
+	return draw.KeyBar(width, p.Bindings(), p.pending)
 }

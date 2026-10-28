@@ -21,9 +21,13 @@ type Model struct {
 	expanded    map[string]bool
 	cursor      int
 	fleetScroll int
-	pendingG    bool
+	pending     string
 	byStation   bool
 	logOffset   int
+	logCursor   int
+	logAnchor   int
+	visual      bool
+	yanked      int
 	help        bool
 	helpTop     int
 	focus       pane

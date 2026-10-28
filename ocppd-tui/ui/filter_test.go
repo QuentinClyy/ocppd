@@ -65,7 +65,7 @@ func Test_given_the_log_focused_when_filtered_then_only_matching_lines_and_the_t
 	}
 }
 
-func Test_given_a_filtered_scrolled_log_when_a_hidden_line_arrives_then_the_view_stays(t *testing.T) {
+func Test_given_a_filtered_log_with_a_raised_cursor_when_a_hidden_line_arrives_then_the_cursor_stays(t *testing.T) {
 	m := sized(mixedVersions(), 80, 24)
 	for range 40 {
 		m.log = appendLog(m.log, entry{text: "meter_sample"})
@@ -74,8 +74,8 @@ func Test_given_a_filtered_scrolled_log_when_a_hidden_line_arrives_then_the_view
 
 	m = m.addLog(entry{text: "boot_status"})
 
-	if m.logOffset != 1 {
-		t.Fatalf("got %d", m.logOffset)
+	if m.logCursor != 1 {
+		t.Fatalf("got %d", m.logCursor)
 	}
 }
 

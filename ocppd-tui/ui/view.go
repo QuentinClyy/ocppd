@@ -2,6 +2,7 @@ package ui
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/QuentinClyy/ocppd/ocppd-tui/ui/draw"
@@ -26,29 +27,38 @@ func render(m Model) string {
 	header = draw.Pad(ansi.Truncate(header, room, "…"), room+1) + right
 	var lines []string
 	switch {
+	case m.help:
+		lines = m.modal(draw.Frame{Title: draw.Bold.Render("keys"), Lines: draw.HelpLines(m.helpBindings()), Top: m.helpTop, Width: helpWidth})
 	case m.form != nil:
 		lines = m.modal(m.form.Frame(m.modalRows()))
 	case m.details != nil:
 		lines = m.detailsFrame()
-	case m.help:
-		lines = m.modal(draw.Frame{Title: draw.Bold.Render("keys"), Lines: helpLines(m.focus), Top: m.helpTop, Width: helpWidth})
 	default:
 		lines = m.body(m.layout(), rule)
 	}
-	bar := keyBar(m.width, m.focus)
+	bar := draw.KeyBar(m.width, bindingsFor(m.focus), m.pending)
 	switch {
+	case m.yanked > 0:
+		bar = " " + plural(m.yanked, "line") + " yanked"
+	case m.visual:
+		newest, oldest := m.selection()
+		showcmd := m.pending
+		if showcmd == "" {
+			showcmd = strconv.Itoa(oldest - newest + 1)
+		}
+		bar = visualBar(m.width, showcmd)
 	case m.prompt != nil:
 		bar = m.prompt.view()
 	case m.filtering:
 		bar = " " + draw.Accent.Render("/") + " " + m.filters[m.focus].View(filterWidth) + "   " + draw.Accent.Render("enter") + " keep  " + draw.Accent.Render("esc") + " clear"
+	case m.help:
+		bar = draw.WithShowcmd(" "+draw.Accent.Render("j/k")+" scroll  "+draw.Accent.Render("esc")+" close", m.width, m.pending)
 	case m.form != nil:
-		bar = m.form.Bar()
+		bar = m.form.Bar(m.width)
 	case m.confirm != nil:
 		bar = m.confirm.bar()
 	case m.details != nil:
-		bar = m.details.Bar()
-	case m.help:
-		bar = " " + draw.Accent.Render("j/k") + " scroll  " + draw.Accent.Render("esc") + " close"
+		bar = m.details.Bar(m.width)
 	}
 	screen := append([]string{header, rule}, lines...)
 	screen = append(screen, rule, bar)
@@ -58,11 +68,15 @@ func render(m Model) string {
 	return strings.Join(screen, "\n")
 }
 
-func (m Model) stationCount() string {
-	count := fmt.Sprintf("%d stations", len(m.fleet.Stations))
-	if len(m.fleet.Stations) == 1 {
-		count = "1 station"
+func plural(count int, noun string) string {
+	if count == 1 {
+		return "1 " + noun
 	}
+	return fmt.Sprintf("%d %ss", count, noun)
+}
+
+func (m Model) stationCount() string {
+	count := plural(len(m.fleet.Stations), "station")
 	filter := m.filters[fleetPane].String()
 	if filter == "" {
 		return count

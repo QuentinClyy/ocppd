@@ -6,6 +6,7 @@ import (
 	"github.com/QuentinClyy/ocppd/ocppd-tui/fleet"
 	"github.com/QuentinClyy/ocppd/ocppd-tui/ui/command"
 	"github.com/QuentinClyy/ocppd/ocppd-tui/ui/draw"
+	"github.com/QuentinClyy/ocppd/ocppd-tui/ui/motion"
 )
 
 const stationRow = -1
@@ -48,7 +49,7 @@ func (m Model) selected() (row, bool) {
 	return visible[min(m.cursor, len(visible)-1)], true
 }
 
-func (m Model) move(key string) Model {
+func (m Model) move(key string, count int) Model {
 	visible := m.visibleRows()
 	if len(visible) == 0 {
 		return m
@@ -56,22 +57,18 @@ func (m Model) move(key string) Model {
 	m.cursor = min(m.cursor, len(visible)-1)
 	current := visible[m.cursor]
 	s := m.fleet.Stations[current.station]
-	switch key {
-	case "j", "down":
-		m.cursor = min(m.cursor+1, len(visible)-1)
-	case "k", "up":
-		m.cursor = max(m.cursor-1, 0)
-	case "gg":
-		m.cursor = 0
-	case "G":
-		m.cursor = len(visible) - 1
-	case "enter":
-		if current.connector != stationRow {
-			m.cursor -= current.connector + 1
-			delete(m.expanded, s.ID)
-		} else {
-			m.expanded[s.ID] = !m.expanded[s.ID]
-		}
+	if index, ok := motion.Move(key, count, m.cursor, len(visible)-1); ok {
+		m.cursor = index
+		return m
+	}
+	if key != "enter" {
+		return m
+	}
+	if current.connector != stationRow {
+		m.cursor -= current.connector + 1
+		delete(m.expanded, s.ID)
+	} else {
+		m.expanded[s.ID] = !m.expanded[s.ID]
 	}
 	return m
 }

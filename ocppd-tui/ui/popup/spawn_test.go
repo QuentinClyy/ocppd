@@ -87,3 +87,23 @@ func Test_given_normal_mode_when_G_then_gg_then_the_last_then_the_first_field(t 
 		t.Fatalf("got bottom %d (want %d), top %d", bottom, last, f.focus)
 	}
 }
+
+func Test_given_normal_mode_when_a_count_then_j_then_focus_moves_that_many_fields(t *testing.T) {
+	f := NewSpawn()
+
+	spawnKeys(f, "esc", "3", "j")
+
+	if f.focus != 3 {
+		t.Fatalf("got %d", f.focus)
+	}
+}
+
+func Test_given_normal_mode_with_a_pending_count_when_esc_then_the_form_stays_open(t *testing.T) {
+	f := NewSpawn()
+
+	_, closed := spawnKeys(f, "esc", "3", "esc")
+
+	if closed || f.pending != "" {
+		t.Fatalf("closed %v, pending %q", closed, f.pending)
+	}
+}
