@@ -41,7 +41,7 @@ func (p Station) Typing() bool {
 
 func (p Station) Key(msg tea.KeyPressMsg, s fleet.Station) Result {
 	if p.tab == configTab {
-		return p.configKey(msg)
+		return p.configKey(msg, s.Link == "up")
 	}
 	pending, count, key := motion.Feed(p.pending, msg.String(), "g")
 	p.pending = pending
@@ -60,6 +60,8 @@ func (p Station) Key(msg tea.KeyPressMsg, s fleet.Station) Result {
 		if len(s.Connectors) > 0 {
 			return Result{Popup: &p, Prompt: &command.Target{Station: s.ID, Connector: s.Connectors[current].ID}}
 		}
+	case "o":
+		return Result{Popup: &p, Send: []string{command.Link(s.ID, s.Held)}}
 	case "p", "s", "u", "f", "c", "x":
 		at := command.Target{Station: s.ID}
 		if len(s.Connectors) > 0 {

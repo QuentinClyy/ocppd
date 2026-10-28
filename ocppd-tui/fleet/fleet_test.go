@@ -172,3 +172,26 @@ func Test_given_a_transaction_when_stopped_then_the_meter_keeps_its_reading(t *t
 		t.Fatalf("got %+v", c)
 	}
 }
+
+func Test_given_a_connected_station_when_taken_offline_and_disconnected_then_its_link_is_off(t *testing.T) {
+	var f Fleet
+	f.Apply(`{"station":"CP1","at":1,"kind":"connected"}`)
+
+	f.Apply(`{"station":"CP1","at":2,"kind":"offline"}`)
+	f.Apply(`{"station":"CP1","at":2,"kind":"disconnected"}`)
+
+	if s := f.Stations[0]; s.Link != "off" || !s.Held {
+		t.Fatalf("got %+v", s)
+	}
+}
+
+func Test_given_an_offline_station_when_brought_online_then_its_link_is_down_until_connected(t *testing.T) {
+	var f Fleet
+	f.Apply(`{"station":"CP1","at":1,"kind":"offline"}`)
+
+	f.Apply(`{"station":"CP1","at":2,"kind":"online"}`)
+
+	if s := f.Stations[0]; s.Link != "down" || s.Held {
+		t.Fatalf("got %+v", s)
+	}
+}

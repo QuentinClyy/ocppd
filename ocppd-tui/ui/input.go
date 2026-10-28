@@ -100,6 +100,11 @@ func (m Model) fleetKey(key string, count int) Model {
 		if ok {
 			m.prompt = &prompt{at: at}
 		}
+	case "o":
+		if r, ok := m.selected(); ok {
+			s := m.fleet.Stations[r.station]
+			return m.sendLine(command.Link(s.ID, s.Held))
+		}
 	case "p", "s", "u", "f", "c", "x":
 		at, ok := m.target()
 		if !ok {

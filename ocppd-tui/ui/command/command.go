@@ -26,6 +26,17 @@ func Driver(key string, at Target) (string, bool) {
 	return Encode(map[string]any{"command": name, "station": at.Station, "connector": at.Connector}), true
 }
 
+func Link(station string, held bool) string {
+	if held {
+		return Encode(map[string]any{"command": "connect", "station": station})
+	}
+	return Encode(map[string]any{"command": "disconnect", "station": station})
+}
+
+func SetCsms(station, url string) string {
+	return Encode(map[string]any{"command": "set_csms", "station": station, "url": url})
+}
+
 func Authorize(at Target, idTag string) string {
 	return Encode(map[string]any{"command": "authorize", "station": at.Station, "connector": at.Connector, "id_tag": idTag})
 }

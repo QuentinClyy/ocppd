@@ -17,9 +17,16 @@ type configView struct {
 	err       string
 }
 
+const csmsKey = "csms"
+
 func (p Station) shown() []setting {
 	var shown []setting
-	for _, s := range p.described.Configuration {
+	settings := p.described.Configuration
+	if p.described.Station != "" {
+		csms := strings.TrimSuffix(p.described.Csms, "/"+p.id)
+		settings = append([]setting{{Key: csmsKey, Readonly: true, Value: &csms}}, settings...)
+	}
+	for _, s := range settings {
 		if strings.Contains(strings.ToLower(s.Key), strings.ToLower(p.config.filter.String())) {
 			shown = append(shown, s)
 		}
@@ -27,11 +34,15 @@ func (p Station) shown() []setting {
 	return shown
 }
 
+func (s setting) isEditable(online bool) bool {
+	return !s.Readonly || !online
+}
+
 func (s setting) isBoolean() bool {
 	return s.Value != nil && (*s.Value == "true" || *s.Value == "false")
 }
 
-func (p Station) configKey(msg tea.KeyPressMsg) Result {
+func (p Station) configKey(msg tea.KeyPressMsg, online bool) Result {
 	c := &p.config
 	key := msg.String()
 	switch {
@@ -64,12 +75,12 @@ func (p Station) configKey(msg tea.KeyPressMsg) Result {
 	case "/":
 		c.filtering = true
 	case "space":
-		if c.row < len(shown) && shown[c.row].isBoolean() && !shown[c.row].Readonly {
+		if c.row < len(shown) && shown[c.row].isBoolean() && shown[c.row].isEditable(online) {
 			flipped := map[string]string{"true": "false", "false": "true"}[*shown[c.row].Value]
 			return Result{Popup: &p, Send: []string{command.Configure(p.id, shown[c.row].Key, flipped)}}
 		}
 	case "i", "enter":
-		if c.row < len(shown) && !shown[c.row].Readonly {
+		if c.row < len(shown) && shown[c.row].isEditable(online) {
 			draft := draw.Editor{}
 			if shown[c.row].Value != nil {
 				draft = draw.NewEditor(*shown[c.row].Value)
@@ -93,6 +104,9 @@ func (p Station) editKey(msg tea.KeyPressMsg) Result {
 	shown := p.shown()
 	if key == "esc" || c.row >= len(shown) {
 		return Result{Popup: &p}
+	}
+	if shown[c.row].Key == csmsKey {
+		return Result{Popup: &p, Send: []string{command.SetCsms(p.id, draft)}}
 	}
 	return Result{Popup: &p, Send: []string{command.Configure(p.id, shown[c.row].Key, draft)}}
 }

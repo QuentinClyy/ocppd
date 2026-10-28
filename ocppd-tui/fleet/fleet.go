@@ -16,6 +16,7 @@ type Station struct {
 	ID         string
 	Ocpp       string
 	Link       string
+	Held       bool
 	Boot       string
 	Since      int64
 	Connectors []Connector
@@ -42,6 +43,8 @@ var tracked = map[string]bool{
 	"connected":           true,
 	"disconnected":        true,
 	"connect_failed":      true,
+	"offline":             true,
+	"online":              true,
 	"boot_status":         true,
 	"status_changed":      true,
 	"transaction_started": true,
@@ -59,7 +62,13 @@ func (f *Fleet) apply(e event) {
 	case "connected":
 		s.Link, s.Since = "up", e.At
 	case "disconnected", "connect_failed":
-		s.Link, s.Since = "down", 0
+		s.Link, s.Since = s.down(), 0
+	case "offline":
+		s.Held = true
+		s.Link = s.down()
+	case "online":
+		s.Held = false
+		s.Link = s.down()
 	case "boot_status":
 		s.Boot = e.Status
 	case "status_changed":
@@ -90,6 +99,13 @@ func (f *Fleet) station(id string) *Station {
 		f.Stations = slices.Insert(f.Stations, index, Station{ID: id})
 	}
 	return &f.Stations[index]
+}
+
+func (s *Station) down() string {
+	if s.Held {
+		return "off"
+	}
+	return "down"
 }
 
 func (s *Station) connector(id int) *Connector {

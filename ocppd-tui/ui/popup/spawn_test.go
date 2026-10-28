@@ -1,6 +1,7 @@
 package popup
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/QuentinClyy/ocppd/ocppd-tui/ui/draw"
@@ -105,5 +106,16 @@ func Test_given_normal_mode_with_a_pending_count_when_esc_then_the_form_stays_op
 
 	if closed || f.pending != "" {
 		t.Fatalf("closed %v, pending %q", closed, f.pending)
+	}
+}
+
+func Test_given_connect_switched_to_no_when_spawned_then_the_line_spawns_offline(t *testing.T) {
+	f := NewSpawn()
+	spawnKeys(f, "tab", "A", "esc", "G", "l")
+
+	line, _ := spawnKeys(f, "enter")
+
+	if !strings.Contains(line, `"connect":false`) {
+		t.Fatalf("got %s", line)
 	}
 }

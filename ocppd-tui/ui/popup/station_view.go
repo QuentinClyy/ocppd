@@ -23,7 +23,7 @@ func (p Station) Frame(c Context, rows int) draw.Frame {
 		f.Lines = p.detailsLines(c)
 		return f
 	}
-	lines, focused := p.configLines()
+	lines, focused := p.configLines(c.Station.Link == "up")
 	f.Lines, f.Top, f.Footer = lines, focused-rows+1, p.config.footer()
 	return f
 }

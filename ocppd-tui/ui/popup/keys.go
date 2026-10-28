@@ -12,6 +12,7 @@ var detailsBindings = []draw.Binding{
 	{Group: "driver", Keys: "f", Help: "fault the connector"},
 	{Group: "driver", Keys: "c", Help: "clear the fault"},
 	{Group: "driver", Keys: "x", Help: "power cut, then reboot"},
+	{Group: "driver", Keys: "o", Help: "take offline / bring online", Bar: "link"},
 	{Group: "popup", Keys: "tab / gt", Help: "config tab", Bar: "config"},
 	{Group: "popup", Keys: "esc / q", Help: "close", Bar: "close"},
 }

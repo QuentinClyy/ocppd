@@ -78,3 +78,27 @@ func Test_given_the_key_bindings_when_the_tui_doc_is_read_then_it_lists_every_ke
 		}
 	}
 }
+
+func Test_given_an_up_station_when_o_then_disconnect_is_sent(t *testing.T) {
+	m, sent := recording()
+	m = receive(m, `{"station":"CP1","at":1,"kind":"connected"}`)
+	*sent = nil
+
+	press(m, "o")
+
+	if len(*sent) != 1 || (*sent)[0] != `{"command":"disconnect","station":"CP1"}` {
+		t.Fatalf("got %v", *sent)
+	}
+}
+
+func Test_given_an_offline_station_when_o_on_a_connector_then_connect_is_sent(t *testing.T) {
+	m, sent := recording()
+	m = receive(m, `{"station":"CP1","at":1,"kind":"offline"}`)
+	*sent = nil
+
+	press(m, "j", "o")
+
+	if len(*sent) != 1 || (*sent)[0] != `{"command":"connect","station":"CP1"}` {
+		t.Fatalf("got %v", *sent)
+	}
+}

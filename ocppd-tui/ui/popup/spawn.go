@@ -29,6 +29,7 @@ type Spawn struct {
 	maxCurrent draw.Editor
 	connectors draw.Editor
 	csms       draw.Editor
+	connect    choice
 	focus      int
 	normal     bool
 	pending    string
@@ -48,6 +49,7 @@ func NewSpawn() *Spawn {
 		listed:   choice{options: []string{"list", "prefix + count"}},
 		stations: []credential{{}},
 		ocpp:     choice{options: []string{"1.6", "2.0.1"}},
+		connect:  choice{options: []string{"yes", "no"}},
 	}
 }
 
@@ -101,6 +103,7 @@ func (f *Spawn) slots() []slot {
 		slot{label: "max A", text: &f.maxCurrent, hint: "32", width: 6},
 		slot{label: "connectors", text: &f.connectors, hint: "1", width: 6},
 		slot{label: "csms", text: &f.csms, hint: "default (--csms)", width: 46},
+		slot{label: "connect", choice: &f.connect},
 	)
 }
 

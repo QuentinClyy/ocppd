@@ -42,6 +42,9 @@ func (f *Spawn) line() (string, error) {
 			fields[key] = text
 		}
 	}
+	if f.connect.index == 1 {
+		fields["connect"] = false
+	}
 	numbers := []struct {
 		key, label, text string
 		isWhole          bool
