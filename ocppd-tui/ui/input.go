@@ -20,12 +20,15 @@ func (m Model) key(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return m.promptKey(msg), nil
 	case m.filtering:
 		return m.filterKey(msg), nil
+	case m.help:
+		return m.helpKey(key), nil
+	case m.opensPopupHelp(key):
+		m.help = true
+		return m, nil
 	case m.form != nil:
 		return m.formKey(msg), nil
 	case m.confirm != nil:
 		return m.confirmKey(key), nil
-	case m.help:
-		return m.helpKey(key), nil
 	case m.details != nil:
 		return m.detailsKey(msg), nil
 	}
@@ -114,19 +117,11 @@ func (m Model) fleetKey(key string, count int) Model {
 }
 
 func (m Model) logKey(key string, count int) (Model, tea.Cmd) {
-	steps := max(count, 1)
+	last := len(m.logLines()) - 1
+	if index, ok := motion.Move(key, count, last-m.logCursor, last); ok {
+		return m.moveLog(last - index), nil
+	}
 	switch key {
-	case "j", "down":
-		return m.moveLog(m.logCursor - steps), nil
-	case "k", "up":
-		return m.moveLog(m.logCursor + steps), nil
-	case "gg":
-		return m.logLine(steps), nil
-	case "G":
-		if count > 0 {
-			return m.logLine(count), nil
-		}
-		return m.moveLog(0), nil
 	case "V", "v":
 		m.visual, m.logAnchor = !m.visual, m.logCursor
 	case "esc":
@@ -136,7 +131,7 @@ func (m Model) logKey(key string, count int) (Model, tea.Cmd) {
 			return m.yank(m.selection())
 		}
 	case "yy", "Y":
-		return m.yank(m.logCursor-steps+1, m.logCursor)
+		return m.yank(m.logCursor-max(count, 1)+1, m.logCursor)
 	}
 	return m, nil
 }

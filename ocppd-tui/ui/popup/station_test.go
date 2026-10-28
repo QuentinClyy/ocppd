@@ -48,3 +48,54 @@ func Test_given_a_read_only_key_when_i_then_it_is_not_edited(t *testing.T) {
 		t.Fatalf("got draft %q", r.Popup.config.draft.String())
 	}
 }
+
+func Test_given_details_when_a_count_then_j_then_the_connector_stops_on_the_last(t *testing.T) {
+	p, _ := OpenStation("CP1", 0)
+
+	r := stationKeys(p, "5", "j")
+
+	if r.Popup.connector != 1 {
+		t.Fatalf("got %d", r.Popup.connector)
+	}
+}
+
+func Test_given_details_when_gt_then_the_config_tab_shows(t *testing.T) {
+	p, _ := OpenStation("CP1", 0)
+
+	r := stationKeys(p, "g", "t")
+
+	if r.Popup.tab != configTab {
+		t.Fatalf("got %d", r.Popup.tab)
+	}
+}
+
+func Test_given_the_config_tab_when_gT_then_the_details_tab_shows(t *testing.T) {
+	p, _ := OpenStation("CP1", 0)
+
+	r := stationKeys(p, "tab", "g", "T")
+
+	if r.Popup.tab != detailsTab {
+		t.Fatalf("got %d", r.Popup.tab)
+	}
+}
+
+func Test_given_the_config_tab_when_2G_then_the_second_key_is_picked(t *testing.T) {
+	p, _ := OpenStation("CP1", 0)
+	p, _ = p.Observe(described)
+
+	r := stationKeys(p, "tab", "2", "G")
+
+	if r.Popup.config.row != 1 {
+		t.Fatalf("got %d", r.Popup.config.row)
+	}
+}
+
+func Test_given_a_pending_count_when_esc_then_the_popup_stays_open(t *testing.T) {
+	p, _ := OpenStation("CP1", 0)
+
+	r := stationKeys(p, "3", "esc")
+
+	if r.Popup == nil || r.Popup.pending != "" {
+		t.Fatalf("got %+v", r.Popup)
+	}
+}

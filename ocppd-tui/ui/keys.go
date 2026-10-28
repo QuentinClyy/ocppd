@@ -1,52 +1,49 @@
 package ui
 
-import "slices"
+import (
+	"slices"
 
-type binding struct {
-	group string
-	keys  string
-	help  string
-	bar   string
-}
+	"github.com/QuentinClyy/ocppd/ocppd-tui/ui/draw"
+)
 
-var paneBindings = map[pane][]binding{
+var paneBindings = map[pane][]draw.Binding{
 	fleetPane: {
-		{"stations", "j / k", "next / previous row", "move"},
-		{"stations", "enter", "open / close station", "open"},
-		{"stations", "space", "station details", "details"},
-		{"stations", "gg / G", "first / last row", ""},
-		{"stations", "d", "remove the station (dd: no question)", ""},
-		{"driver", "p", "plug in an EV", "plug"},
-		{"driver", "a", "present an id tag", "auth"},
-		{"driver", "s", "stop the transaction", "stop tx"},
-		{"driver", "u", "unplug", "unplug"},
-		{"driver", "f", "fault the connector", ""},
-		{"driver", "c", "clear the fault", ""},
-		{"driver", "x", "power cut, then reboot", ""},
+		{Group: "stations", Keys: "j / k", Help: "next / previous row", Bar: "move"},
+		{Group: "stations", Keys: "enter", Help: "open / close station", Bar: "open"},
+		{Group: "stations", Keys: "space", Help: "station details", Bar: "details"},
+		{Group: "stations", Keys: "gg / G", Help: "first / last row"},
+		{Group: "stations", Keys: "d", Help: "remove the station (dd: no question)"},
+		{Group: "driver", Keys: "p", Help: "plug in an EV", Bar: "plug"},
+		{Group: "driver", Keys: "a", Help: "present an id tag", Bar: "auth"},
+		{Group: "driver", Keys: "s", Help: "stop the transaction", Bar: "stop tx"},
+		{Group: "driver", Keys: "u", Help: "unplug", Bar: "unplug"},
+		{Group: "driver", Keys: "f", Help: "fault the connector"},
+		{Group: "driver", Keys: "c", Help: "clear the fault"},
+		{Group: "driver", Keys: "x", Help: "power cut, then reboot"},
 	},
 	logPane: {
-		{"log", "j / k", "next / previous line", "move"},
-		{"log", "gg / G", "oldest / newest line", ""},
-		{"log", "V / v", "select lines, then y copies them", ""},
-		{"log", "yy / Y", "copy the line", ""},
+		{Group: "log", Keys: "j / k", Help: "next / previous line", Bar: "move"},
+		{Group: "log", Keys: "gg / G", Help: "oldest / newest line"},
+		{Group: "log", Keys: "V / v", Help: "select lines, then y copies them"},
+		{Group: "log", Keys: "yy / Y", Help: "copy the line"},
 	},
 }
 
-var globalBindings = []binding{
-	{"panes", "^hjkl", "focus the pane that way (or ^arrows)", "pane"},
-	{"panes", "+ / -", "grow / shrink the pane (or drag)", ""},
-	{"panes", "=", "reset the split", ""},
-	{"panes", "z", "zoom the pane / show both", "zoom"},
-	{"panes", "/", "filter the pane (stations: id or ocpp)", "filter"},
-	{"general", "5j", "a count repeats a move; 12G goes to row 12", ""},
-	{"general", "^d / ^u", "scroll log down / up (or wheel)", ""},
-	{"general", "tab", "log: selected station / all", "log"},
-	{"general", "n", "spawn stations", "spawn"},
-	{"general", "q", "quit; the stations keep running", "quit"},
-	{"general", "Q", "stop the daemon and every station", ""},
-	{"general", "esc / ?", "close this help", ""},
+var globalBindings = []draw.Binding{
+	{Group: "panes", Keys: "^hjkl", Help: "focus the pane that way (or ^arrows)", Bar: "pane"},
+	{Group: "panes", Keys: "+ / -", Help: "grow / shrink the pane (or drag)"},
+	{Group: "panes", Keys: "=", Help: "reset the split"},
+	{Group: "panes", Keys: "z", Help: "zoom the pane / show both", Bar: "zoom"},
+	{Group: "panes", Keys: "/", Help: "filter the pane (stations: id or ocpp)", Bar: "filter"},
+	{Group: "general", Keys: "5j", Help: "a count repeats a move; 12G goes to row 12"},
+	{Group: "general", Keys: "^d / ^u", Help: "scroll log down / up (or wheel)"},
+	{Group: "general", Keys: "tab", Help: "log: selected station / all", Bar: "log"},
+	{Group: "general", Keys: "n", Help: "spawn stations", Bar: "spawn"},
+	{Group: "general", Keys: "q", Help: "quit; the stations keep running", Bar: "quit"},
+	{Group: "general", Keys: "Q", Help: "stop the daemon and every station"},
+	{Group: "general", Keys: "esc / ?", Help: "close this help"},
 }
 
-func bindingsFor(p pane) []binding {
+func bindingsFor(p pane) []draw.Binding {
 	return append(slices.Clone(paneBindings[p]), globalBindings...)
 }

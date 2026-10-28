@@ -29,10 +29,6 @@ func (m Model) pageLog(lines int) Model {
 	return m.scrollLog(lines).moveLog(cursor)
 }
 
-func (m Model) logLine(number int) Model {
-	return m.moveLog(len(m.logLines()) - number)
-}
-
 func (m Model) resetLog() Model {
 	m.logCursor, m.logOffset, m.visual = 0, 0, false
 	return m

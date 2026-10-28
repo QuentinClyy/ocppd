@@ -6,13 +6,13 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/QuentinClyy/ocppd/ocppd-tui/ui/command"
 	"github.com/QuentinClyy/ocppd/ocppd-tui/ui/draw"
+	"github.com/QuentinClyy/ocppd/ocppd-tui/ui/motion"
 )
 
 type configView struct {
 	row       int
 	filter    draw.Editor
 	filtering bool
-	pendingG  bool
 	draft     *draw.Editor
 	err       string
 }
@@ -50,24 +50,17 @@ func (p Station) configKey(msg tea.KeyPressMsg) Result {
 	}
 	shown := p.shown()
 	c.row = min(c.row, max(len(shown)-1, 0))
-	wasG := c.pendingG
-	c.pendingG = false
+	pending, count, key := motion.Feed(p.pending, key, "g")
+	p.pending = pending
+	if row, ok := motion.Move(key, count, c.row, max(len(shown)-1, 0)); ok {
+		c.row = row
+		return Result{Popup: &p}
+	}
 	switch key {
 	case "esc", "q":
 		return Result{}
-	case "tab", "shift+tab":
+	case "tab", "shift+tab", "gt", "gT":
 		p.tab = detailsTab
-	case "j", "down":
-		c.row = min(c.row+1, max(len(shown)-1, 0))
-	case "k", "up":
-		c.row = max(c.row-1, 0)
-	case "g":
-		if wasG {
-			c.row = 0
-		}
-		c.pendingG = !wasG
-	case "G":
-		c.row = max(len(shown)-1, 0)
 	case "/":
 		c.filtering = true
 	case "space":

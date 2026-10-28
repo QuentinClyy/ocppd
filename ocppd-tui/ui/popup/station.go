@@ -4,6 +4,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/QuentinClyy/ocppd/ocppd-tui/fleet"
 	"github.com/QuentinClyy/ocppd/ocppd-tui/ui/command"
+	"github.com/QuentinClyy/ocppd/ocppd-tui/ui/motion"
 )
 
 const (
@@ -17,6 +18,7 @@ type Station struct {
 	described description
 	tab       int
 	config    configView
+	pending   string
 }
 
 type Result struct {
@@ -33,22 +35,27 @@ func (p Station) ID() string {
 	return p.id
 }
 
+func (p Station) Typing() bool {
+	return p.tab == configTab && (p.config.draft != nil || p.config.filtering)
+}
+
 func (p Station) Key(msg tea.KeyPressMsg, s fleet.Station) Result {
 	if p.tab == configTab {
 		return p.configKey(msg)
 	}
-	key := msg.String()
+	pending, count, key := motion.Feed(p.pending, msg.String(), "g")
+	p.pending = pending
 	last := max(len(s.Connectors)-1, 0)
 	current := min(p.connector, last)
+	if index, ok := motion.Move(key, count, current, last); ok {
+		p.connector = index
+		return Result{Popup: &p}
+	}
 	switch key {
 	case "esc", "q":
 		return Result{}
-	case "tab", "shift+tab":
+	case "tab", "shift+tab", "gt", "gT":
 		p.tab = configTab
-	case "j", "down":
-		p.connector = min(current+1, last)
-	case "k", "up":
-		p.connector = max(current-1, 0)
 	case "a":
 		if len(s.Connectors) > 0 {
 			return Result{Popup: &p, Prompt: &command.Target{Station: s.ID, Connector: s.Connectors[current].ID}}

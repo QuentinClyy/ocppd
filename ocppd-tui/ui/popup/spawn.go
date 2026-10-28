@@ -3,6 +3,7 @@ package popup
 import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/QuentinClyy/ocppd/ocppd-tui/ui/draw"
+	"github.com/QuentinClyy/ocppd/ocppd-tui/ui/motion"
 )
 
 type choice struct {
@@ -30,7 +31,7 @@ type Spawn struct {
 	csms       draw.Editor
 	focus      int
 	normal     bool
-	pendingG   bool
+	pending    string
 	err        string
 }
 
@@ -56,7 +57,7 @@ func (f *Spawn) Key(msg tea.KeyPressMsg) (string, bool) {
 	case key == "esc" && !f.normal:
 		f.normal = true
 		return "", false
-	case key == "esc" || key == "q" && f.normal:
+	case f.normal && f.pending == "" && (key == "esc" || key == "q"):
 		return "", true
 	}
 	if !f.edit(msg) {
@@ -68,6 +69,10 @@ func (f *Spawn) Key(msg tea.KeyPressMsg) (string, bool) {
 		return "", false
 	}
 	return line, true
+}
+
+func (f *Spawn) Typing() bool {
+	return !f.normal
 }
 
 func (f *Spawn) isListed() bool {
@@ -134,23 +139,22 @@ func (f *Spawn) edit(key tea.KeyPressMsg) bool {
 }
 
 func (f *Spawn) normalKey(key string, slots []slot) bool {
-	wasG := f.pendingG
-	f.pendingG = false
+	pending, count, key := motion.Feed(f.pending, key, "g")
+	f.pending = pending
 	current := slots[f.focus]
+	switch key {
+	case "tab":
+		key = "j"
+	case "shift+tab":
+		key = "k"
+	}
+	if index, ok := motion.Move(key, count, f.focus, len(slots)-1); ok {
+		f.focus = index
+		return false
+	}
 	switch key {
 	case "enter":
 		return true
-	case "j", "down", "tab":
-		f.focus = min(f.focus+1, len(slots)-1)
-	case "k", "up", "shift+tab":
-		f.focus = max(f.focus-1, 0)
-	case "g":
-		if wasG {
-			f.focus = 0
-		}
-		f.pendingG = !wasG
-	case "G":
-		f.focus = len(slots) - 1
 	case "h", "l", "left", "right":
 		if current.choice != nil {
 			current.choice.index = (current.choice.index + 1) % len(current.choice.options)

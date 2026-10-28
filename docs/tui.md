@@ -102,14 +102,17 @@ ends the selection and puts the cursor back on the newest line.
 `space` opens a station's details: its OCPP version, link, boot status and
 when it connected, each connector's status, power, state of charge, meter
 reading and transaction, its vendor, model, firmware and CSMS url, and its
-last three events. `j` / `k` pick a connector and the driver keys act on it;
-`esc` or `q` close the details.
+last three events. `j` / `k` pick a connector (with a count, and `gg` / `G`)
+and the driver keys act on it; `esc` or `q` close the details.
 
-`tab` switches to the station's configuration: its 1.6 keys or 2.0.1
-variables, read-only ones marked `ro`. `j` / `k` pick a key, `/` filters
-them, `space` flips a `true` / `false` value, and `i` or `enter` edits one:
+`tab` (or `gt` / `gT`) switches to the station's configuration: its 1.6 keys
+or 2.0.1 variables, read-only ones marked `ro`. `j` / `k`, `gg` / `G` and
+counts pick a key, `/` filters them, `space` flips a `true` / `false` value, and `i` or `enter` edits one:
 `enter` applies it, `esc` cancels. The station takes the change as if the
 CSMS had sent it; a refused change shows its reason in the bottom border.
+
+`?` lists the keys of the tab you are on, except while typing a value or a
+filter.
 
 ## Spawn form
 
@@ -122,8 +125,10 @@ CSMS had sent it; a refused change shows its reason in the bottom border.
   **csms**: an empty field keeps ocppd's default, shown in grey.
 
 `tab` / `⇧tab` move between fields and `enter` spawns. `esc` switches to
-normal mode, vim style: `j` / `k` move between fields, `h` / `l` switch a
-choice, `gg` / `G` go to the first / last field, `i` or `a` types again,
-`enter` spawns, and `esc` or `q` cancels. The box's bottom border shows the
+normal mode, vim style: `j` / `k` move between fields (`3j` three of them),
+`h` / `l` switch a choice, `gg` / `G` go to the first / last field, `i` or `a`
+types again, `enter` spawns, and `esc` or `q` cancels. The box's bottom border shows the
 mode and, when the spawn is refused, why. Passwords show as typed. On a small
 terminal the form shrinks to fit and scrolls to the focused field.
+
+In normal mode, `?` lists the form's keys.

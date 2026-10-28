@@ -11,10 +11,10 @@ func Feed(pending, key, prefixes string) (next string, count int, motion string)
 	digits := strings.TrimRight(pending, prefixes)
 	prefix := pending[len(digits):]
 	switch {
-	case prefix != "" && key == prefix:
-		return "", parse(digits), prefix + key
-	case prefix != "":
+	case pending != "" && key == "esc":
 		return "", 0, ""
+	case prefix != "":
+		return "", parse(digits), prefix + key
 	case len(key) == 1 && strings.Contains(prefixes, key):
 		return pending + key, 0, ""
 	case isDigit(key) && (key != "0" || pending != ""):
@@ -36,4 +36,22 @@ func parse(digits string) int {
 		return 0
 	}
 	return count
+}
+
+func Move(key string, count, index, last int) (int, bool) {
+	steps := max(count, 1)
+	switch key {
+	case "j", "down":
+		return min(index+steps, last), true
+	case "k", "up":
+		return max(index-steps, 0), true
+	case "gg":
+		return min(max(count-1, 0), last), true
+	case "G":
+		if count == 0 {
+			return last, true
+		}
+		return min(count-1, last), true
+	}
+	return index, false
 }
