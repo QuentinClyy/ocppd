@@ -5,18 +5,23 @@ use crate::protocol::v201::charging_station::device_model::shortcut;
 use crate::protocol::v201::charging_station::device_model::table::{
     AVAILABILITY_STATE, CLOCK_CTRLR, DATE_TIME, OCPP_COMM_CTRLR, POWER,
 };
+use crate::protocol::v201::charging_station::display::{DISPLAY_MESSAGE_CTRLR, DISPLAY_MESSAGES};
 use crate::protocol::v201::charging_station::local_auth::{
     AUTH_CACHE_CTRLR, ENTRIES, LOCAL_AUTH_LIST_CTRLR,
 };
-use crate::protocol::v201::charging_station::provisioning::network_profile::NETWORK_CONFIGURATION_PRIORITY;
-use crate::protocol::v201::charging_station::security::certificates::ADDITIONAL_ROOT_CERTIFICATE_CHECK;
+use crate::protocol::v201::charging_station::provisioning::network_profile::{
+    ACTIVE_NETWORK_PROFILE, NETWORK_CONFIGURATION_PRIORITY,
+};
 use crate::protocol::v201::charging_station::security::{
     BASIC_AUTH_PASSWORD, CERTIFICATE_ENTRIES, RECONFIGURATION_OF_SECURITY_PARAMETERS,
     SECURITY_CTRLR, SECURITY_PROFILE,
 };
+use crate::protocol::v201::charging_station::smart_charging::SMART_CHARGING_CTRLR;
 use crate::protocol::v201::event::EventKind;
 use crate::protocol::v201::messages::availability::ConnectorStatus;
-use crate::protocol::v201::messages::datatypes::component::{AttributeType, Evse};
+use crate::protocol::v201::messages::datatypes::component::{
+    AttributeType, Component, Evse, Variable,
+};
 use crate::protocol::v201::messages::provisioning::report::Mutability;
 use crate::protocol::v201::messages::provisioning::variables::{
     GetVariableResult, GetVariableStatus, GetVariablesRequest, GetVariablesResponse,
@@ -26,7 +31,17 @@ use crate::protocol::v201::messages::provisioning::variables::{
 use crate::wire::ci_string::CiString;
 use crate::wire::date_time::DateTime;
 
-const PROVISIONED: [&str; 2] = [SECURITY_PROFILE, ADDITIONAL_ROOT_CERTIFICATE_CHECK];
+const DERIVED: [(&str, &str); 9] = [
+    (CLOCK_CTRLR, DATE_TIME),
+    (SECURITY_CTRLR, CERTIFICATE_ENTRIES),
+    (AUTH_CACHE_CTRLR, ENTRIES),
+    (LOCAL_AUTH_LIST_CTRLR, ENTRIES),
+    (SMART_CHARGING_CTRLR, ENTRIES),
+    (DISPLAY_MESSAGE_CTRLR, DISPLAY_MESSAGES),
+    ("ChargingStation", AVAILABILITY_STATE),
+    ("ChargingStation", "SupplyPhases"),
+    (OCPP_COMM_CTRLR, ACTIVE_NETWORK_PROFILE),
+];
 
 impl ChargingStation {
     pub fn set_basic_auth_password(&mut self, password: &str) -> bool {
@@ -37,15 +52,8 @@ impl ChargingStation {
         let Some((component, variable)) = shortcut::parse(key) else {
             return false;
         };
-        let provisioned = component.name.as_str() == SECURITY_CTRLR
-            && PROVISIONED.contains(&variable.name.as_str())
-            && variable.instance.is_none();
-        match provisioned {
-            true => self.device_model.provision(&component, &variable, value),
-            false => {
-                self.device_model.set(&component, &variable, value) == SetVariableStatus::Accepted
-            }
-        }
+        !is_derived(&component, &variable)
+            && self.device_model.provision(&component, &variable, value)
     }
 
     pub fn settings(&mut self, now: u64) -> Vec<Setting> {
@@ -77,6 +85,9 @@ impl ChargingStation {
                 &format!("{key} refused: not Component.Variable"),
             );
         };
+        if self.device_model.is_read_only(&component, &variable) {
+            return self.configure_read_only(out, now, key, value);
+        }
         let Ok(attribute_value) = CiString::new(value) else {
             return self.reject(out, now, None, &format!("{key} refused: too long"));
         };
@@ -96,6 +107,42 @@ impl ChargingStation {
         ) {
             self.reject(out, now, None, &format!("{key} refused ({status:?})"));
         }
+    }
+
+    fn configure_read_only(&mut self, out: &mut Vec<Output>, now: u64, key: &str, value: &str) {
+        let Some((component, variable)) = shortcut::parse(key) else {
+            return;
+        };
+        if self.is_connected() {
+            return self.reject(
+                out,
+                now,
+                None,
+                &format!("{key} refused: read-only while connected"),
+            );
+        }
+        if is_derived(&component, &variable) {
+            return self.reject(
+                out,
+                now,
+                None,
+                &format!("{key} refused: derived from the station"),
+            );
+        }
+        if !self.device_model.provision(&component, &variable, value) {
+            return self.reject(out, now, None, &format!("{key} refused: not a valid value"));
+        }
+        let security_profile =
+            component.name.as_str() == SECURITY_CTRLR && variable.name.as_str() == SECURITY_PROFILE;
+        if security_profile {
+            self.sync_first_profile();
+        }
+        let kind = EventKind::VariableChanged {
+            component: component.name.as_str().to_owned(),
+            variable: variable.name.as_str().to_owned(),
+            value: value.to_owned(),
+        };
+        self.emit(out, now, kind);
     }
 
     pub(in crate::protocol::v201::charging_station) fn get_variables(
@@ -240,6 +287,19 @@ impl ChargingStation {
             None => ConnectorStatus::Available,
         }
     }
+}
+
+fn is_derived(component: &Component, variable: &Variable) -> bool {
+    DERIVED.iter().any(|(derived_component, derived_variable)| {
+        component
+            .name
+            .as_str()
+            .eq_ignore_ascii_case(derived_component)
+            && variable
+                .name
+                .as_str()
+                .eq_ignore_ascii_case(derived_variable)
+    })
 }
 
 #[cfg(test)]

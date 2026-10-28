@@ -190,6 +190,14 @@ impl ChargingStation {
         self.try_profile(next);
     }
 
+    pub(in crate::protocol::v201::charging_station) fn sync_first_profile(&mut self) {
+        let current = self.current_security_profile() as i32;
+        if let Some(profile) = &mut self.network.slots[0] {
+            profile.security_profile = current;
+        }
+        self.try_first_profile();
+    }
+
     pub(in crate::protocol::v201::charging_station) fn try_first_profile(&mut self) {
         if let Some(&first) = self.priority().first() {
             self.try_profile(first);

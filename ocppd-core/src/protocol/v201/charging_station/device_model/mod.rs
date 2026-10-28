@@ -72,6 +72,11 @@ impl DeviceModel {
         }
     }
 
+    pub fn is_read_only(&self, component: &Component, variable: &Variable) -> bool {
+        self.locate(component, variable)
+            .is_ok_and(|index| self.entries[index].mutability == Mutability::ReadOnly)
+    }
+
     pub fn provision(&mut self, component: &Component, variable: &Variable, value: &str) -> bool {
         let Found::Entry(entry) = self.find(component, variable) else {
             return false;

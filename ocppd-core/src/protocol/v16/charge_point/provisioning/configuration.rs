@@ -27,6 +27,8 @@ pub const SEND_LOCAL_LIST_MAX_LENGTH: &str = "SendLocalListMaxLength";
 pub const TRANSACTION_MESSAGE_ATTEMPTS: &str = "TransactionMessageAttempts";
 pub const TRANSACTION_MESSAGE_RETRY_INTERVAL: &str = "TransactionMessageRetryInterval";
 
+const DERIVED: [&str; 1] = ["NumberOfConnectors"];
+
 const DEFAULT_MEASURANDS: &str =
     "Energy.Active.Import.Register,Power.Active.Import,Current.Import,Current.Offered,Voltage";
 const SUPPORTED_MEASURANDS: [Measurand; 7] = [
@@ -51,13 +53,20 @@ struct Key {
 
 #[derive(Clone, Copy, PartialEq)]
 enum Access {
-    ReadOnly,
+    ReadOnly(Shape),
     Integer,
     Boolean,
     Measurands,
     CurrentValueOnly,
     SecurityProfile,
     WriteOnly,
+    Text,
+}
+
+#[derive(Clone, Copy, PartialEq)]
+enum Shape {
+    Integer,
+    Boolean,
     Text,
 }
 
@@ -71,42 +80,78 @@ impl Configuration {
                 "false",
                 Access::CurrentValueOnly,
             ),
-            (CERTIFICATE_STORE_MAX_LENGTH, "10", Access::ReadOnly),
-            (CHARGE_PROFILE_MAX_STACK_LEVEL, "10", Access::ReadOnly),
+            (
+                CERTIFICATE_STORE_MAX_LENGTH,
+                "10",
+                Access::ReadOnly(Shape::Integer),
+            ),
+            (
+                CHARGE_PROFILE_MAX_STACK_LEVEL,
+                "10",
+                Access::ReadOnly(Shape::Integer),
+            ),
             (
                 "ChargingScheduleAllowedChargingRateUnit",
                 "Current,Power",
-                Access::ReadOnly,
+                Access::ReadOnly(Shape::Text),
             ),
-            (CHARGING_SCHEDULE_MAX_PERIODS, "24", Access::ReadOnly),
+            (
+                CHARGING_SCHEDULE_MAX_PERIODS,
+                "24",
+                Access::ReadOnly(Shape::Integer),
+            ),
             ("ClockAlignedDataInterval", "0", Access::CurrentValueOnly),
             (CONNECTION_TIME_OUT, "60", Access::Integer),
             ("ConnectorPhaseRotation", "1.RST", Access::CurrentValueOnly),
             (CPO_NAME, "", Access::Text),
-            ("GetConfigurationMaxKeys", "50", Access::ReadOnly),
+            (
+                "GetConfigurationMaxKeys",
+                "50",
+                Access::ReadOnly(Shape::Integer),
+            ),
             (HEARTBEAT_INTERVAL, "86400", Access::Integer),
             (LOCAL_AUTH_LIST_ENABLED, "true", Access::Boolean),
-            (LOCAL_AUTH_LIST_MAX_LENGTH, "100", Access::ReadOnly),
+            (
+                LOCAL_AUTH_LIST_MAX_LENGTH,
+                "100",
+                Access::ReadOnly(Shape::Integer),
+            ),
             (LOCAL_AUTHORIZE_OFFLINE, "false", Access::Boolean),
             (LOCAL_PRE_AUTHORIZE, "false", Access::Boolean),
-            (MAX_CHARGING_PROFILES_INSTALLED, "20", Access::ReadOnly),
+            (
+                MAX_CHARGING_PROFILES_INSTALLED,
+                "20",
+                Access::ReadOnly(Shape::Integer),
+            ),
             ("MeterValuesAlignedData", "", Access::CurrentValueOnly),
             (
                 METER_VALUES_SAMPLED_DATA,
                 DEFAULT_MEASURANDS,
                 Access::Measurands,
             ),
-            ("MeterValuesSampledDataMaxLength", "7", Access::ReadOnly),
+            (
+                "MeterValuesSampledDataMaxLength",
+                "7",
+                Access::ReadOnly(Shape::Integer),
+            ),
             (METER_VALUE_SAMPLE_INTERVAL, "60", Access::Integer),
             (
                 "NumberOfConnectors",
                 &connectors.to_string(),
-                Access::ReadOnly,
+                Access::ReadOnly(Shape::Integer),
             ),
-            ("ReserveConnectorZeroSupported", "false", Access::ReadOnly),
+            (
+                "ReserveConnectorZeroSupported",
+                "false",
+                Access::ReadOnly(Shape::Boolean),
+            ),
             ("ResetRetries", "0", Access::Integer),
             (SECURITY_PROFILE, "0", Access::SecurityProfile),
-            (SEND_LOCAL_LIST_MAX_LENGTH, "100", Access::ReadOnly),
+            (
+                SEND_LOCAL_LIST_MAX_LENGTH,
+                "100",
+                Access::ReadOnly(Shape::Integer),
+            ),
             (
                 "StopTransactionOnEVSideDisconnect",
                 "true",
@@ -122,7 +167,7 @@ impl Configuration {
             (
                 "SupportedFeatureProfiles",
                 "Core,FirmwareManagement,LocalAuthListManagement,RemoteTrigger,Reservation,SmartCharging",
-                Access::ReadOnly,
+                Access::ReadOnly(Shape::Text),
             ),
             (TRANSACTION_MESSAGE_ATTEMPTS, "3", Access::Integer),
             (TRANSACTION_MESSAGE_RETRY_INTERVAL, "60", Access::Integer),
@@ -185,9 +230,9 @@ impl Configuration {
         let key = &mut self.keys[index];
         let value = request.value.as_str();
         let valid = match key.access {
-            Access::ReadOnly => false,
-            Access::Integer => value.parse::<u32>().is_ok(),
-            Access::Boolean => value == "true" || value == "false",
+            Access::ReadOnly(_) => false,
+            Access::Integer => Shape::Integer.fits(value),
+            Access::Boolean => Shape::Boolean.fits(value),
             Access::Measurands => measurands(value).is_some(),
             Access::CurrentValueOnly => value == key.value.as_str(),
             Access::SecurityProfile => {
@@ -203,6 +248,25 @@ impl Configuration {
             return ConfigurationStatus::Rejected;
         }
         key.value = request.value.clone();
+        ConfigurationStatus::Accepted
+    }
+
+    pub fn is_read_only(&self, name: &str) -> bool {
+        self.find(name)
+            .is_some_and(|key| matches!(key.access, Access::ReadOnly(_)))
+    }
+
+    pub fn install(&mut self, request: &ChangeConfigurationRequest) -> ConfigurationStatus {
+        let Some(index) = self.position(request.key.as_str()) else {
+            return ConfigurationStatus::NotSupported;
+        };
+        let Access::ReadOnly(shape) = self.keys[index].access else {
+            return self.change(request);
+        };
+        if is_derived(request.key.as_str()) || !shape.fits(request.value.as_str()) {
+            return ConfigurationStatus::Rejected;
+        }
+        self.keys[index].value = request.value.clone();
         ConfigurationStatus::Accepted
     }
 
@@ -260,10 +324,26 @@ impl Key {
     fn key_value(&self) -> KeyValue {
         KeyValue {
             key: self.name.clone(),
-            readonly: self.access == Access::ReadOnly,
+            readonly: matches!(self.access, Access::ReadOnly(_)),
             value: (self.access != Access::WriteOnly).then(|| self.value.clone()),
         }
     }
+}
+
+impl Shape {
+    fn fits(self, value: &str) -> bool {
+        match self {
+            Shape::Integer => value.parse::<u32>().is_ok(),
+            Shape::Boolean => value == "true" || value == "false",
+            Shape::Text => true,
+        }
+    }
+}
+
+pub fn is_derived(name: &str) -> bool {
+    DERIVED
+        .iter()
+        .any(|derived| derived.eq_ignore_ascii_case(name))
 }
 
 fn measurands(list: &str) -> Option<Vec<Measurand>> {

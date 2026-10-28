@@ -52,7 +52,7 @@ echo '{"command":"spawn","prefix":"CS","count":10,"ocpp":"2.0.1"}' >&3
 | `{"command":"disconnect","station":"CP1"}` | take the station offline: its connection closes and it stays offline; transactions go on and their messages wait, as in a network outage |
 | `{"command":"connect","station":"CP1"}` | bring an offline station back: it connects at once |
 | `{"command":"fail_transfer","station":"CP1","stage":"download"}` | make the next firmware download fail; other stages are `signature`, `install` and `upload` (diagnostics or log) |
-| `{"command":"configure","station":"CP1","key":"HeartbeatInterval","value":"60"}` | change a setting while the station runs, with the same rules and effects as a change from the CSMS: a 1.6 key, or a 2.0.1 `Component.Variable`; the change shows as `configuration_changed` (1.6) or `variable_changed` (2.0.1) |
+| `{"command":"configure","station":"CP1","key":"HeartbeatInterval","value":"60"}` | change a setting while the station runs, with the same rules and effects as a change from the CSMS: a 1.6 key, or a 2.0.1 `Component.Variable`; the change shows as `configuration_changed` (1.6) or `variable_changed` (2.0.1); read-only settings only while the station is not connected ([Configuration](configuration.md#read-only-settings)) |
 
 `describe` answers only the client that asked, with the station's current
 configuration: 1.6 keys, or 2.0.1 variables named as in a spawn's

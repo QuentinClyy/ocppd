@@ -37,8 +37,9 @@ security profile gets profile 1 on `ws://` and 2 on `wss://`.
 | `connect` | `true` | `false` spawns the station offline: it does not connect until a `connect` command |
 | `configuration` | none | settings applied before the first connection; a refused one stops the spawn |
 
-Settings that follow from the model, such as `NumberOfConnectors` or
-`SupplyPhases`, are read-only.
+Read-only settings, such as `LocalAuthListMaxLength` or
+`DeviceDataCtrlr.ItemsPerMessage[GetVariables]`, can be set here, as an
+installer would before the station goes online.
 
 ## Settings
 
@@ -55,6 +56,23 @@ optional instances as `Component[instance].Variable[instance]`:
 ```
 "configuration":{"OCPPCommCtrlr.OfflineThreshold":"120"}
 ```
+
+### Read-only settings
+
+The CSMS cannot change a read-only setting. ocppd can, while the station is
+not connected: at spawn, or with a `configure` command once the station is
+offline (see `disconnect` in [Usage](usage.md)). Connected, such a command is
+refused with `read-only while connected`. The value is still checked: a
+number stays a number.
+
+Settings the station computes itself are refused even offline, with
+`derived from the station`: `NumberOfConnectors` (1.6), and in 2.0.1
+`ClockCtrlr.DateTime`, the `Entries` counts, `DisplayMessages`,
+`AvailabilityState`, `SupplyPhases` and `ActiveNetworkProfile`. Set
+`connectors` and `phases` at spawn instead.
+
+A 2.0.1 `SecurityCtrlr.SecurityProfile` set offline also applies to the
+station's first network profile, so the next connection uses it.
 
 ## Security profiles
 

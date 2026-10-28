@@ -17,7 +17,7 @@ impl ChargePoint {
             return ConfigurationStatus::Rejected;
         };
         self.configuration
-            .change(&ChangeConfigurationRequest { key, value })
+            .install(&ChangeConfigurationRequest { key, value })
     }
 
     pub fn set_basic_auth_password(&mut self, password: &str) -> bool {

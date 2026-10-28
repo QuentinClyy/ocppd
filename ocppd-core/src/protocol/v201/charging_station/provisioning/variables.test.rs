@@ -66,13 +66,14 @@ fn given_an_accepted_station_when_configure_intent_then_the_variable_changes_and
 }
 
 #[test]
-fn given_an_accepted_station_when_configure_intent_on_a_read_only_variable_then_intent_rejected() {
+fn given_an_accepted_station_when_configure_intent_on_a_read_only_variable_then_rejected_as_read_only_while_connected()
+ {
     let mut run = Run::accepted(300);
 
     configure(&mut run, "SecurityCtrlr.SecurityProfile", "2");
 
     assert!(run.events.contains(&rejected(
-        "SecurityCtrlr.SecurityProfile refused (Rejected)"
+        "SecurityCtrlr.SecurityProfile refused: read-only while connected"
     )));
 }
 
@@ -85,4 +86,58 @@ fn given_an_accepted_station_when_configure_intent_without_a_component_then_inte
     assert!(run.events.contains(&rejected(
         "HeartbeatInterval refused: not Component.Variable"
     )));
+}
+
+fn setting(run: &mut Run, key: &str) -> Option<String> {
+    let settings = run.station.settings(0);
+    settings
+        .into_iter()
+        .find(|setting| setting.key == key)?
+        .value
+}
+
+#[test]
+fn given_a_disconnected_station_when_configure_intent_on_a_read_only_variable_then_written_and_reported()
+ {
+    let mut run = Run::accepted(300);
+    run.input(0, Input::Disconnected);
+
+    configure(
+        &mut run,
+        "DeviceDataCtrlr.ItemsPerMessage[GetVariables]",
+        "10",
+    );
+
+    assert!(run.events.contains(&EventKind::VariableChanged {
+        component: "DeviceDataCtrlr".into(),
+        variable: "ItemsPerMessage".into(),
+        value: "10".into(),
+    }));
+    let value = setting(&mut run, "DeviceDataCtrlr.ItemsPerMessage[GetVariables]");
+    assert_eq!(value.as_deref(), Some("10"));
+}
+
+#[test]
+fn given_a_disconnected_station_when_configure_intent_on_the_clock_then_rejected_as_derived() {
+    let mut run = Run::accepted(300);
+    run.input(0, Input::Disconnected);
+
+    configure(&mut run, "ClockCtrlr.DateTime", "2026-01-01T00:00:00Z");
+
+    assert!(run.events.contains(&rejected(
+        "ClockCtrlr.DateTime refused: derived from the station"
+    )));
+}
+
+#[test]
+fn given_a_station_never_connected_when_its_security_profile_is_set_then_it_survives_the_connection()
+ {
+    let mut run = Run::new(1);
+    run.station.set_csms_url("ws://csms");
+
+    configure(&mut run, "SecurityCtrlr.SecurityProfile", "1");
+    run.input(0, Input::Connected);
+
+    let value = setting(&mut run, "SecurityCtrlr.SecurityProfile");
+    assert_eq!(value.as_deref(), Some("1"));
 }
