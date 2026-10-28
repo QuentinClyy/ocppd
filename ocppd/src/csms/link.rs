@@ -49,9 +49,9 @@ enum Wake {
 
 pub async fn run(
     mut protocol: Protocol,
-    url: String,
     events: UnboundedSender<Event>,
     receiver: UnboundedReceiver<Order>,
+    starts_online: bool,
 ) {
     let mut link = Link {
         id: protocol.station().id.clone(),
@@ -59,34 +59,50 @@ pub async fn run(
         failures: 0,
         reconnect_at: Instant::now(),
     };
+    if !starts_online {
+        execute(
+            &mut protocol,
+            Input::Intent(Intent::Disconnect),
+            &mut link.socket,
+            &events,
+        )
+        .await;
+    }
     let mut orders = Some(receiver);
     loop {
-        let mut input = match next_wake(&mut link, protocol.next_deadline(), &mut orders).await {
-            Wake::Input(input) => input,
-            Wake::Describe(reply) => {
-                let csms = target(&protocol, &url, &link.id);
-                let _ = reply.send(protocol.description(&csms, now_ms()));
-                continue;
-            }
-            Wake::Lost(reason) => link.lose(&reason, &protocol),
-            Wake::Reconnect => {
-                let target = target(&protocol, &url, &link.id);
-                match connect(&target, &protocol).await {
-                    Ok(socket) => {
-                        link.socket = Some(socket);
-                        link.failures = 0;
-                        Input::Connected
-                    }
-                    Err(err) => {
-                        eprintln!("{}: connect to {target} failed: {err}", link.id);
-                        link.schedule_reconnect(&protocol);
-                        Input::ConnectFailed(failure(&err), err)
+        let dials = protocol.wants_connection();
+        let mut input =
+            match next_wake(&mut link, protocol.next_deadline(), dials, &mut orders).await {
+                Wake::Input(input) => input,
+                Wake::Describe(reply) => {
+                    let csms = target(&protocol, &link.id);
+                    let _ = reply.send(protocol.description(&csms, now_ms()));
+                    continue;
+                }
+                Wake::Lost(reason) => link.lose(&reason, &protocol),
+                Wake::Reconnect => {
+                    let target = target(&protocol, &link.id);
+                    match connect(&target, &protocol).await {
+                        Ok(socket) => {
+                            link.socket = Some(socket);
+                            link.failures = 0;
+                            Input::Connected
+                        }
+                        Err(err) => {
+                            eprintln!("{}: connect to {target} failed: {err}", link.id);
+                            link.schedule_reconnect(&protocol);
+                            Input::ConnectFailed(failure(&err), err)
+                        }
                     }
                 }
-            }
-        };
+            };
+        let held = !protocol.wants_connection();
         while let Some(reason) = execute(&mut protocol, input, &mut link.socket, &events).await {
             input = link.lose(&reason, &protocol);
+        }
+        if held && protocol.wants_connection() {
+            link.failures = 0;
+            link.reconnect_at = Instant::now();
         }
         if protocol.finished(now_ms()) {
             if let Some(mut open) = link.socket.take() {
@@ -122,11 +138,8 @@ fn failure(err: &str) -> ConnectFailure {
     }
 }
 
-fn target(protocol: &Protocol, url: &str, id: &str) -> String {
-    match protocol.csms_url() {
-        Some(base) => format!("{}/{id}", base.trim_end_matches('/')),
-        None => url.to_owned(),
-    }
+fn target(protocol: &Protocol, id: &str) -> String {
+    format!("{}/{id}", protocol.csms_url().trim_end_matches('/'))
 }
 
 fn backoff(id: &str, failures: u32, jitter: bool) -> Duration {
@@ -223,11 +236,16 @@ async fn execute(
     None
 }
 
-async fn next_wake(link: &mut Link, deadline: Option<u64>, orders: &mut Orders) -> Wake {
+async fn next_wake(
+    link: &mut Link,
+    deadline: Option<u64>,
+    dials: bool,
+    orders: &mut Orders,
+) -> Wake {
     let wait = Duration::from_millis(deadline.unwrap_or(0).saturating_sub(now_ms()));
     let timer = sleep(wait);
     tokio::pin!(timer);
-    let offline = link.socket.is_none();
+    let offline = link.socket.is_none() && dials;
     let reconnect = sleep_until(link.reconnect_at);
     tokio::pin!(reconnect);
     loop {

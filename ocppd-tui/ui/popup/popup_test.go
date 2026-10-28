@@ -24,6 +24,7 @@ func spawnKeys(f *Spawn, keys ...string) (string, bool) {
 
 func twoConnectors() fleet.Station {
 	var f fleet.Fleet
+	f.Apply(`{"station":"CP1","at":1,"kind":"connected"}`)
 	f.Apply(`{"station":"CP1","at":1,"kind":"status_changed","connector":1,"status":"Available"}`)
 	f.Apply(`{"station":"CP1","at":1,"kind":"status_changed","connector":2,"status":"Available"}`)
 	return f.Stations[0]

@@ -1,3 +1,4 @@
+use crate::api::event::LinkEvent;
 use crate::api::io::Output;
 use crate::protocol::v201::charging_station::ChargingStation;
 use crate::protocol::v201::charging_station::device_model::table::{
@@ -23,6 +24,35 @@ pub enum Registration {
 }
 
 impl ChargingStation {
+    pub fn wants_connection(&self) -> bool {
+        !self.held_offline
+    }
+
+    pub(in crate::protocol::v201::charging_station) fn hold_offline(
+        &mut self,
+        out: &mut Vec<Output>,
+        now: u64,
+    ) {
+        if self.held_offline {
+            return;
+        }
+        self.held_offline = true;
+        self.emit(out, now, EventKind::Link(LinkEvent::Offline));
+        out.push(Output::Close);
+    }
+
+    pub(in crate::protocol::v201::charging_station) fn release(
+        &mut self,
+        out: &mut Vec<Output>,
+        now: u64,
+    ) {
+        if !self.held_offline {
+            return;
+        }
+        self.held_offline = false;
+        self.emit(out, now, EventKind::Link(LinkEvent::Online));
+    }
+
     pub(in crate::protocol::v201::charging_station) fn is_connected(&self) -> bool {
         !matches!(
             self.registration,

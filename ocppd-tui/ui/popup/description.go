@@ -74,6 +74,9 @@ func (p Station) Observe(line string) (Station, []string) {
 		if c.Connector == nil {
 			p.config.err = c.Reason
 		}
+	case "csms_changed":
+		p.config.err = ""
+		return p, []string{command.Describe(c.Station)}
 	case "configuration_changed", "variable_changed":
 		key := c.Key
 		if c.Kind == "variable_changed" {

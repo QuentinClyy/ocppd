@@ -215,18 +215,27 @@ fn given_password_on_profile_3_when_connecting_then_client_certificate_instead_p
 }
 
 #[test]
-fn given_new_station_when_out_of_range_or_read_only_variables_configured_then_all_refused() {
+fn given_new_station_when_out_of_range_or_derived_variables_configured_then_both_refused() {
     let mut run = Run::new(1);
 
     let accepted = [
         run.station.configure("SecurityCtrlr.SecurityProfile", "4"),
         run.station
             .configure("OCPPCommCtrlr.ActiveNetworkProfile", "1"),
-        run.station
-            .configure("DeviceDataCtrlr.ItemsPerMessage[GetVariables]", "10"),
     ];
 
-    assert_eq!(accepted, [false, false, false]);
+    assert_eq!(accepted, [false, false]);
+}
+
+#[test]
+fn given_new_station_when_a_read_only_variable_is_configured_then_it_is_written() {
+    let mut run = Run::new(1);
+
+    let accepted = run
+        .station
+        .configure("DeviceDataCtrlr.ItemsPerMessage[GetVariables]", "10");
+
+    assert!(accepted);
 }
 
 #[test]

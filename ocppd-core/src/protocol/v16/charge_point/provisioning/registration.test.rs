@@ -1,4 +1,5 @@
 use crate::api::event::LinkEvent;
+use crate::api::intent::{EvSpec, Intent};
 use crate::api::io::{Input, Output};
 use crate::fixtures::v16::fake_csms::Csms;
 use crate::fixtures::v16::raw::{
@@ -246,4 +247,91 @@ fn given_booted_charge_point_when_reconnected_then_statuses_resent_without_statu
 
     assert_eq!(csms.sent("StatusNotification").len(), 2);
     assert!(csms.statuses().is_empty());
+}
+
+#[test]
+fn given_booted_charge_point_when_disconnect_then_offline_is_emitted_and_the_link_closes() {
+    let mut csms = Csms::booted();
+
+    csms.intent(0, Intent::Disconnect);
+
+    assert!(csms.closed);
+    assert!(csms.events.contains(&EventKind::Link(LinkEvent::Offline)));
+    assert!(!csms.charge_point.wants_connection());
+}
+
+#[test]
+fn given_charge_point_held_offline_when_disconnect_again_then_nothing_is_emitted() {
+    let mut csms = Csms::booted();
+    csms.intent(0, Intent::Disconnect);
+    csms.events.clear();
+
+    csms.intent(0, Intent::Disconnect);
+
+    assert!(csms.events.is_empty(), "{:?}", csms.events);
+}
+
+#[test]
+fn given_charge_point_held_offline_when_connect_then_online_is_emitted_and_it_wants_a_connection() {
+    let mut csms = Csms::booted();
+    csms.intent(0, Intent::Disconnect);
+
+    csms.intent(0, Intent::Connect);
+
+    assert!(csms.events.contains(&EventKind::Link(LinkEvent::Online)));
+    assert!(csms.charge_point.wants_connection());
+}
+
+#[test]
+fn given_charging_ev_when_disconnect_then_the_transaction_keeps_running() {
+    let mut csms = Csms::charging(0, EvSpec::default());
+
+    csms.intent(0, Intent::Disconnect);
+
+    assert!(csms.sent("StopTransaction").is_empty());
+}
+
+#[test]
+fn given_charge_point_held_offline_when_the_power_is_cut_then_it_stays_offline() {
+    let mut csms = Csms::booted();
+    csms.intent(0, Intent::Disconnect);
+
+    csms.intent(0, Intent::PowerCut);
+
+    assert!(!csms.charge_point.wants_connection());
+}
+
+fn set_csms(url: &str) -> Intent {
+    Intent::SetCsms { url: url.into() }
+}
+
+#[test]
+fn given_booted_charge_point_when_set_csms_then_rejected_until_disconnected() {
+    let mut csms = Csms::booted();
+
+    csms.intent(0, set_csms("ws://other"));
+
+    assert!(
+        csms.events
+            .contains(&EventKind::Link(LinkEvent::IntentRejected {
+                connector: None,
+                reason: "disconnect first".into(),
+            }))
+    );
+}
+
+#[test]
+fn given_disconnected_charge_point_when_set_csms_then_the_url_changes_and_is_reported() {
+    let mut csms = Csms::booted();
+    csms.disconnect(0);
+
+    csms.intent(0, set_csms("ws://other"));
+
+    assert_eq!(csms.charge_point.csms_url(), "ws://other");
+    assert!(
+        csms.events
+            .contains(&EventKind::Link(LinkEvent::CsmsChanged {
+                url: "ws://other".into()
+            }))
+    );
 }

@@ -1,3 +1,4 @@
+use crate::api::event::LinkEvent;
 use crate::api::io::Output;
 use crate::protocol::v201::charging_station::ChargingStation;
 use crate::protocol::v201::charging_station::device_model::table::OCPP_COMM_CTRLR;
@@ -50,6 +51,22 @@ impl ChargingStation {
         });
         self.try_first_profile();
         true
+    }
+
+    pub(in crate::protocol::v201::charging_station) fn change_csms(
+        &mut self,
+        out: &mut Vec<Output>,
+        now: u64,
+        url: &str,
+    ) {
+        if self.is_connected() {
+            return self.reject(out, now, None, "disconnect first");
+        }
+        if !self.set_csms_url(url) {
+            return self.reject(out, now, None, "csms url too long");
+        }
+        let url = url.to_owned();
+        self.emit(out, now, EventKind::Link(LinkEvent::CsmsChanged { url }));
     }
 
     pub fn csms_url(&self) -> Option<String> {
@@ -188,6 +205,14 @@ impl ChargingStation {
             None => priority.first().copied().unwrap_or(current),
         };
         self.try_profile(next);
+    }
+
+    pub(in crate::protocol::v201::charging_station) fn sync_first_profile(&mut self) {
+        let current = self.current_security_profile() as i32;
+        if let Some(profile) = &mut self.network.slots[0] {
+            profile.security_profile = current;
+        }
+        self.try_first_profile();
     }
 
     pub(in crate::protocol::v201::charging_station) fn try_first_profile(&mut self) {

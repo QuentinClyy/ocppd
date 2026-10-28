@@ -3,6 +3,7 @@ use super::local_auth::id_tags::IdTags;
 use super::local_auth::list::Limits;
 use super::provisioning::configuration::{
     AUTHORIZATION_KEY, LOCAL_AUTH_LIST_MAX_LENGTH, SECURITY_PROFILE, SEND_LOCAL_LIST_MAX_LENGTH,
+    is_derived,
 };
 use super::security::security_event::RECONFIGURATION_OF_SECURITY_PARAMETERS;
 use crate::api::event::LinkEvent;
@@ -235,6 +236,9 @@ impl ChargePoint {
             key: name,
             value: text,
         };
+        if self.configuration.is_read_only(key) {
+            return self.configure_read_only(out, now, &request);
+        }
         let status = self.change_configuration(out, now, &request).status;
         if !matches!(
             status,
@@ -242,6 +246,39 @@ impl ChargePoint {
         ) {
             self.reject(out, now, None, &format!("{key} refused ({status:?})"));
         }
+    }
+
+    fn configure_read_only(
+        &mut self,
+        out: &mut Vec<Output>,
+        now: u64,
+        request: &ChangeConfigurationRequest,
+    ) {
+        let key = request.key.as_str();
+        if self.is_connected() {
+            return self.reject(
+                out,
+                now,
+                None,
+                &format!("{key} refused: read-only while connected"),
+            );
+        }
+        if is_derived(key) {
+            return self.reject(
+                out,
+                now,
+                None,
+                &format!("{key} refused: derived from the station"),
+            );
+        }
+        if self.configuration.install(request) != ConfigurationStatus::Accepted {
+            return self.reject(out, now, None, &format!("{key} refused: not a valid value"));
+        }
+        let kind = EventKind::ConfigurationChanged {
+            key: key.to_owned(),
+            value: request.value.as_str().to_owned(),
+        };
+        self.emit(out, now, kind);
     }
 
     fn change_configuration(

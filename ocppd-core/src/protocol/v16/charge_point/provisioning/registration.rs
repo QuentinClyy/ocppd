@@ -1,3 +1,4 @@
+use crate::api::event::LinkEvent;
 use crate::api::io::Output;
 use crate::protocol::v16::charge_point::ChargePoint;
 use crate::protocol::v16::charge_point::provisioning::configuration::HEARTBEAT_INTERVAL;
@@ -24,6 +25,44 @@ impl ChargePoint {
             self.registration,
             Registration::Offline | Registration::Disconnected
         )
+    }
+
+    pub fn csms_url(&self) -> &str {
+        &self.csms_url
+    }
+
+    pub fn set_csms_url(&mut self, url: &str) {
+        self.csms_url = url.to_owned();
+    }
+
+    pub(crate) fn change_csms(&mut self, out: &mut Vec<Output>, now: u64, url: &str) {
+        if self.is_connected() {
+            return self.reject(out, now, None, "disconnect first");
+        }
+        self.set_csms_url(url);
+        let url = url.to_owned();
+        self.emit(out, now, EventKind::Link(LinkEvent::CsmsChanged { url }));
+    }
+
+    pub fn wants_connection(&self) -> bool {
+        !self.held_offline
+    }
+
+    pub(crate) fn hold_offline(&mut self, out: &mut Vec<Output>, now: u64) {
+        if self.held_offline {
+            return;
+        }
+        self.held_offline = true;
+        self.emit(out, now, EventKind::Link(LinkEvent::Offline));
+        out.push(Output::Close);
+    }
+
+    pub(crate) fn release(&mut self, out: &mut Vec<Output>, now: u64) {
+        if !self.held_offline {
+            return;
+        }
+        self.held_offline = false;
+        self.emit(out, now, EventKind::Link(LinkEvent::Online));
     }
 
     pub(crate) fn is_accepted(&self) -> bool {

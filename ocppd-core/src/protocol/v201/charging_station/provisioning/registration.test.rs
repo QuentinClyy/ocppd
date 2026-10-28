@@ -1,5 +1,7 @@
 use crate::api::event::LinkEvent;
+use crate::api::intent::Intent;
 use crate::api::io::{Input, Output};
+use crate::fixtures::v201::reliability::charging;
 use crate::fixtures::v201::station::{MINUTE, Run, boot};
 use crate::protocol::v201::event::EventKind;
 use crate::protocol::v201::messages::provisioning::boot::RegistrationStatus;
@@ -253,4 +255,74 @@ fn given_rejected_boot_when_csms_call_then_security_error_and_nothing_sent_per_b
         ("c1".to_owned(), "SecurityError".to_owned())
     );
     assert_eq!(run.actions(), vec!["BootNotification"]);
+}
+
+#[test]
+fn given_booted_station_when_disconnect_then_offline_is_emitted_and_the_link_closes() {
+    let mut run = Run::accepted(300);
+
+    run.input(0, Input::Intent(Intent::Disconnect));
+
+    assert!(run.closed);
+    assert!(run.events.contains(&EventKind::Link(LinkEvent::Offline)));
+    assert!(!run.station.wants_connection());
+}
+
+#[test]
+fn given_station_held_offline_when_connect_then_online_is_emitted_and_it_wants_a_connection() {
+    let mut run = Run::accepted(300);
+    run.input(0, Input::Intent(Intent::Disconnect));
+
+    run.input(0, Input::Intent(Intent::Connect));
+
+    assert!(run.events.contains(&EventKind::Link(LinkEvent::Online)));
+    assert!(run.station.wants_connection());
+}
+
+#[test]
+fn given_charging_ev_when_disconnect_then_the_transaction_keeps_running() {
+    let mut run = Run::accepted(300);
+    charging(&mut run, 0);
+
+    run.input(MINUTE, Input::Intent(Intent::Disconnect));
+
+    let ended = run.calls.iter().any(|(_, action, payload)| {
+        action == "TransactionEvent" && payload["eventType"] == "Ended"
+    });
+    assert!(!ended);
+}
+
+fn set_csms(run: &mut Run, url: &str) {
+    run.input(0, Input::Intent(Intent::SetCsms { url: url.into() }));
+}
+
+#[test]
+fn given_booted_station_when_set_csms_then_rejected_until_disconnected() {
+    let mut run = Run::accepted(300);
+
+    set_csms(&mut run, "ws://other");
+
+    assert!(
+        run.events
+            .contains(&EventKind::Link(LinkEvent::IntentRejected {
+                connector: None,
+                reason: "disconnect first".into(),
+            }))
+    );
+}
+
+#[test]
+fn given_disconnected_station_when_set_csms_then_the_next_connection_uses_it() {
+    let mut run = Run::accepted(300);
+    run.input(0, Input::Disconnected);
+
+    set_csms(&mut run, "ws://other");
+
+    assert_eq!(run.station.csms_url().as_deref(), Some("ws://other"));
+    assert!(
+        run.events
+            .contains(&EventKind::Link(LinkEvent::CsmsChanged {
+                url: "ws://other".into()
+            }))
+    );
 }

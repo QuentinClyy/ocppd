@@ -31,6 +31,11 @@ pub enum Intent {
         connector: u32,
     },
     PowerCut,
+    Disconnect,
+    Connect,
+    SetCsms {
+        url: String,
+    },
     #[serde(skip_deserializing)]
     Shutdown,
     FailTransfer {
@@ -47,6 +52,9 @@ impl Intent {
         match self {
             Intent::Authorize { connector, .. } => *connector,
             Intent::PowerCut
+            | Intent::Disconnect
+            | Intent::Connect
+            | Intent::SetCsms { .. }
             | Intent::Shutdown
             | Intent::FailTransfer { .. }
             | Intent::Configure { .. } => None,

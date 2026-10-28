@@ -34,6 +34,8 @@ func StatusStyle(status string) lipgloss.Style {
 		return Warn
 	case "Reserved":
 		return Accent
+	case "off":
+		return Dim
 	}
 	return Plain
 }

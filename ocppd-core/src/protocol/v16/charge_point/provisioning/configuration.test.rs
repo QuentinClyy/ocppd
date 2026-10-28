@@ -256,7 +256,8 @@ fn given_booted_charge_point_when_configure_intent_then_the_value_changes_and_co
 }
 
 #[test]
-fn given_booted_charge_point_when_configure_intent_on_a_read_only_key_then_intent_rejected() {
+fn given_booted_charge_point_when_configure_intent_on_a_read_only_key_then_rejected_as_read_only_while_connected()
+ {
     let mut csms = Csms::booted();
 
     csms.intent(0, configure("NumberOfConnectors", "4"));
@@ -265,7 +266,7 @@ fn given_booted_charge_point_when_configure_intent_on_a_read_only_key_then_inten
         csms.events
             .contains(&EventKind::Link(LinkEvent::IntentRejected {
                 connector: None,
-                reason: "NumberOfConnectors refused (Rejected)".into(),
+                reason: "NumberOfConnectors refused: read-only while connected".into(),
             }))
     );
 }
@@ -300,5 +301,55 @@ fn given_booted_charge_point_when_configure_intent_sets_the_authorization_key_th
             .events
             .iter()
             .any(|event| matches!(event, EventKind::ConfigurationChanged { .. }))
+    );
+}
+
+#[test]
+fn given_disconnected_charge_point_when_configure_intent_on_a_read_only_limit_then_written_and_kept_after_reconnect()
+ {
+    let mut csms = Csms::booted();
+    csms.disconnect(0);
+
+    csms.intent(0, configure("LocalAuthListMaxLength", "5"));
+
+    assert!(csms.events.contains(&EventKind::ConfigurationChanged {
+        key: "LocalAuthListMaxLength".into(),
+        value: "5".into(),
+    }));
+    csms.reconnect(0);
+    assert_eq!(value_of(&mut csms, "LocalAuthListMaxLength"), "5");
+}
+
+#[test]
+fn given_disconnected_charge_point_when_configure_intent_on_number_of_connectors_then_rejected_as_derived()
+ {
+    let mut csms = Csms::booted();
+    csms.disconnect(0);
+
+    csms.intent(0, configure("NumberOfConnectors", "4"));
+
+    assert!(
+        csms.events
+            .contains(&EventKind::Link(LinkEvent::IntentRejected {
+                connector: None,
+                reason: "NumberOfConnectors refused: derived from the station".into(),
+            }))
+    );
+}
+
+#[test]
+fn given_disconnected_charge_point_when_a_read_only_limit_is_set_to_text_then_rejected_as_invalid()
+{
+    let mut csms = Csms::booted();
+    csms.disconnect(0);
+
+    csms.intent(0, configure("LocalAuthListMaxLength", "many"));
+
+    assert!(
+        csms.events
+            .contains(&EventKind::Link(LinkEvent::IntentRejected {
+                connector: None,
+                reason: "LocalAuthListMaxLength refused: not a valid value".into(),
+            }))
     );
 }

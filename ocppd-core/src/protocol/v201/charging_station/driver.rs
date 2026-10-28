@@ -14,6 +14,15 @@ impl ChargingStation {
         if intent == Intent::PowerCut {
             return self.power_cut(out, now);
         }
+        if intent == Intent::Disconnect {
+            return self.hold_offline(out, now);
+        }
+        if intent == Intent::Connect {
+            return self.release(out, now);
+        }
+        if let Intent::SetCsms { url } = &intent {
+            return self.change_csms(out, now, url);
+        }
         if intent == Intent::Shutdown {
             return self.shut_down(out, now);
         }
@@ -74,6 +83,9 @@ impl ChargingStation {
             Intent::LockFailure { .. } => self.station.connectors[index].lock_broken = true,
             Intent::Authorize { .. }
             | Intent::PowerCut
+            | Intent::Disconnect
+            | Intent::Connect
+            | Intent::SetCsms { .. }
             | Intent::Shutdown
             | Intent::FailTransfer { .. }
             | Intent::Configure { .. } => {}

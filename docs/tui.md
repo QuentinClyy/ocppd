@@ -36,6 +36,8 @@ reaches a daemon elsewhere, with `OCPPD_TOKEN` set.
 - **Stations** are listed by id, collapsed. Open one to see its connectors (a
   2.0.1 EVSE shows as one connector). A collapsed station shows its most
   important status and its total power.
+- **LINK** is `up`, `down` (the CSMS cannot be reached; the station retries)
+  or `off` (taken offline with `o`, or spawned with connect `no`).
 - **The log** shows every event, or only the selected station's with `tab`.
 - From 150 columns, the log sits beside the stations instead of under them.
 - A `▐` scrollbar shows on a pane that has more lines than fit.
@@ -72,6 +74,7 @@ at the right end of the bottom bar.
 | `f` | fault the connector |
 | `c` | clear the fault |
 | `x` | power cut, then reboot |
+| `o` | take the station offline, or bring it back online: a network outage, transactions go on |
 | `n` | spawn stations (the form below) |
 | `d` | remove the station: `y` confirms, `dd` skips the question |
 | `tab` | log: the selected station / all stations |
@@ -106,10 +109,15 @@ last three events. `j` / `k` pick a connector (with a count, and `gg` / `G`)
 and the driver keys act on it; `esc` or `q` close the details.
 
 `tab` (or `gt` / `gT`) switches to the station's configuration: its 1.6 keys
-or 2.0.1 variables, read-only ones marked `ro`. `j` / `k`, `gg` / `G` and
+or 2.0.1 variables, read-only ones marked `ro`, with the CSMS url on top as
+`csms`. `j` / `k`, `gg` / `G` and
 counts pick a key, `/` filters them, `space` flips a `true` / `false` value, and `i` or `enter` edits one:
 `enter` applies it, `esc` cancels. The station takes the change as if the
 CSMS had sent it; a refused change shows its reason in the bottom border.
+While the station is not `up`, the `ro` rows and `csms` can be edited too, as
+an installer would on site (see
+[Configuration](configuration.md#read-only-settings)); values the station
+computes itself are refused.
 
 `?` lists the keys of the tab you are on, except while typing a value or a
 filter.
@@ -123,6 +131,7 @@ filter.
   or a prefix and a count sharing one password. `←` / `→` switches.
 - **ocpp**, **vendor**, **model**, **phases**, **max A**, **connectors**,
   **csms**: an empty field keeps ocppd's default, shown in grey.
+- **connect**: `no` spawns the stations offline; `o` brings each one online.
 
 `tab` / `⇧tab` move between fields and `enter` spawns. `esc` switches to
 normal mode, vim style: `j` / `k` move between fields (`3j` three of them),
