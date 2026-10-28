@@ -34,6 +34,7 @@ security profile gets profile 1 on `ws://` and 2 on `wss://`.
 | `voltage_v`, `max_current_a`, `phases` | `230`, `32`, `3` | the electrical rating; `phases` is 1 to 3 |
 | `connectors` | `1` | the number of connectors; a 2.0.1 station has one EVSE per connector |
 | `jitter` | `true` | spread heartbeats and reconnects; `false` aligns the whole fleet, to test load storms |
+| `connect` | `true` | `false` spawns the station offline: it does not connect until a `connect` command |
 | `configuration` | none | settings applied before the first connection; a refused one stops the spawn |
 
 Settings that follow from the model, such as `NumberOfConnectors` or
@@ -100,3 +101,6 @@ follows the `RetryBackOffWaitMinimum`, `RetryBackOffRandomRange` and
 `RetryBackOffRepeatTimes` variables, and its network profiles: the CSMS can add
 a profile and change their priority, and the station falls back to the next
 one when a profile keeps failing.
+
+A station taken offline with `disconnect` does not reconnect until `connect`;
+a reset or a security profile change still reconnects as usual.

@@ -15,13 +15,17 @@ pub const SPAWN: &str = r#"{"command":"spawn","prefix":"CP","count":1}"#;
 
 pub type Socket = WebSocketStream<TcpStream>;
 
+pub struct Daemon {
+    _child: Child,
+    stdin: ChildStdin,
+    stdout: Lines<BufReader<ChildStdout>>,
+    pub listener: TcpListener,
+}
+
 pub struct Run {
-    pub _child: Child,
-    pub stdin: ChildStdin,
-    pub stdout: Lines<BufReader<ChildStdout>>,
+    pub daemon: Daemon,
     pub socket: Socket,
     pub authorization: Option<String>,
-    pub listener: TcpListener,
 }
 
 pub async fn bounded<T>(future: impl Future<Output = T>) -> T {
@@ -60,6 +64,10 @@ pub async fn first_error(scheme: &str, spawn: &str) -> (String, bool) {
 }
 
 pub async fn start(spawn: &str, heartbeat_interval: u32) -> Run {
+    launch(spawn).await.accept(heartbeat_interval).await
+}
+
+pub async fn launch(spawn: &str) -> Daemon {
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let csms = format!("ws://127.0.0.1:{}", listener.local_addr().unwrap().port());
     let mut child = Command::new(env!("CARGO_BIN_EXE_ocppd"))
@@ -75,48 +83,70 @@ pub async fn start(spawn: &str, heartbeat_interval: u32) -> Run {
         .write_all(format!("{spawn}\n").as_bytes())
         .await
         .unwrap();
-    let (tcp, _) = bounded(listener.accept()).await.unwrap();
-    let mut authorization = None;
-    #[allow(clippy::result_large_err)]
-    let record = |request: &Request, response: Response| {
-        let header = request.headers().get("Authorization");
-        authorization = header
-            .and_then(|value| value.to_str().ok())
-            .map(str::to_owned);
-        check_handshake(request, response)
-    };
-    let socket = bounded(tokio_tungstenite::accept_hdr_async(tcp, record))
-        .await
-        .unwrap();
-    let mut run = Run {
+    Daemon {
         _child: child,
         stdin,
         stdout,
-        socket,
-        authorization,
         listener,
-    };
-
-    let id = run.call("BootNotification").await;
-    let accepted = json!({
-        "status": "Accepted",
-        "currentTime": "2026-10-20T00:00:00Z",
-        "interval": heartbeat_interval
-    });
-    run.reply(&id, accepted).await;
-    let id = run.call("SecurityEventNotification").await;
-    run.reply(&id, json!({})).await;
-    for _ in 0..2 {
-        let id = run.call("StatusNotification").await;
-        run.reply(&id, json!({})).await;
     }
-    run
+}
+
+impl Daemon {
+    pub async fn command(&mut self, line: &str) {
+        self.stdin.write_all(line.as_bytes()).await.unwrap();
+        self.stdin.write_all(b"\n").await.unwrap();
+    }
+
+    pub async fn event(&mut self, kind: &str) -> Value {
+        loop {
+            let line = bounded(self.stdout.next_line()).await.unwrap().unwrap();
+            let event: Value = serde_json::from_str(&line).unwrap();
+            if event["kind"] == kind {
+                return event;
+            }
+        }
+    }
+
+    pub async fn accept(self, heartbeat_interval: u32) -> Run {
+        let (tcp, _) = bounded(self.listener.accept()).await.unwrap();
+        let mut authorization = None;
+        #[allow(clippy::result_large_err)]
+        let record = |request: &Request, response: Response| {
+            let header = request.headers().get("Authorization");
+            authorization = header
+                .and_then(|value| value.to_str().ok())
+                .map(str::to_owned);
+            check_handshake(request, response)
+        };
+        let socket = bounded(tokio_tungstenite::accept_hdr_async(tcp, record))
+            .await
+            .unwrap();
+        let mut run = Run {
+            daemon: self,
+            socket,
+            authorization,
+        };
+
+        let id = run.call("BootNotification").await;
+        let accepted = json!({
+            "status": "Accepted",
+            "currentTime": "2026-10-20T00:00:00Z",
+            "interval": heartbeat_interval
+        });
+        run.reply(&id, accepted).await;
+        let id = run.call("SecurityEventNotification").await;
+        run.reply(&id, json!({})).await;
+        for _ in 0..2 {
+            let id = run.call("StatusNotification").await;
+            run.reply(&id, json!({})).await;
+        }
+        run
+    }
 }
 
 impl Run {
     pub async fn command(&mut self, line: &str) {
-        self.stdin.write_all(line.as_bytes()).await.unwrap();
-        self.stdin.write_all(b"\n").await.unwrap();
+        self.daemon.command(line).await;
     }
 
     pub async fn next_call(&mut self) -> Value {
@@ -138,13 +168,7 @@ impl Run {
     }
 
     pub async fn event(&mut self, kind: &str) -> Value {
-        loop {
-            let line = bounded(self.stdout.next_line()).await.unwrap().unwrap();
-            let event: Value = serde_json::from_str(&line).unwrap();
-            if event["kind"] == kind {
-                return event;
-            }
-        }
+        self.daemon.event(kind).await
     }
 }
 

@@ -22,6 +22,8 @@ pub struct Spawn {
     identities: Identities,
     #[serde(default = "jitter_by_default")]
     jitter: bool,
+    #[serde(default = "connect_by_default")]
+    connect: bool,
     #[serde(default)]
     configuration: BTreeMap<String, String>,
     #[serde(default)]
@@ -32,6 +34,10 @@ pub struct Spawn {
 }
 
 fn jitter_by_default() -> bool {
+    true
+}
+
+fn connect_by_default() -> bool {
     true
 }
 
@@ -190,7 +196,8 @@ pub fn spawn(
                     continue;
                 }
                 let (orders, receiver) = unbounded_channel();
-                let task = tokio::spawn(link::run(protocol, url, events.clone(), receiver));
+                let link = link::run(protocol, url, events.clone(), receiver, command.connect);
+                let task = tokio::spawn(link);
                 stations.insert(id, Running { orders, task });
             }
             Err(err) => rejections.push(reject(err.to_string())),

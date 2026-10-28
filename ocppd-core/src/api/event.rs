@@ -21,6 +21,8 @@ pub enum Kind {
 pub enum LinkEvent {
     Connected,
     Disconnected,
+    Offline,
+    Online,
     ConnectFailed {
         reason: String,
     },

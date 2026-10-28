@@ -1,8 +1,10 @@
 mod harness;
 
 use futures_util::StreamExt;
-use harness::{SPAWN, bounded, first_error, plugged, rejections, start};
+use harness::{SPAWN, bounded, first_error, launch, plugged, rejections, start};
 use serde_json::{Value, json};
+use std::time::Duration;
+use tokio::time::timeout;
 use tokio_tungstenite::tungstenite::Message;
 
 const AUTHORIZE: &str = r#"{"command":"authorize","station":"CP1","connector":1,"id_tag":"TAG1"}"#;
@@ -103,7 +105,7 @@ async fn given_a_connected_station_when_removed_then_its_socket_closes_and_its_i
     let closed = bounded(run.socket.next()).await;
     assert!(!matches!(closed, Some(Ok(Message::Text(_)))), "{closed:?}");
     run.command(SPAWN).await;
-    let reconnected = bounded(run.listener.accept()).await;
+    let reconnected = bounded(run.daemon.listener.accept()).await;
     assert!(reconnected.is_ok());
 }
 
@@ -168,4 +170,36 @@ async fn given_commands_that_cannot_run_when_sent_then_each_is_rejected_on_stdou
             ),
         ]
     );
+}
+
+#[tokio::test]
+async fn given_a_station_spawned_without_connecting_when_read_then_offline_and_no_connection_until_connect()
+ {
+    let mut daemon = launch(r#"{"command":"spawn","prefix":"CP","count":1,"connect":false}"#).await;
+    daemon.event("offline").await;
+    let early = timeout(Duration::from_millis(300), daemon.listener.accept()).await;
+
+    daemon
+        .command(r#"{"command":"connect","station":"CP1"}"#)
+        .await;
+
+    assert!(early.is_err(), "dialed while held offline");
+    daemon.event("online").await;
+    let mut run = daemon.accept(300).await;
+    run.event("connected").await;
+}
+
+#[tokio::test]
+async fn given_a_connected_station_when_disconnect_then_connect_then_it_dials_again_at_once() {
+    let mut run = start(SPAWN, 300).await;
+    run.command(r#"{"command":"disconnect","station":"CP1"}"#)
+        .await;
+    run.event("offline").await;
+    run.event("disconnected").await;
+
+    run.command(r#"{"command":"connect","station":"CP1"}"#)
+        .await;
+
+    let reconnected = timeout(Duration::from_secs(1), run.daemon.listener.accept()).await;
+    assert!(reconnected.is_ok(), "no dial within a second of connect");
 }

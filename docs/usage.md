@@ -49,6 +49,8 @@ echo '{"command":"spawn","prefix":"CS","count":10,"ocpp":"2.0.1"}' >&3
 | `{"command":"lock_failure","station":"CP1","connector":1}` | the cable lock breaks: unlocking fails and plugging in faults the connector |
 | `{"command":"clear_fault","station":"CP1","connector":1}` | clear the fault and repair the lock |
 | `{"command":"power_cut","station":"CP1"}` | the power fails: transactions stop, the station goes down and boots again with its state |
+| `{"command":"disconnect","station":"CP1"}` | take the station offline: its connection closes and it stays offline; transactions go on and their messages wait, as in a network outage |
+| `{"command":"connect","station":"CP1"}` | bring an offline station back: it connects at once |
 | `{"command":"fail_transfer","station":"CP1","stage":"download"}` | make the next firmware download fail; other stages are `signature`, `install` and `upload` (diagnostics or log) |
 | `{"command":"configure","station":"CP1","key":"HeartbeatInterval","value":"60"}` | change a setting while the station runs, with the same rules and effects as a change from the CSMS: a 1.6 key, or a 2.0.1 `Component.Variable`; the change shows as `configuration_changed` (1.6) or `variable_changed` (2.0.1) |
 
@@ -89,6 +91,7 @@ The main kinds:
 | Kind | When |
 |---|---|
 | `connected`, `disconnected` | the WebSocket opens or closes |
+| `offline`, `online` | the station is taken offline (`disconnect`, or spawned with `"connect":false`) or brought back (`connect`) |
 | `boot_status` | the CSMS answers the boot |
 | `status_changed` | a connector changes status |
 | `authorization` | the CSMS answers a card |

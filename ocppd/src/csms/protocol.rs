@@ -153,6 +153,13 @@ impl Protocol {
         }
     }
 
+    pub fn wants_connection(&self) -> bool {
+        match self {
+            Protocol::V16(charge_point) => charge_point.wants_connection(),
+            Protocol::V201(charging_station) => charging_station.wants_connection(),
+        }
+    }
+
     pub fn csms_url(&self) -> Option<String> {
         match self {
             Protocol::V16(_) => None,
