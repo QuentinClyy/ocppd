@@ -36,6 +36,7 @@ var globalBindings = []draw.Binding{
 	{Group: "panes", Keys: "=", Help: "reset the split"},
 	{Group: "panes", Keys: "z", Help: "zoom the pane / show both", Bar: "zoom"},
 	{Group: "panes", Keys: "/", Help: "filter the pane (stations: id or ocpp)", Bar: "filter"},
+	{Group: "general", Keys: "drag", Help: "select and copy (shift: terminal selects)"},
 	{Group: "general", Keys: "5j", Help: "a count repeats a move; 12G goes to row 12"},
 	{Group: "general", Keys: "^d / ^u", Help: "scroll log down / up (or wheel)"},
 	{Group: "general", Keys: "tab", Help: "log: selected station / all", Bar: "log"},

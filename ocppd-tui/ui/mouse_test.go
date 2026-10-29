@@ -8,9 +8,13 @@ import (
 	"github.com/charmbracelet/x/ansi"
 )
 
-func clickAt(m Model, x, y int) Model {
+func pressAt(m Model, x, y int) Model {
 	next, _ := m.Update(tea.MouseClickMsg{Button: tea.MouseLeft, X: x, Y: y})
 	return next.(Model)
+}
+
+func clickAt(m Model, x, y int) Model {
+	return release(pressAt(m, x, y))
 }
 
 func dragTo(m Model, x, y int) Model {
@@ -19,8 +23,13 @@ func dragTo(m Model, x, y int) Model {
 }
 
 func release(m Model) Model {
-	next, _ := m.Update(tea.MouseReleaseMsg{Button: tea.MouseLeft})
-	return next.(Model)
+	m, _ = releaseCmd(m)
+	return m
+}
+
+func releaseCmd(m Model) (Model, tea.Cmd) {
+	next, cmd := m.Update(tea.MouseReleaseMsg{Button: tea.MouseLeft})
+	return next.(Model), cmd
 }
 
 func collapsed() Model {
@@ -65,7 +74,7 @@ func Test_given_the_fleet_focused_when_the_log_is_clicked_then_the_log_takes_foc
 func Test_given_a_wide_screen_when_the_divider_is_dragged_left_then_the_fleet_narrows_to_it(t *testing.T) {
 	m := sized(collapsed(), 160, 30)
 	divider := m.fleetSize() - 1
-	m = clickAt(m, divider, 10)
+	m = pressAt(m, divider, 10)
 
 	m = dragTo(m, 59, 10)
 
@@ -77,7 +86,7 @@ func Test_given_a_wide_screen_when_the_divider_is_dragged_left_then_the_fleet_na
 func Test_given_a_narrow_screen_when_the_rule_is_dragged_down_then_the_fleet_gains_rows(t *testing.T) {
 	m := collapsed()
 	fleetY, fleetRows := content(m, fleetPane)
-	m = clickAt(m, 10, fleetY+fleetRows)
+	m = pressAt(m, 10, fleetY+fleetRows)
 
 	m = dragTo(m, 10, fleetY+fleetRows+5)
 
@@ -89,7 +98,7 @@ func Test_given_a_narrow_screen_when_the_rule_is_dragged_down_then_the_fleet_gai
 func Test_given_a_released_drag_when_the_mouse_moves_then_the_split_stays(t *testing.T) {
 	m := sized(collapsed(), 160, 30)
 	before := m.fleetSize()
-	m = release(clickAt(m, before-1, 10))
+	m = release(pressAt(m, before-1, 10))
 
 	m = dragTo(m, 59, 10)
 
@@ -111,7 +120,7 @@ func Test_given_the_help_open_when_a_row_is_clicked_then_the_cursor_stays(t *tes
 
 func Test_given_a_wide_screen_when_the_divider_is_dragged_past_the_columns_then_every_row_meets_it(t *testing.T) {
 	m := expandAll(sized(collapsed(), 160, 30))
-	m = clickAt(m, m.fleetSize()-1, 10)
+	m = pressAt(m, m.fleetSize()-1, 10)
 
 	m = dragTo(m, 49, 10)
 

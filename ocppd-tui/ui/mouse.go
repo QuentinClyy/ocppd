@@ -22,24 +22,66 @@ func (m Model) wheel(msg tea.MouseWheelMsg) Model {
 	return m.scrollFleet(-older)
 }
 
-func (m Model) click(msg tea.MouseClickMsg) Model {
+func (m Model) press(msg tea.MouseClickMsg) Model {
 	if msg.Button != tea.MouseLeft {
 		return m
 	}
+	m.yanked = 0
+	at := point{msg.X, msg.Y}
 	l := m.layout()
-	if l.onDivider(msg.X, msg.Y) {
+	switch a, ok := l.at(msg.X, msg.Y); {
+	case m.overlaid():
+		m.sel = selection{bounds: area{width: m.width, height: m.height}, from: at, to: at, live: true}
+	case l.onDivider(msg.X, msg.Y):
 		m.dragging = true
-		return m
+	case ok:
+		a.width--
+		m.sel = selection{bounds: a, from: at, to: at, live: true}
 	}
-	a, ok := l.at(msg.X, msg.Y)
+	return m
+}
+
+func (m Model) motion(msg tea.MouseMotionMsg) Model {
+	switch {
+	case m.dragging:
+		return m.dragTo(msg.X, msg.Y)
+	case m.sel.live:
+		m.sel = m.sel.extend(msg.X, msg.Y)
+	}
+	return m
+}
+
+func (m Model) lift() (Model, tea.Cmd) {
+	sel := m.sel
+	m.dragging, m.sel = false, selection{}
+	switch {
+	case !sel.live || (!sel.moved() && m.overlaid()):
+		return m, nil
+	case !sel.moved():
+		m = m.click(sel.from)
+		m.fleetScroll = m.fleetTop()
+		return m, nil
+	}
+	start, end := sel.span()
+	text := selectedText(frame(m), sel)
+	if text == "" {
+		return m, nil
+	}
+	m.yanked = end.y - start.y + 1
+	return m, tea.SetClipboard(text)
+}
+
+func (m Model) click(at point) Model {
+	l := m.layout()
+	a, ok := l.at(at.x, at.y)
 	if !ok {
 		return m
 	}
 	m.focus = a.pane
 	if a.pane == fleetPane {
-		return m.clickRow(msg.Y - a.y - 1)
+		return m.clickRow(at.y - a.y - 1)
 	}
-	return m.clickLog(msg.Y - a.y - 1)
+	return m.clickLog(at.y - a.y - 1)
 }
 
 func (m Model) clickLog(index int) Model {

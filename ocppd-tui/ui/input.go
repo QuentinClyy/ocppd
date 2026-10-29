@@ -25,6 +25,8 @@ func (m Model) key(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	case m.opensPopupHelp(key):
 		m.help = true
 		return m, nil
+	case m.form != nil && m.form.Pastes(key):
+		return m, tea.ReadClipboard
 	case m.form != nil:
 		return m.formKey(msg), nil
 	case m.confirm != nil:
@@ -171,6 +173,27 @@ func (m Model) promptKey(msg tea.KeyPressMsg) Model {
 		return m
 	}
 	return m.sendLine(command.Authorize(edited.at, edited.value.String()))
+}
+
+func (m Model) paste(text string) Model {
+	switch {
+	case m.help:
+	case m.prompt != nil:
+		p := *m.prompt
+		p.value = p.value.Paste(text)
+		m.prompt = &p
+	case m.filtering:
+		m.filters[m.focus] = m.filters[m.focus].Paste(text)
+		if m.focus == logPane {
+			return m.resetLog()
+		}
+	case m.form != nil:
+		m.form.Paste(text)
+	case m.details != nil:
+		p := m.details.Paste(text)
+		m.details = &p
+	}
+	return m
 }
 
 func (m Model) formKey(msg tea.KeyPressMsg) Model {

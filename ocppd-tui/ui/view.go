@@ -17,6 +17,10 @@ const (
 )
 
 func render(m Model) string {
+	return strings.Join(highlight(frame(m), m.sel), "\n")
+}
+
+func frame(m Model) []string {
 	rule := " " + draw.Dim.Render(strings.Repeat("─", max(m.width-2, 0)))
 	right := draw.Dim.Render(m.stationCount())
 	if m.outdated() {
@@ -65,7 +69,7 @@ func render(m Model) string {
 	for index, line := range screen {
 		screen[index] = ansi.Truncate(line, m.width, "")
 	}
-	return strings.Join(screen, "\n")
+	return screen
 }
 
 func plural(count int, noun string) string {
