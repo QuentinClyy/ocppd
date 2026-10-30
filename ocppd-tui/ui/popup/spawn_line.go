@@ -45,8 +45,10 @@ func (f *Spawn) line() (string, error) {
 			fields[key] = text
 		}
 	}
-	if f.current.index == 1 {
+	phases := f.phases.String()
+	if f.isDC() {
 		fields["current"] = f.current.options[f.current.index]
+		phases = ""
 	}
 	if f.connect.index == 1 {
 		fields["connect"] = false
@@ -56,7 +58,7 @@ func (f *Spawn) line() (string, error) {
 		isWhole          bool
 	}{
 		{"voltage_v", "voltage V", f.voltage.String(), false},
-		{"phases", "phases", f.phases.String(), true},
+		{"phases", "phases", phases, true},
 		{"max_current_a", "max A", f.maxCurrent.String(), false},
 		{"max_output_a", "dc out A", f.maxOutput.String(), false},
 		{"connectors", "connectors", f.connectors.String(), true},
@@ -76,13 +78,16 @@ func (f *Spawn) line() (string, error) {
 
 func (f *Spawn) rating() string {
 	volts, errVolts := strconv.ParseFloat(or(f.voltage.String(), "230"), 64)
-	phases, errPhases := strconv.ParseFloat(or(f.phases.String(), "3"), 64)
+	phases, errPhases := strconv.ParseFloat(or(f.phases.String(), "1"), 64)
+	if f.isDC() {
+		phases, errPhases = 3, nil
+	}
 	amps, errAmps := strconv.ParseFloat(or(f.maxCurrent.String(), "32"), 64)
 	if errVolts != nil || errPhases != nil || errAmps != nil {
 		return "line-to-neutral volts"
 	}
 	grid := volts * phases * amps / 1000
-	if f.current.index == 1 {
+	if f.isDC() {
 		return fmt.Sprintf("= %.1f kW from the grid, %.1f kW to the EV", grid, grid*dcEfficiency)
 	}
 	return fmt.Sprintf("= %.1f kW, line-to-neutral volts", grid)

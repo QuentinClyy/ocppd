@@ -132,3 +132,27 @@ func Test_given_dc_current_when_spawned_then_the_line_has_it_and_the_default_doe
 		t.Fatalf("ac %q, dc %q, %v", ac, dc, err)
 	}
 }
+
+func Test_given_dc_with_phases_typed_before_when_spawned_then_phases_left_to_the_dc_default(t *testing.T) {
+	f := NewSpawn()
+	f.stations[0].id = draw.NewEditor("DC1")
+	f.phases = draw.NewEditor("1")
+	f.current.index = 1
+
+	line, err := f.line()
+
+	want := `{"command":"spawn","current":"dc","ocpp":"1.6","stations":[{"id":"DC1"}]}`
+	if err != nil || line != want {
+		t.Fatalf("got %q, %v", line, err)
+	}
+}
+
+func Test_given_an_empty_ac_rating_when_drawn_then_one_phase_of_32_a_at_230_v(t *testing.T) {
+	f := NewSpawn()
+
+	rating := f.rating()
+
+	if rating != "= 7.4 kW, line-to-neutral volts" {
+		t.Fatalf("got %q", rating)
+	}
+}

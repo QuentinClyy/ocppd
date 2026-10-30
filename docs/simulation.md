@@ -5,9 +5,9 @@ station is simulated.
 
 ## The station
 
-- **Power:** by default a station has one connector, rated 230 V × 32 A × 3
-  phases (22 kW); the [station model](configuration.md#station-model) changes
-  that. A 2.0.1 station has one EVSE per connector, of type `cType2`, or
+- **Power:** by default a station has one connector, rated 230 V × 32 A on
+  1 phase (7.4 kW), or on 3 phases (22 kW) for `dc`; the
+  [station model](configuration.md#station-model) changes that. A 2.0.1 station has one EVSE per connector, of type `cType2`, or
   `cCCS2` for `dc`.
 - **The battery:** its voltage rises with the state of charge, from 0.90 to
   1.15 × the EV's `pack_v`. It accepts its peak current up to 20 %, a little

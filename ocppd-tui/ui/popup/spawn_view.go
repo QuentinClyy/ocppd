@@ -38,6 +38,9 @@ func (f *Spawn) lines() ([]string, int) {
 			}
 		case "voltage V":
 			span = 3
+			if f.isDC() {
+				span = 2
+			}
 		case "connectors":
 			span = 2
 		}
