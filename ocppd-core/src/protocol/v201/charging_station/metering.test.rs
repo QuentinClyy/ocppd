@@ -1,7 +1,9 @@
 use crate::api::io::Input;
 use crate::fixtures::v201::metering::{charging, configure, sent, tick, unplug};
 use crate::fixtures::v201::station::{MINUTE, Run};
-use serde_json::json;
+use crate::protocol::v201::messages::datatypes::meter_value::ReadingContext;
+use crate::station::charge::Current;
+use serde_json::{Value, json};
 
 fn clock_aligned_two_evses() -> Run {
     let mut run = Run::accepted_with(2, 86_400);
@@ -122,4 +124,40 @@ fn given_aligned_ended_interval_and_two_boundaries_passed_when_unplugged_then_en
             (json!("1970-01-01T00:02:00Z"), json!("Sample.Clock")),
         ]
     );
+}
+
+#[test]
+fn given_dc_station_charging_when_a_meter_value_is_sampled_then_dc_voltage_at_the_outlet_and_grid_phases_at_the_inlet()
+ {
+    let mut run = Run::accepted(86_400);
+    run.station.station.connectors[0].current = Current::Dc;
+    configure(
+        &mut run,
+        &[("SampledDataCtrlr.TxUpdatedMeasurands", "Voltage")],
+    );
+    charging(&mut run, 100_000);
+
+    let sampled = run.station.meter_value(
+        200_000,
+        0,
+        ("SampledDataCtrlr", "TxUpdatedMeasurands"),
+        ReadingContext::SamplePeriodic,
+    );
+
+    let values = json!(sampled.unwrap())["sampledValue"].clone();
+    let at = |location: &str| -> Vec<Value> {
+        let all = values.as_array().unwrap().iter();
+        all.filter(|value| value["location"] == location)
+            .cloned()
+            .collect()
+    };
+    let outlet = at("Outlet");
+    assert_eq!(outlet.len(), 1);
+    assert!(outlet[0].get("phase").is_none());
+    assert!(outlet[0]["value"].as_f64().unwrap() > 300.0);
+    let inlet: Vec<Value> = at("Inlet")
+        .iter()
+        .map(|value| value["phase"].clone())
+        .collect();
+    assert_eq!(inlet, vec![json!("L1-N"), json!("L2-N"), json!("L3-N")]);
 }

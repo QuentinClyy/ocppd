@@ -73,7 +73,7 @@ fn given_zero_current_when_station_built_then_refused() {
 
     assert_eq!(
         station.err(),
-        Some("voltage_v and max_current_a must be positive")
+        Some("voltage_v, max_current_a and max_output_a must be positive")
     );
 }
 

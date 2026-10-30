@@ -5,6 +5,7 @@ use crate::protocol::v201::messages::datatypes::meter_value::{
 };
 use crate::protocol::v201::messages::meter_values::MeterValuesRequest;
 use crate::protocol::v201::messages::transaction::{TransactionEventType, TriggerReason};
+use crate::station::electrical::{self, Side};
 use crate::wire::ci_string::CiString;
 use crate::wire::date_time::DateTime;
 use serde_json::{Value, json};
@@ -97,50 +98,67 @@ impl ChargingStation {
     ) -> Vec<SampledValue> {
         let connector = &self.station.connectors[index];
         let sample = connector.sample(now);
-        let phases = &LINES[..(self.station.phases as usize).min(LINES.len())];
-        let per_phase =
-            |watts: f64| watts / (self.station.voltage_v * f64::from(self.station.phases));
-        let value = |value: f64, phase: Option<Phase>, unit: &str| SampledValue {
+        let lines = electrical::lines(&self.station, index, &sample, now);
+        let value = |value: f64, phase: Option<Phase>, side: Side, unit: &str| SampledValue {
             value,
             context: Some(context),
             measurand: Some(measurand),
             phase,
-            location: Some(Location::Outlet),
+            location: Some(location(side)),
             signed_meter_value: None,
             unit_of_measure: Some(UnitOfMeasure {
                 unit: CiString::new(unit).ok(),
                 multiplier: None,
             }),
         };
+        let total = |number: f64, unit: &str| value(number, None, Side::Outlet, unit);
         let round =
             |number: f64, places: i32| (number * 10f64.powi(places)).round() / 10f64.powi(places);
         let offered = connector.offered_w();
         match measurand {
-            Measurand::EnergyActiveImportRegister => {
-                vec![value(sample.register_wh.round(), None, "Wh")]
-            }
-            Measurand::PowerActiveImport => vec![value(sample.power_w.round(), None, "W")],
+            Measurand::EnergyActiveImportRegister => vec![total(sample.register_wh.round(), "Wh")],
+            Measurand::PowerActiveImport => [Side::Outlet, Side::Inlet]
+                .into_iter()
+                .filter_map(|side| {
+                    let watts = electrical::power_w(&lines, side)?;
+                    Some(value(watts.round(), None, side, "W"))
+                })
+                .collect(),
             Measurand::PowerOffered => offered
-                .map(|watts| value(watts.round(), None, "W"))
+                .map(|watts| total(watts.round(), "W"))
                 .into_iter()
                 .collect(),
             Measurand::CurrentOffered => offered
-                .map(|watts| value(round(per_phase(watts), 1), None, "A"))
+                .map(|watts| electrical::offered_a(&self.station, index, &sample, watts))
+                .map(|amps| total(round(amps, 1), "A"))
                 .into_iter()
                 .collect(),
-            Measurand::CurrentImport => phases
+            Measurand::CurrentImport => lines
                 .iter()
-                .map(|&(line, _)| value(round(per_phase(sample.power_w), 1), Some(line), "A"))
+                .map(|line| {
+                    let phase = line.phase.map(|phase| LINES[phase].0);
+                    value(round(line.current_a, 1), phase, line.side, "A")
+                })
                 .collect(),
-            Measurand::Voltage => phases
+            Measurand::Voltage => lines
                 .iter()
-                .map(|&(_, to_neutral)| value(self.station.voltage_v, Some(to_neutral), "V"))
+                .map(|line| {
+                    let phase = line.phase.map(|phase| LINES[phase].1);
+                    value(round(line.voltage_v, 1), phase, line.side, "V")
+                })
                 .collect(),
             Measurand::SoC if connector.plugged.is_some() => {
-                vec![value(round(sample.soc * 100.0, 1), None, "Percent")]
+                vec![total(round(sample.soc * 100.0, 1), "Percent")]
             }
             _ => Vec::new(),
         }
+    }
+}
+
+fn location(side: Side) -> Location {
+    match side {
+        Side::Outlet => Location::Outlet,
+        Side::Inlet => Location::Inlet,
     }
 }
 

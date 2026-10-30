@@ -44,6 +44,9 @@ func (m Model) apply(r popup.Result) Model {
 	if r.Prompt != nil {
 		m.prompt = &prompt{at: *r.Prompt}
 	}
+	if r.Plug != nil {
+		m.form = popup.NewPlug(*r.Plug)
+	}
 	return m
 }
 

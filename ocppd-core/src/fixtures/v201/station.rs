@@ -30,6 +30,7 @@ pub fn station(connectors: usize) -> Station {
         voltage_v: 230.0,
         max_current_a: 32.0,
         phases: 3,
+        max_output_a: 500.0,
         jitter: false,
         connectors: vec![Connector::default(); connectors],
     }
