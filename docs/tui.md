@@ -145,7 +145,7 @@ filter.
 - **ocpp**, **current** (`←` / `→` switches `ac` and `dc`), **vendor**, **model**, **voltage V**, **phases**, **max A**, **connectors**,
   **dc out A**, **csms**: an empty field keeps ocppd's default, shown in grey.
   Under the rating, the form shows the power it gives: for `dc`, from the grid
-  and to the EV.
+  and to the EV. A `dc` station is always three-phase, so **phases** hides.
 - **connect**: `no` spawns the stations offline; `o` brings each one online.
 
 `tab` / `⇧tab` move between fields and `enter` spawns. `esc` switches to

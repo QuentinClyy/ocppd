@@ -68,6 +68,10 @@ func (f *Spawn) addStation(string) {
 	}
 }
 
+func (f *Spawn) isDC() bool {
+	return f.current.index == 1
+}
+
 func (f *Spawn) isListed() bool {
 	return f.listed.index == 0
 }
@@ -86,13 +90,16 @@ func (f *Spawn) slots() []slot {
 			slot{label: "count", text: &f.count, hint: "1", width: 6},
 			slot{label: "password", text: &f.password, width: 24})
 	}
-	return append(slots,
+	slots = append(slots,
 		slot{label: "ocpp", choice: &f.ocpp},
 		slot{label: "current", choice: &f.current},
 		slot{label: "vendor", text: &f.vendor, hint: "ocppd", width: 24},
 		slot{label: "model", text: &f.model, hint: "sim", width: 24},
-		slot{label: "voltage V", text: &f.voltage, hint: "230", width: 6},
-		slot{label: "phases", text: &f.phases, hint: "3", width: 6},
+		slot{label: "voltage V", text: &f.voltage, hint: "230", width: 6})
+	if !f.isDC() {
+		slots = append(slots, slot{label: "phases", text: &f.phases, hint: "1", width: 6})
+	}
+	return append(slots,
 		slot{label: "max A", text: &f.maxCurrent, hint: "32", width: 6},
 		slot{label: "connectors", text: &f.connectors, hint: "1", width: 6},
 		slot{label: "dc out A", text: &f.maxOutput, hint: "500", width: 6},
