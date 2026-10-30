@@ -3,7 +3,7 @@ pub mod connector;
 pub mod electrical;
 pub mod jitter;
 
-use charge::Supply;
+use charge::{Current, Supply};
 use connector::Connector;
 
 pub struct Station {
@@ -23,6 +23,12 @@ pub struct Station {
 impl Station {
     pub fn limit_w(&self) -> f64 {
         self.voltage_v * self.max_current_a * f64::from(self.phases)
+    }
+
+    pub fn current(&self) -> Current {
+        self.connectors
+            .first()
+            .map_or(Current::Ac, |connector| connector.current)
     }
 
     pub fn supply(&self, index: usize) -> Supply {

@@ -32,6 +32,9 @@ station is simulated.
   - `dc`: at the `Outlet`, the battery voltage and the DC current, without a
     phase; at the `Inlet`, the grid voltage and current on each phase, and the
     grid power with the loss.
+  - `SoC` only on a `dc` station, where the EV sends it during the DC
+    session (DIN SPEC 70121, ISO 15118-2). An `ac` station has no data link
+    to the EV: it refuses `SoC` as a measurand.
   - Voltage and current carry a small noise (±0.5 %, ±1 %), the same at the
     same time for the same station; a station spawned with `jitter` `false`
     has none. The energy register is exact.

@@ -1,6 +1,6 @@
 use crate::api::io::Input;
 use crate::fixtures::v201::metering::{charging, configure, sent, tick, unplug};
-use crate::fixtures::v201::station::{MINUTE, Run};
+use crate::fixtures::v201::station::{MINUTE, Run, station};
 use crate::protocol::v201::messages::datatypes::meter_value::ReadingContext;
 use crate::station::charge::Current;
 use serde_json::{Value, json};
@@ -160,4 +160,28 @@ fn given_dc_station_charging_when_a_meter_value_is_sampled_then_dc_voltage_at_th
         .map(|value| value["phase"].clone())
         .collect();
     assert_eq!(inlet, vec![json!("L1-N"), json!("L2-N"), json!("L3-N")]);
+}
+
+#[test]
+fn given_ac_station_when_soc_measurand_configured_then_refused_as_the_ev_never_sends_it() {
+    let mut run = Run::accepted(86_400);
+
+    let accepted = run
+        .station
+        .configure("SampledDataCtrlr.TxUpdatedMeasurands", "SoC");
+
+    assert!(!accepted);
+}
+
+#[test]
+fn given_dc_station_when_soc_measurand_configured_then_accepted() {
+    let mut dc = station(1);
+    dc.connectors[0].current = Current::Dc;
+    let mut run = Run::of(dc);
+
+    let accepted = run
+        .station
+        .configure("SampledDataCtrlr.TxUpdatedMeasurands", "SoC");
+
+    assert!(accepted);
 }

@@ -5,6 +5,7 @@ use crate::protocol::v16::messages::provisioning::configuration::{
     ChangeConfigurationRequest, ConfigurationStatus, GetConfigurationRequest,
     GetConfigurationResponse, KeyValue,
 };
+use crate::station::charge::Current;
 use crate::wire::ci_string::{CiString, TooLong};
 use serde_json::Value;
 
@@ -31,9 +32,20 @@ pub const TRANSACTION_MESSAGE_RETRY_INTERVAL: &str = "TransactionMessageRetryInt
 
 const DERIVED: [&str; 1] = ["NumberOfConnectors"];
 
-const DEFAULT_MEASURANDS: &str =
+const AC_DEFAULT_MEASURANDS: &str =
+    "Energy.Active.Import.Register,Power.Active.Import,Current.Import,Current.Offered,Voltage";
+const DC_DEFAULT_MEASURANDS: &str =
     "Energy.Active.Import.Register,Power.Active.Import,Current.Import,Current.Offered,Voltage,SoC";
-const SUPPORTED_MEASURANDS: [Measurand; 8] = [
+const AC_MEASURANDS: &[Measurand] = &[
+    Measurand::EnergyActiveImportRegister,
+    Measurand::EnergyActiveImportInterval,
+    Measurand::PowerActiveImport,
+    Measurand::PowerOffered,
+    Measurand::CurrentImport,
+    Measurand::CurrentOffered,
+    Measurand::Voltage,
+];
+const DC_MEASURANDS: &[Measurand] = &[
     Measurand::EnergyActiveImportRegister,
     Measurand::EnergyActiveImportInterval,
     Measurand::PowerActiveImport,
@@ -59,7 +71,7 @@ enum Access {
     ReadOnly(Shape),
     Integer,
     Boolean,
-    Measurands,
+    Measurands(&'static [Measurand]),
     CurrentValueOnly,
     SecurityProfile,
     WriteOnly,
@@ -74,8 +86,12 @@ enum Shape {
 }
 
 impl Configuration {
-    pub fn new(connectors: usize) -> Result<Self, TooLong> {
-        let measurand_count = SUPPORTED_MEASURANDS.len().to_string();
+    pub fn new(connectors: usize, current: Current) -> Result<Self, TooLong> {
+        let (default_measurands, supported) = match current {
+            Current::Ac => (AC_DEFAULT_MEASURANDS, AC_MEASURANDS),
+            Current::Dc => (DC_DEFAULT_MEASURANDS, DC_MEASURANDS),
+        };
+        let measurand_count = supported.len().to_string();
         let phase_rotation_count = (connectors + 1).to_string();
         let table = [
             (AUTHORIZATION_CACHE_ENABLED, "true", Access::Boolean),
@@ -137,8 +153,8 @@ impl Configuration {
             ),
             (
                 METER_VALUES_SAMPLED_DATA,
-                DEFAULT_MEASURANDS,
-                Access::Measurands,
+                default_measurands,
+                Access::Measurands(supported),
             ),
             (
                 "MeterValuesSampledDataMaxLength",
@@ -264,7 +280,7 @@ impl Configuration {
             Access::ReadOnly(_) => false,
             Access::Integer => Shape::Integer.fits(value),
             Access::Boolean => Shape::Boolean.fits(value),
-            Access::Measurands => measurands(value).is_some(),
+            Access::Measurands(supported) => measurands(value, supported).is_some(),
             Access::CurrentValueOnly => value == key.value.as_str(),
             Access::SecurityProfile => {
                 let current: u32 = key.value.as_str().parse().unwrap_or(0);
@@ -336,7 +352,10 @@ impl Configuration {
 
     pub fn measurands(&self) -> Vec<Measurand> {
         self.find(METER_VALUES_SAMPLED_DATA)
-            .and_then(|key| measurands(key.value.as_str()))
+            .and_then(|key| match key.access {
+                Access::Measurands(supported) => measurands(key.value.as_str(), supported),
+                _ => None,
+            })
             .unwrap_or_default()
     }
 
@@ -377,7 +396,7 @@ pub fn is_derived(name: &str) -> bool {
         .any(|derived| derived.eq_ignore_ascii_case(name))
 }
 
-fn measurands(list: &str) -> Option<Vec<Measurand>> {
+fn measurands(list: &str, supported: &[Measurand]) -> Option<Vec<Measurand>> {
     let mut parsed = Vec::new();
     for item in list
         .split(',')
@@ -385,7 +404,7 @@ fn measurands(list: &str) -> Option<Vec<Measurand>> {
         .filter(|item| !item.is_empty())
     {
         let measurand: Measurand = serde_json::from_value(Value::String(item.to_owned())).ok()?;
-        if !SUPPORTED_MEASURANDS.contains(&measurand) || parsed.contains(&measurand) {
+        if !supported.contains(&measurand) || parsed.contains(&measurand) {
             return None;
         }
         parsed.push(measurand);

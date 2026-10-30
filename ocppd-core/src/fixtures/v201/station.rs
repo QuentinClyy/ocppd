@@ -38,8 +38,12 @@ pub fn station(connectors: usize) -> Station {
 
 impl Run {
     pub fn new(connectors: usize) -> Run {
+        Run::of(station(connectors))
+    }
+
+    pub fn of(station: Station) -> Run {
         let mut run = Run {
-            station: ChargingStation::new(station(connectors)).unwrap(),
+            station: ChargingStation::new(station).unwrap(),
             calls: Vec::new(),
             pending: None,
             events: Vec::new(),
