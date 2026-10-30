@@ -36,13 +36,18 @@ func (f *Spawn) lines() ([]string, int) {
 			if index == 1 {
 				lines = append(lines, "", draw.Pad("", 2+labelWidth+1)+draw.Dim.Render(draw.Pad("id", 20)+"password"))
 			}
-		case "phases":
+		case "voltage V":
 			span = 3
+		case "connectors":
+			span = 2
 		}
 		if f.focus >= index && f.focus < index+span {
 			focused = len(lines)
 		}
 		lines = append(lines, f.row(slots, index, span))
+		if s.label == "voltage V" {
+			lines = append(lines, draw.Pad("", 2+labelWidth)+draw.Dim.Render(f.rating()))
+		}
 		if s.label == "entry" && !f.isListed() {
 			lines = append(lines, "")
 		}
@@ -55,15 +60,11 @@ func (f *Spawn) lines() ([]string, int) {
 }
 
 func (f *Spawn) row(slots []slot, index, span int) string {
-	marker := "  "
-	if f.focus >= index && f.focus < index+span {
-		marker = draw.Accent.Render("▌ ")
-	}
 	name := slots[index].label
 	if name == "id" {
 		name = fmt.Sprint((index + 1) / 2)
 	}
-	line := marker + f.label(name, index, labelWidth) + f.value(slots[index], index)
+	line := f.marker(index, span) + f.label(name, index, labelWidth) + f.value(slots[index], index)
 	for next := index + 1; next < index+span; next++ {
 		if slots[next].label != "password" {
 			line += "  " + f.label(slots[next].label+" ", next, 0)
@@ -73,31 +74,6 @@ func (f *Spawn) row(slots []slot, index, span int) string {
 		line += f.value(slots[next], next)
 	}
 	return line
-}
-
-func (f *Spawn) label(name string, index, width int) string {
-	if index == f.focus {
-		return draw.Accent.Render(draw.Pad(name, width))
-	}
-	return draw.Dim.Render(draw.Pad(name, width))
-}
-
-func (f *Spawn) value(s slot, index int) string {
-	focused := index == f.focus
-	if s.choice != nil {
-		return segmented(*s.choice, focused)
-	}
-	if focused && !f.normal {
-		return draw.EditingField(*s.text, s.width)
-	}
-	return draw.TextField(s.text.String(), s.hint, s.width)
-}
-
-func (f *Spawn) footer() string {
-	if f.normal {
-		return statusLine(draw.NormalMode, f.err)
-	}
-	return statusLine(draw.InsertMode, f.err)
 }
 
 func (f *Spawn) Bindings() []draw.Binding {

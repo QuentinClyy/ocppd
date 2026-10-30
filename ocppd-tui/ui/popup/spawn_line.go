@@ -2,11 +2,14 @@ package popup
 
 import (
 	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 
 	"github.com/QuentinClyy/ocppd/ocppd-tui/ui/command"
 )
+
+const dcEfficiency = 0.95
 
 func (f *Spawn) line() (string, error) {
 	fields := map[string]any{"command": "spawn", "ocpp": f.ocpp.options[f.ocpp.index]}
@@ -52,8 +55,10 @@ func (f *Spawn) line() (string, error) {
 		key, label, text string
 		isWhole          bool
 	}{
+		{"voltage_v", "voltage V", f.voltage.String(), false},
 		{"phases", "phases", f.phases.String(), true},
 		{"max_current_a", "max A", f.maxCurrent.String(), false},
+		{"max_output_a", "dc out A", f.maxOutput.String(), false},
 		{"connectors", "connectors", f.connectors.String(), true},
 	}
 	for _, n := range numbers {
@@ -67,6 +72,20 @@ func (f *Spawn) line() (string, error) {
 		fields[n.key] = value
 	}
 	return command.Encode(fields), nil
+}
+
+func (f *Spawn) rating() string {
+	volts, errVolts := strconv.ParseFloat(or(f.voltage.String(), "230"), 64)
+	phases, errPhases := strconv.ParseFloat(or(f.phases.String(), "3"), 64)
+	amps, errAmps := strconv.ParseFloat(or(f.maxCurrent.String(), "32"), 64)
+	if errVolts != nil || errPhases != nil || errAmps != nil {
+		return "line-to-neutral volts"
+	}
+	grid := volts * phases * amps / 1000
+	if f.current.index == 1 {
+		return fmt.Sprintf("= %.1f kW from the grid, %.1f kW to the EV", grid, grid*dcEfficiency)
+	}
+	return fmt.Sprintf("= %.1f kW, line-to-neutral volts", grid)
 }
 
 func parseNumber(text string, isWhole bool) (any, error) {

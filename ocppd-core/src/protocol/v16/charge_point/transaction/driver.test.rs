@@ -275,3 +275,17 @@ fn given_idle_station_when_shut_down_then_it_is_finished_without_sending_anythin
     assert!(csms.charge_point.finished(MINUTE));
     assert_eq!(csms.sent.len(), before);
 }
+
+#[test]
+fn given_ev_with_four_onboard_phases_when_plugged_in_then_rejected_and_nothing_plugged() {
+    let mut csms = Csms::booted();
+    let ev = EvSpec {
+        ac_phases: 4,
+        ..EvSpec::default()
+    };
+
+    let events = rejected(&mut csms, Intent::PlugIn { connector: 1, ev });
+
+    assert_eq!(events, intent_rejected(Some(1), "ac_phases must be 1 to 3"));
+    assert!(csms.sent.is_empty());
+}

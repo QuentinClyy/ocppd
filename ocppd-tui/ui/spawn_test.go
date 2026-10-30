@@ -145,7 +145,7 @@ func Test_given_a_short_terminal_when_the_last_field_is_focused_then_it_shows(t 
 func Test_given_an_invalid_field_when_spawned_then_the_error_sits_in_the_bottom_border(t *testing.T) {
 	m, _ := recording()
 
-	m = press(m, keys([]string{"n", "tab"}, typed("A"), []string{"esc", "G", "k", "k", "k", "k", "i"}, typed("x"), []string{"enter"})...)
+	m = press(m, keys([]string{"n", "tab"}, typed("A"), []string{"esc", "G", "k", "k", "k", "k", "k", "i"}, typed("x"), []string{"enter"})...)
 
 	text := strings.Join(screen(m, 80, 30), "\n")
 	if !strings.Contains(text, "╰─  INSERT  ! phases must be a number") {

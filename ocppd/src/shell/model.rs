@@ -12,6 +12,7 @@ pub struct Model {
     voltage_v: f64,
     max_current_a: f64,
     phases: u32,
+    max_output_a: f64,
     current: Current,
     connectors: usize,
 }
@@ -25,6 +26,7 @@ impl Default for Model {
             voltage_v: 230.0,
             max_current_a: 32.0,
             phases: 3,
+            max_output_a: 500.0,
             current: Current::Ac,
             connectors: 1,
         }
@@ -42,8 +44,8 @@ impl Model {
         if self.connectors == 0 {
             return Err("connectors must be at least 1");
         }
-        if self.voltage_v <= 0.0 || self.max_current_a <= 0.0 {
-            return Err("voltage_v and max_current_a must be positive");
+        if self.voltage_v <= 0.0 || self.max_current_a <= 0.0 || self.max_output_a <= 0.0 {
+            return Err("voltage_v, max_current_a and max_output_a must be positive");
         }
         Ok(Station {
             id: id.into(),
@@ -54,6 +56,7 @@ impl Model {
             voltage_v: self.voltage_v,
             max_current_a: self.max_current_a,
             phases: self.phases,
+            max_output_a: self.max_output_a,
             jitter,
             connectors: vec![
                 Connector {

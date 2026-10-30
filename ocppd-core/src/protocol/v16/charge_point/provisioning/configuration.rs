@@ -31,8 +31,8 @@ pub const TRANSACTION_MESSAGE_RETRY_INTERVAL: &str = "TransactionMessageRetryInt
 const DERIVED: [&str; 1] = ["NumberOfConnectors"];
 
 const DEFAULT_MEASURANDS: &str =
-    "Energy.Active.Import.Register,Power.Active.Import,Current.Import,Current.Offered,Voltage";
-const SUPPORTED_MEASURANDS: [Measurand; 7] = [
+    "Energy.Active.Import.Register,Power.Active.Import,Current.Import,Current.Offered,Voltage,SoC";
+const SUPPORTED_MEASURANDS: [Measurand; 8] = [
     Measurand::EnergyActiveImportRegister,
     Measurand::EnergyActiveImportInterval,
     Measurand::PowerActiveImport,
@@ -40,6 +40,7 @@ const SUPPORTED_MEASURANDS: [Measurand; 7] = [
     Measurand::CurrentImport,
     Measurand::CurrentOffered,
     Measurand::Voltage,
+    Measurand::SoC,
 ];
 
 pub struct Configuration {

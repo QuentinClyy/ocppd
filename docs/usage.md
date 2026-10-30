@@ -66,8 +66,16 @@ configuration: 1.6 keys, or 2.0.1 variables named as in a spawn's
 `plug_in` takes an optional EV. These are the defaults:
 
 ```
-"ev":{"capacity_kwh":60,"soc":0.2,"max_kw":11,"target_soc":1.0}
+"ev":{"capacity_kwh":60,"soc":0.2,"target_soc":1.0,"pack_v":400,"ac_kw":11,"ac_phases":3,"dc_kw":150}
 ```
+
+| Field | Meaning |
+|---|---|
+| `capacity_kwh` | usable battery energy |
+| `soc`, `target_soc` | state of charge at plug-in and where charging stops, 0 to 1 |
+| `pack_v` | nominal pack voltage: about 400 or 800 |
+| `ac_kw`, `ac_phases` | the onboard charger: its power and how many phases it uses |
+| `dc_kw` | the battery's peak DC power |
 
 A command that does not fit the station's state (an EV already plugged in, a
 stop without a transaction) is refused with an `intent_rejected` event. A
