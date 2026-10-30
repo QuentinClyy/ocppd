@@ -5,6 +5,7 @@ use crate::protocol::v201::messages::datatypes::meter_value::{
 };
 use crate::protocol::v201::messages::meter_values::MeterValuesRequest;
 use crate::protocol::v201::messages::transaction::{TransactionEventType, TriggerReason};
+use crate::station::charge::Current;
 use crate::station::electrical::{self, Side};
 use crate::wire::ci_string::CiString;
 use crate::wire::date_time::DateTime;
@@ -15,7 +16,15 @@ pub const ALIGNED_DATA_CTRLR: &str = "AlignedDataCtrlr";
 pub const TX_ENDED_MEASURANDS: &str = "TxEndedMeasurands";
 pub const INTERVAL: &str = "Interval";
 pub const MEASURANDS_VARIABLE: &str = "Measurands";
-pub const MEASURANDS: &str = "Energy.Active.Import.Register,Power.Active.Import,Power.Offered,Current.Import,Current.Offered,Voltage,SoC";
+const AC_MEASURANDS: &str = "Energy.Active.Import.Register,Power.Active.Import,Power.Offered,Current.Import,Current.Offered,Voltage";
+const DC_MEASURANDS: &str = "Energy.Active.Import.Register,Power.Active.Import,Power.Offered,Current.Import,Current.Offered,Voltage,SoC";
+
+pub fn measurands(current: Current) -> &'static str {
+    match current {
+        Current::Ac => AC_MEASURANDS,
+        Current::Dc => DC_MEASURANDS,
+    }
+}
 
 const LINES: [(Phase, Phase); 3] = [
     (Phase::L1, Phase::L1N),

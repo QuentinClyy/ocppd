@@ -83,20 +83,6 @@ fn given_charging_ev_when_first_meter_values_sent_then_power_sampled_periodicall
 }
 
 #[test]
-fn given_charging_ev_when_first_meter_values_sent_then_soc_in_percent() {
-    let sampled = first_sample();
-
-    let soc = sampled
-        .as_array()
-        .unwrap()
-        .iter()
-        .find(|value| value["measurand"] == "SoC")
-        .cloned();
-
-    assert_eq!(soc.unwrap()["unit"], "Percent");
-}
-
-#[test]
 fn given_charging_ev_when_first_meter_values_sent_then_current_and_voltage_per_phase() {
     let sampled = first_sample();
 

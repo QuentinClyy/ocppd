@@ -2,7 +2,14 @@ use crate::api::event::LinkEvent;
 use crate::api::intent::{EvSpec, Intent};
 use crate::api::io::Input;
 use crate::fixtures::v16::fake_csms::{Csms, MINUTE};
+use crate::protocol::v16::charge_point::provisioning::configuration::Configuration;
 use crate::protocol::v16::event::EventKind;
+use crate::protocol::v16::messages::datatypes::meter_value::Measurand;
+use crate::protocol::v16::messages::provisioning::configuration::{
+    ChangeConfigurationRequest, ConfigurationStatus,
+};
+use crate::station::charge::Current;
+use crate::wire::ci_string::CiString;
 use crate::wire::frame::Frame;
 use serde_json::{Value, json};
 
@@ -352,4 +359,33 @@ fn given_disconnected_charge_point_when_a_read_only_limit_is_set_to_text_then_re
                 reason: "LocalAuthListMaxLength refused: not a valid value".into(),
             }))
     );
+}
+
+fn soc_change(current: Current) -> ConfigurationStatus {
+    let mut configuration = Configuration::new(1, current).unwrap();
+    configuration.change(&ChangeConfigurationRequest {
+        key: CiString::new("MeterValuesSampledData").unwrap(),
+        value: CiString::new("Energy.Active.Import.Register,SoC").unwrap(),
+    })
+}
+
+#[test]
+fn given_ac_station_when_soc_measurand_configured_then_rejected_as_the_ev_never_sends_it() {
+    let status = soc_change(Current::Ac);
+
+    assert_eq!(status, ConfigurationStatus::Rejected);
+}
+
+#[test]
+fn given_dc_station_when_soc_measurand_configured_then_accepted() {
+    let status = soc_change(Current::Dc);
+
+    assert_eq!(status, ConfigurationStatus::Accepted);
+}
+
+#[test]
+fn given_dc_station_when_created_then_soc_is_sampled_by_default() {
+    let configuration = Configuration::new(1, Current::Dc).unwrap();
+
+    assert!(configuration.measurands().contains(&Measurand::SoC));
 }

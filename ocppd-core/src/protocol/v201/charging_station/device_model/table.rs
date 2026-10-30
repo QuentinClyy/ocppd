@@ -1,7 +1,7 @@
 use super::Entry;
 use super::row::{Row, row};
 use crate::protocol::v201::charging_station::metering::{
-    ALIGNED_DATA_CTRLR, MEASURANDS, SAMPLED_DATA_CTRLR,
+    ALIGNED_DATA_CTRLR, SAMPLED_DATA_CTRLR, measurands,
 };
 use crate::protocol::v201::charging_station::provisioning::network_profile::{
     ACTIVE_NETWORK_PROFILE, NETWORK_CONFIGURATION_PRIORITY, NETWORK_PROFILE_CONNECTION_ATTEMPTS,
@@ -38,6 +38,7 @@ const ITEMS_PER_SET: usize = 50;
 pub const BYTES_PER_MESSAGE: &str = "65000";
 
 pub fn entries(station: &Station) -> Result<Vec<Entry>, TooLong> {
+    let measurands = measurands(station.current());
     use DataType::{Boolean, DateTime, Integer, MemberList, SequenceList};
     use Mutability::{ReadOnly, ReadWrite};
     let (per_get, per_set, per_report) = (
@@ -213,7 +214,7 @@ pub fn entries(station: &Station) -> Result<Vec<Entry>, TooLong> {
             ReadWrite,
             MemberList,
         )
-        .values(MEASURANDS),
+        .values(measurands),
         row(
             SAMPLED_DATA_CTRLR,
             "TxUpdatedMeasurands",
@@ -221,7 +222,7 @@ pub fn entries(station: &Station) -> Result<Vec<Entry>, TooLong> {
             ReadWrite,
             MemberList,
         )
-        .values(MEASURANDS),
+        .values(measurands),
         row(
             SAMPLED_DATA_CTRLR,
             "TxUpdatedInterval",
@@ -238,7 +239,7 @@ pub fn entries(station: &Station) -> Result<Vec<Entry>, TooLong> {
             ReadWrite,
             MemberList,
         )
-        .values(MEASURANDS),
+        .values(measurands),
         row(
             SAMPLED_DATA_CTRLR,
             "TxEndedInterval",
@@ -255,7 +256,7 @@ pub fn entries(station: &Station) -> Result<Vec<Entry>, TooLong> {
             ReadWrite,
             MemberList,
         )
-        .values(MEASURANDS),
+        .values(measurands),
         row(ALIGNED_DATA_CTRLR, "Interval", "0", ReadWrite, Integer)
             .unit("s")
             .min(0.0),
@@ -266,7 +267,7 @@ pub fn entries(station: &Station) -> Result<Vec<Entry>, TooLong> {
             ReadWrite,
             MemberList,
         )
-        .values(MEASURANDS),
+        .values(measurands),
         row(
             ALIGNED_DATA_CTRLR,
             "TxEndedInterval",
