@@ -42,6 +42,9 @@ func (f *Spawn) line() (string, error) {
 			fields[key] = text
 		}
 	}
+	if f.current.index == 1 {
+		fields["current"] = f.current.options[f.current.index]
+	}
 	if f.connect.index == 1 {
 		fields["connect"] = false
 	}

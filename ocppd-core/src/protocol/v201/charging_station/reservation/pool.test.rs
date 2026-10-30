@@ -1,5 +1,6 @@
 use crate::fixtures::v201::reservation::{EXPIRY, accepted, authorize, reserve, sent, statuses};
 use crate::fixtures::v201::station::Run;
+use crate::station::charge::Current;
 use serde_json::{Value, json};
 
 fn reserve_type(run: &mut Run, id: i32, evse: Option<u32>, connector_type: &str) -> Value {
@@ -13,6 +14,12 @@ fn reserve_type(run: &mut Run, id: i32, evse: Option<u32>, connector_type: &str)
         request["evseId"] = json!(evse);
     }
     run.result(0, "ReserveNow", request)["status"].clone()
+}
+
+fn dc_station() -> Run {
+    let mut run = Run::accepted(86_400);
+    run.station.station.connectors[0].current = Current::Dc;
+    run
 }
 
 fn reserved(run: &Run) -> Vec<u64> {
@@ -130,6 +137,17 @@ fn given_only_type_2_connectors_when_ccs_reserved_without_evse_then_rejected_per
     let status = reserve_type(&mut run, 1, None, "cCCS2");
 
     assert_eq!(status, "Rejected");
+}
+
+#[test]
+fn given_dc_evse_when_ccs_reserved_then_accepted_and_type_2_rejected() {
+    let mut run = dc_station();
+
+    let ccs = reserve_type(&mut run, 1, None, "cCCS2");
+    run.answer_all(0);
+    let type_2 = reserve_type(&mut run, 2, None, "cType2");
+
+    assert_eq!((ccs, type_2), ("Accepted".into(), "Rejected".into()));
 }
 
 #[test]

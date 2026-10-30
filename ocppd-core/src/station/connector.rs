@@ -1,7 +1,8 @@
-use super::charge::{self, Charging, Ev, Sample};
+use super::charge::{self, Charging, Current, Ev, Sample};
 
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct Connector {
+    pub current: Current,
     pub register_wh: f64,
     pub plugged: Option<Plugged>,
     pub fault: Option<Fault>,
@@ -44,9 +45,10 @@ impl Connector {
     }
 
     pub fn start_charging(&mut self, now: u64, limit_w: f64) {
-        let register_wh = self.register_wh;
+        let (current, register_wh) = (self.current, self.register_wh);
         if let Some(plugged) = self.plugged.as_mut() {
             plugged.charging = Some(Charging {
+                current,
                 start: now,
                 start_soc: plugged.soc,
                 start_register_wh: register_wh,

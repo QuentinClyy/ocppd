@@ -1,4 +1,5 @@
 use ocppd_core::station::Station;
+use ocppd_core::station::charge::Current;
 use ocppd_core::station::connector::Connector;
 use serde::Deserialize;
 
@@ -11,6 +12,7 @@ pub struct Model {
     voltage_v: f64,
     max_current_a: f64,
     phases: u32,
+    current: Current,
     connectors: usize,
 }
 
@@ -23,6 +25,7 @@ impl Default for Model {
             voltage_v: 230.0,
             max_current_a: 32.0,
             phases: 3,
+            current: Current::Ac,
             connectors: 1,
         }
     }
@@ -32,6 +35,9 @@ impl Model {
     pub fn station(&self, id: &str, jitter: bool) -> Result<Station, &'static str> {
         if !(1..=3).contains(&self.phases) {
             return Err("phases must be 1 to 3");
+        }
+        if self.current == Current::Dc && self.phases != 3 {
+            return Err("dc needs phases 3");
         }
         if self.connectors == 0 {
             return Err("connectors must be at least 1");
@@ -49,7 +55,13 @@ impl Model {
             max_current_a: self.max_current_a,
             phases: self.phases,
             jitter,
-            connectors: vec![Connector::default(); self.connectors],
+            connectors: vec![
+                Connector {
+                    current: self.current,
+                    ..Connector::default()
+                };
+                self.connectors
+            ],
         })
     }
 }

@@ -23,6 +23,7 @@ type Spawn struct {
 	count      draw.Editor
 	password   draw.Editor
 	ocpp       choice
+	current    choice
 	vendor     draw.Editor
 	model      draw.Editor
 	phases     draw.Editor
@@ -49,6 +50,7 @@ func NewSpawn() *Spawn {
 		listed:   choice{options: []string{"list", "prefix + count"}},
 		stations: []credential{{}},
 		ocpp:     choice{options: []string{"1.6", "2.0.1"}},
+		current:  choice{options: []string{"ac", "dc"}},
 		connect:  choice{options: []string{"yes", "no"}},
 	}
 }
@@ -110,6 +112,7 @@ func (f *Spawn) slots() []slot {
 	}
 	return append(slots,
 		slot{label: "ocpp", choice: &f.ocpp},
+		slot{label: "current", choice: &f.current},
 		slot{label: "vendor", text: &f.vendor, hint: "ocppd", width: 24},
 		slot{label: "model", text: &f.model, hint: "sim", width: 24},
 		slot{label: "phases", text: &f.phases, hint: "3", width: 6},
