@@ -99,10 +99,13 @@ func (f *Spawn) slots() []slot {
 	if !f.isDC() {
 		slots = append(slots, slot{label: "phases", text: &f.phases, hint: "1", width: 6})
 	}
-	return append(slots,
+	slots = append(slots,
 		slot{label: "max A", text: &f.maxCurrent, hint: "32", width: 6},
-		slot{label: "connectors", text: &f.connectors, hint: "1", width: 6},
-		slot{label: "dc out A", text: &f.maxOutput, hint: "500", width: 6},
+		slot{label: "connectors", text: &f.connectors, hint: "1", width: 6})
+	if f.isDC() {
+		slots = append(slots, slot{label: "dc out A", text: &f.maxOutput, hint: "500", width: 6})
+	}
+	return append(slots,
 		slot{label: "csms", text: &f.csms, hint: "default (--csms)", width: 46},
 		slot{label: "connect", choice: &f.connect},
 	)

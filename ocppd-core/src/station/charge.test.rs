@@ -47,7 +47,7 @@ fn ac(limit_w: f64) -> Charging {
         start_soc: 0.2,
         start_register_wh: 5_000.0,
         limit_w,
-        ramp: true,
+        ramp_from: Some(STARTED),
     }
 }
 
@@ -64,7 +64,7 @@ fn dc(limit_w: f64, max_output_a: f64) -> Charging {
 
 fn running(charging: Charging) -> Charging {
     Charging {
-        ramp: false,
+        ramp_from: None,
         ..charging
     }
 }
@@ -211,13 +211,27 @@ fn given_dc_session_when_two_seconds_into_the_ramp_then_current_is_the_ramp_rate
 }
 
 #[test]
-fn given_dc_session_when_reanchored_then_the_ramp_is_over() {
-    let session = reanchor(&dc(150_000.0, 500.0), &ev(), STARTED + HOUR / 6, 100_000.0);
+fn given_dc_session_when_its_limit_changes_during_the_ramp_then_the_ramp_goes_on() {
+    let session = reanchor(&dc(150_000.0, 500.0), &ev(), STARTED + 6_000, 100_000.0);
 
-    let after = sample(&session, &ev(), STARTED + HOUR / 6);
+    let ramping = sample(&session, &ev(), STARTED + 7_000);
 
-    assert!(after.current_a > 0.0);
-    assert!(!session.ramp);
+    assert!(close(ramping.current_a, 100.0, 1e-9), "{ramping:?}");
+}
+
+#[test]
+fn given_dc_session_two_seconds_into_the_ramp_when_sampled_then_the_register_holds_the_ramped_energy()
+ {
+    let session = dc(150_000.0, 500.0);
+
+    let ramping = sample(&session, &ev(), STARTED + 7_000);
+
+    let ramped_wh = ramping.voltage_v * RAMP_A_PER_S * 2.0 * 2.0 / 2.0 / 3_600.0;
+    let charged_wh = ramping.register_wh - 5_000.0;
+    assert!(
+        close(charged_wh, ramped_wh, ramped_wh * 0.01),
+        "{charged_wh} {ramped_wh}"
+    );
 }
 
 #[test]

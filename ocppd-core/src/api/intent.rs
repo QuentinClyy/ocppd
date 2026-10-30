@@ -69,7 +69,7 @@ impl Intent {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Deserialize)]
-#[serde(default)]
+#[serde(default, deny_unknown_fields)]
 pub struct EvSpec {
     pub capacity_kwh: f64,
     pub soc: f64,
@@ -115,3 +115,7 @@ impl EvSpec {
         })
     }
 }
+
+#[cfg(test)]
+#[path = "intent.test.rs"]
+mod tests;

@@ -5,8 +5,8 @@ use crate::protocol::v201::messages::datatypes::meter_value::{
 };
 use crate::protocol::v201::messages::meter_values::MeterValuesRequest;
 use crate::protocol::v201::messages::transaction::{TransactionEventType, TriggerReason};
-use crate::station::charge::Current;
-use crate::station::electrical::{self, Side};
+use crate::station::charge::{Current, Sample};
+use crate::station::electrical::{self, Line, Side};
 use crate::wire::ci_string::CiString;
 use crate::wire::date_time::DateTime;
 use serde_json::{Value, json};
@@ -31,6 +31,12 @@ const LINES: [(Phase, Phase); 3] = [
     (Phase::L2, Phase::L2N),
     (Phase::L3, Phase::L3N),
 ];
+
+struct Reading {
+    sample: Sample,
+    lines: Vec<Line>,
+    context: ReadingContext,
+}
 
 impl ChargingStation {
     pub(super) fn aligned_tick(&mut self, out: &mut Vec<Output>, now: u64) {
@@ -82,10 +88,16 @@ impl ChargingStation {
             .device_model
             .value(component, variable)
             .unwrap_or_default();
+        let sample = self.station.connectors[index].sample(now);
+        let reading = Reading {
+            lines: electrical::lines(&self.station, index, &sample, now),
+            sample,
+            context,
+        };
         let sampled: Vec<SampledValue> = list
             .split(',')
             .filter_map(|name| serde_json::from_value(Value::String(name.to_owned())).ok())
-            .flat_map(|measurand| self.sampled(now, index, measurand, context))
+            .flat_map(|measurand| self.sampled(index, measurand, &reading))
             .collect();
         (!sampled.is_empty()).then_some(MeterValue {
             sampled_value: sampled,
@@ -98,16 +110,9 @@ impl ChargingStation {
         Some(seconds * 1000).filter(|&ms| ms > 0)
     }
 
-    fn sampled(
-        &self,
-        now: u64,
-        index: usize,
-        measurand: Measurand,
-        context: ReadingContext,
-    ) -> Vec<SampledValue> {
+    fn sampled(&self, index: usize, measurand: Measurand, reading: &Reading) -> Vec<SampledValue> {
         let connector = &self.station.connectors[index];
-        let sample = connector.sample(now);
-        let lines = electrical::lines(&self.station, index, &sample, now);
+        let (sample, lines, context) = (&reading.sample, &reading.lines, reading.context);
         let value = |value: f64, phase: Option<Phase>, side: Side, unit: &str| SampledValue {
             value,
             context: Some(context),
@@ -129,7 +134,7 @@ impl ChargingStation {
             Measurand::PowerActiveImport => [Side::Outlet, Side::Inlet]
                 .into_iter()
                 .filter_map(|side| {
-                    let watts = electrical::power_w(&lines, side)?;
+                    let watts = electrical::power_w(lines, side)?;
                     Some(value(watts.round(), None, side, "W"))
                 })
                 .collect(),
@@ -138,7 +143,7 @@ impl ChargingStation {
                 .into_iter()
                 .collect(),
             Measurand::CurrentOffered => offered
-                .map(|watts| electrical::offered_a(&self.station, index, &sample, watts))
+                .map(|watts| electrical::offered_a(&self.station, index, sample, watts))
                 .map(|amps| total(round(amps, 1), "A"))
                 .into_iter()
                 .collect(),

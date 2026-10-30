@@ -156,3 +156,16 @@ func Test_given_an_empty_ac_rating_when_drawn_then_one_phase_of_32_a_at_230_v(t 
 		t.Fatalf("got %q", rating)
 	}
 }
+
+func Test_given_ac_with_dc_output_typed_before_when_spawned_then_no_max_output_sent(t *testing.T) {
+	f := NewSpawn()
+	f.stations[0].id = draw.NewEditor("AC1")
+	f.maxOutput = draw.NewEditor("200")
+
+	line, err := f.line()
+
+	want := `{"command":"spawn","ocpp":"1.6","stations":[{"id":"AC1"}]}`
+	if err != nil || line != want {
+		t.Fatalf("got %q, %v", line, err)
+	}
+}
