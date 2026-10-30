@@ -53,7 +53,7 @@ impl Connector {
                 start_soc: plugged.soc,
                 start_register_wh: register_wh,
                 limit_w,
-                ramp: true,
+                ramp_from: Some(now),
             });
         }
     }

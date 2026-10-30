@@ -111,3 +111,24 @@ fn given_dc_station_when_offering_power_then_offered_current_is_at_battery_volta
 
     assert_eq!(offered, 500.0);
 }
+
+#[test]
+fn given_single_phase_ev_on_three_phase_station_when_offering_then_offered_current_is_per_station_phase()
+ {
+    let station = plugged(Current::Ac, 1, false);
+
+    let offered = offered_a(&station, 0, &charging_sample(7_360.0), 22_080.0);
+
+    assert_eq!(offered, 32.0);
+}
+
+#[test]
+fn given_jittered_station_with_two_connectors_when_both_sampled_at_once_then_their_noise_differs() {
+    let mut station = plugged(Current::Ac, 3, true);
+    station.connectors.push(station.connectors[0].clone());
+
+    let first = lines(&station, 0, &charging_sample(11_040.0), NOW);
+    let second = lines(&station, 1, &charging_sample(11_040.0), NOW);
+
+    assert_ne!(first, second);
+}

@@ -45,10 +45,10 @@ func (f *Spawn) line() (string, error) {
 			fields[key] = text
 		}
 	}
-	phases := f.phases.String()
+	phases, maxOutput := f.phases.String(), ""
 	if f.isDC() {
 		fields["current"] = f.current.options[f.current.index]
-		phases = ""
+		phases, maxOutput = "", f.maxOutput.String()
 	}
 	if f.connect.index == 1 {
 		fields["connect"] = false
@@ -60,7 +60,7 @@ func (f *Spawn) line() (string, error) {
 		{"voltage_v", "voltage V", f.voltage.String(), false},
 		{"phases", "phases", phases, true},
 		{"max_current_a", "max A", f.maxCurrent.String(), false},
-		{"max_output_a", "dc out A", f.maxOutput.String(), false},
+		{"max_output_a", "dc out A", maxOutput, false},
 		{"connectors", "connectors", f.connectors.String(), true},
 	}
 	for _, n := range numbers {

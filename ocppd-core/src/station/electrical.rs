@@ -24,19 +24,17 @@ pub fn lines(station: &Station, index: usize, sample: &Sample, now: u64) -> Vec<
         Current::Ac => ac_lines(station, index, sample),
         Current::Dc => dc_lines(station, sample),
     };
+    let first = 16 * index;
     exact
         .into_iter()
         .enumerate()
-        .map(|(position, line)| Line {
-            voltage_v: noisy(station, now, 2 * position, VOLTAGE_NOISE, line.voltage_v),
-            current_a: noisy(
-                station,
-                now,
-                2 * position + 1,
-                CURRENT_NOISE,
-                line.current_a,
-            ),
-            ..line
+        .map(|(position, line)| {
+            let quantity = first + 2 * position;
+            Line {
+                voltage_v: noisy(station, now, quantity, VOLTAGE_NOISE, line.voltage_v),
+                current_a: noisy(station, now, quantity + 1, CURRENT_NOISE, line.current_a),
+                ..line
+            }
         })
         .collect()
 }
@@ -49,7 +47,7 @@ pub fn power_w(lines: &[Line], side: Side) -> Option<f64> {
 
 pub fn offered_a(station: &Station, index: usize, sample: &Sample, offered_w: f64) -> f64 {
     match station.connectors[index].current {
-        Current::Ac => offered_w / (station.voltage_v * f64::from(used_phases(station, index))),
+        Current::Ac => offered_w / (station.voltage_v * f64::from(station.phases)),
         Current::Dc if sample.voltage_v > 0.0 => {
             (offered_w * DC_EFFICIENCY / sample.voltage_v).min(station.max_output_a)
         }
@@ -99,7 +97,7 @@ fn noisy(station: &Station, now: u64, quantity: usize, amplitude: f64, value: f6
     if !station.jitter {
         return value;
     }
-    let salt = now.wrapping_mul(64).wrapping_add(quantity as u64);
+    let salt = now.wrapping_mul(4096).wrapping_add(quantity as u64);
     value * (1.0 + amplitude * (2.0 * jitter::fraction(&station.id, salt) - 1.0))
 }
 

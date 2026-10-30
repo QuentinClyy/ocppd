@@ -44,7 +44,7 @@ pub struct Charging {
     pub start_soc: f64,
     pub start_register_wh: f64,
     pub limit_w: f64,
-    pub ramp: bool,
+    pub ramp_from: Option<u64>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -61,7 +61,7 @@ pub fn voltage(ev: &Ev, soc: f64) -> f64 {
 }
 
 pub fn ac_phases(supply: &Supply, ev: &Ev) -> u32 {
-    supply.phases.min(ev.ac_phases).max(1)
+    supply.phases.min(ev.ac_phases)
 }
 
 pub fn sample(charging: &Charging, ev: &Ev, now: u64) -> Sample {
@@ -90,9 +90,10 @@ pub fn finish_time(charging: &Charging, ev: &Ev) -> Option<u64> {
         return None;
     }
     let hours = hours_between(charging, ev, charging.start_soc, end);
+    let charged = full_ms(charging, ev, charging.start as f64) + hours * MS_PER_HOUR;
     hours
         .is_finite()
-        .then(|| charging.start + startup_ms(charging, ev) + (hours * MS_PER_HOUR).ceil() as u64)
+        .then(|| time_at(charging, ev, charged).ceil() as u64)
 }
 
 pub fn reanchor(charging: &Charging, ev: &Ev, now: u64, limit_w: f64) -> Charging {
@@ -102,7 +103,6 @@ pub fn reanchor(charging: &Charging, ev: &Ev, now: u64, limit_w: f64) -> Chargin
         start_soc: at_now.soc,
         start_register_wh: at_now.register_wh,
         limit_w,
-        ramp: false,
         ..*charging
     }
 }
@@ -146,29 +146,54 @@ fn amps(charging: &Charging, ev: &Ev, soc: f64) -> f64 {
         .max(0.0)
 }
 
-fn ramps(charging: &Charging) -> bool {
-    charging.ramp && charging.supply.current == Current::Dc
+fn ramp_start(charging: &Charging) -> Option<f64> {
+    let from = charging
+        .ramp_from
+        .filter(|_| charging.supply.current == Current::Dc)?;
+    Some((from + STARTUP_MS) as f64)
+}
+
+fn ramp_ms(charging: &Charging, ev: &Ev) -> f64 {
+    amps(charging, ev, charging.start_soc) / RAMP_A_PER_S * 1000.0
 }
 
 fn ramp_cap(charging: &Charging, now: u64) -> f64 {
-    if !ramps(charging) {
-        return f64::INFINITY;
+    match ramp_start(charging) {
+        Some(start) => RAMP_A_PER_S * (now as f64 - start).max(0.0) / 1000.0,
+        None => f64::INFINITY,
     }
-    let ramping_ms = now.saturating_sub(charging.start + STARTUP_MS);
-    RAMP_A_PER_S * ramping_ms as f64 / 1000.0
 }
 
-fn startup_ms(charging: &Charging, ev: &Ev) -> u64 {
-    if !ramps(charging) {
-        return 0;
+fn full_ms(charging: &Charging, ev: &Ev, at: f64) -> f64 {
+    let Some(start) = ramp_start(charging) else {
+        return at;
+    };
+    let ramp = ramp_ms(charging, ev);
+    if at < start {
+        0.0
+    } else if at < start + ramp {
+        (at - start).powi(2) / (2.0 * ramp)
+    } else {
+        at - start - ramp / 2.0
     }
-    let ramp_ms = amps(charging, ev, charging.start_soc) / RAMP_A_PER_S * 1000.0;
-    STARTUP_MS + (ramp_ms / 2.0) as u64
+}
+
+fn time_at(charging: &Charging, ev: &Ev, full: f64) -> f64 {
+    let Some(start) = ramp_start(charging) else {
+        return full;
+    };
+    let ramp = ramp_ms(charging, ev);
+    if full < ramp / 2.0 {
+        start + (2.0 * ramp * full).sqrt()
+    } else {
+        full + start + ramp / 2.0
+    }
 }
 
 fn soc_at(charging: &Charging, ev: &Ev, now: u64) -> f64 {
-    let charged_ms = now.saturating_sub(charging.start + startup_ms(charging, ev));
-    let hours = charged_ms as f64 / MS_PER_HOUR;
+    let charged_ms =
+        full_ms(charging, ev, now as f64) - full_ms(charging, ev, charging.start as f64);
+    let hours = charged_ms.max(0.0) / MS_PER_HOUR;
     soc_after(charging, ev, hours)
         .min(end_soc(ev))
         .max(charging.start_soc)

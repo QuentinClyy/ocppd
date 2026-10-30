@@ -42,7 +42,9 @@ func (f *Spawn) lines() ([]string, int) {
 				span = 2
 			}
 		case "connectors":
-			span = 2
+			if f.isDC() {
+				span = 2
+			}
 		}
 		if f.focus >= index && f.focus < index+span {
 			focused = len(lines)
