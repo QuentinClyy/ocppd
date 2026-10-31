@@ -9,7 +9,7 @@ use crate::protocol::v16::event::EventKind;
 use crate::protocol::v16::messages::datatypes::charging_profile::ChargingProfile;
 use crate::protocol::v16::messages::datatypes::id_tag::{AuthorizationStatus, IdTagInfo, IdToken};
 use crate::protocol::v16::messages::transaction::{
-    AuthorizeResponse, Reason, StartTransactionRequest, StartTransactionResponse,
+    AuthorizeRequest, AuthorizeResponse, Reason, StartTransactionRequest, StartTransactionResponse,
     StopTransactionRequest,
 };
 use crate::wire::date_time::DateTime;
@@ -21,6 +21,7 @@ pub enum Transaction {
     Idle,
     Authorizing {
         id_tag: IdToken,
+        profile: Option<ChargingProfile>,
     },
     Starting {
         id_tag: IdToken,
@@ -46,12 +47,12 @@ impl ChargePoint {
     ) {
         let index = call.connector_id as usize - 1;
         match (call.action.as_str(), self.transactions[index].clone()) {
-            ("Authorize", Transaction::Authorizing { id_tag }) => {
+            ("Authorize", Transaction::Authorizing { id_tag, profile }) => {
                 if let Some(response) =
                     self.decode::<AuthorizeResponse>(out, now, "Authorize", payload)
                 {
                     self.remember(&id_tag, &response.id_tag_info);
-                    self.authorized(out, now, index, id_tag, response.id_tag_info);
+                    self.authorized(out, now, index, id_tag, response.id_tag_info, profile);
                 } else {
                     self.transactions[index] = Transaction::Idle;
                 }
@@ -135,13 +136,33 @@ impl ChargePoint {
         }
     }
 
-    pub(crate) fn authorized(
+    pub(crate) fn authorize_on(
+        &mut self,
+        out: &mut Vec<Output>,
+        now: u64,
+        index: usize,
+        id_tag: IdToken,
+        profile: Option<ChargingProfile>,
+    ) {
+        if let Some(info) = self.locally_authorized(&id_tag, now) {
+            return self.authorized(out, now, index, id_tag, info, profile);
+        }
+        let request = AuthorizeRequest {
+            id_tag: id_tag.clone(),
+        };
+        self.outbox
+            .push("Authorize", index as u32 + 1, json!(request));
+        self.transactions[index] = Transaction::Authorizing { id_tag, profile };
+    }
+
+    fn authorized(
         &mut self,
         out: &mut Vec<Output>,
         now: u64,
         index: usize,
         id_tag: IdToken,
         info: IdTagInfo,
+        profile: Option<ChargingProfile>,
     ) {
         let connector = index as u32 + 1;
         let status = info.status;
@@ -161,6 +182,7 @@ impl ChargePoint {
             return self.reject(out, now, Some(connector), "reserved");
         }
         self.start_transaction(out, now, index, id_tag);
+        self.attach_profile(index, profile);
     }
 
     pub(crate) fn start_transaction(
