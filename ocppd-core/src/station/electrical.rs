@@ -25,7 +25,7 @@ pub fn lines(station: &Station, index: usize, sample: &Sample, now: u64) -> Vec<
         Current::Dc => dc_lines(station, sample),
     };
     let first = 16 * index;
-    exact
+    let measured = exact
         .into_iter()
         .enumerate()
         .map(|(position, line)| {
@@ -35,6 +35,30 @@ pub fn lines(station: &Station, index: usize, sample: &Sample, now: u64) -> Vec<
                 current_a: noisy(station, now, quantity + 1, CURRENT_NOISE, line.current_a),
                 ..line
             }
+        })
+        .collect();
+    match station.connectors[index].offered_w() {
+        Some(offered_w) => within(measured, offered_w),
+        None => measured,
+    }
+}
+
+fn within(lines: Vec<Line>, offered_w: f64) -> Vec<Line> {
+    let scale = |side| {
+        power_w(&lines, side)
+            .filter(|&watts| watts > offered_w)
+            .map_or(1.0, |watts| offered_w / watts)
+    };
+    let (outlet, inlet) = (scale(Side::Outlet), scale(Side::Inlet));
+    lines
+        .into_iter()
+        .map(|line| Line {
+            current_a: line.current_a
+                * match line.side {
+                    Side::Outlet => outlet,
+                    Side::Inlet => inlet,
+                },
+            ..line
         })
         .collect()
 }

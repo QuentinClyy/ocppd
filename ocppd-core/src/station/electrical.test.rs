@@ -132,3 +132,21 @@ fn given_jittered_station_with_two_connectors_when_both_sampled_at_once_then_the
 
     assert_ne!(first, second);
 }
+
+#[test]
+fn given_jitter_when_the_station_is_the_limit_then_no_side_draws_more_than_offered() {
+    let mut station = plugged(Current::Dc, 3, true);
+    let offered_w = 100_000.0;
+    let supply = station.supply(0);
+    station.connectors[0].start_charging(0, supply, offered_w);
+    let sample = charging_sample(offered_w * DC_EFFICIENCY);
+
+    for now in (0..300).map(|second| second * 1_000) {
+        let lines = lines(&station, 0, &sample, now);
+
+        for side in [Side::Outlet, Side::Inlet] {
+            let watts = power_w(&lines, side).unwrap().round();
+            assert!(watts <= offered_w, "{side:?} {watts} W at {now} ms");
+        }
+    }
+}
