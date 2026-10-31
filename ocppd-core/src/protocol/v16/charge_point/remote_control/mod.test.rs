@@ -1,10 +1,10 @@
-use crate::api::intent::EvSpec;
+use crate::api::intent::{EvSpec, Intent};
 use crate::fixtures::v16::fake_csms::{Csms, MINUTE};
 use crate::fixtures::v16::plugged::plugged;
 use crate::fixtures::v16::replies::status;
 use crate::protocol::v16::event::EventKind;
 use crate::protocol::v16::messages::availability::ChargePointStatus;
-use serde_json::json;
+use serde_json::{Value, json};
 
 #[test]
 fn given_plugged_ev_when_remote_start_on_its_connector_then_accepted_and_started_without_authorize()
@@ -131,4 +131,84 @@ fn given_no_vendor_extensions_when_data_transfer_received_then_unknown_vendor_id
     let reply = csms.call(0, "DataTransfer", transfer);
 
     assert_eq!(status(reply), "UnknownVendorId");
+}
+
+fn authorizing_remote_starts(mut csms: Csms) -> Csms {
+    assert_eq!(
+        csms.configure(0, "AuthorizeRemoteTxRequests", "true"),
+        "Accepted"
+    );
+    csms
+}
+
+fn remote_start_r1(csms: &mut Csms) -> Value {
+    status(csms.call(
+        0,
+        "RemoteStartTransaction",
+        json!({"connectorId": 1, "idTag": "R1"}),
+    ))
+}
+
+#[test]
+fn given_remote_starts_authorized_first_when_remote_start_on_a_plugged_connector_then_authorize_sent_before_any_start_per_5_11()
+ {
+    let mut csms = authorizing_remote_starts(plugged());
+
+    let status = remote_start_r1(&mut csms);
+
+    assert_eq!(status, "Accepted");
+    assert_eq!(csms.expect("Authorize")["idTag"], "R1");
+    assert!(csms.sent("StartTransaction").is_empty());
+}
+
+#[test]
+fn given_remote_start_waiting_for_its_authorize_when_accepted_then_start_transaction_for_its_id_tag_per_5_11()
+ {
+    let mut csms = authorizing_remote_starts(plugged());
+    remote_start_r1(&mut csms);
+
+    csms.answer(0, json!({"idTagInfo": {"status": "Accepted"}}));
+
+    assert_eq!(csms.expect("StartTransaction")["idTag"], "R1");
+}
+
+#[test]
+fn given_remote_start_waiting_for_its_authorize_when_blocked_then_no_transaction_per_5_11() {
+    let mut csms = authorizing_remote_starts(plugged());
+    remote_start_r1(&mut csms);
+
+    csms.answer(0, json!({"idTagInfo": {"status": "Blocked"}}));
+
+    assert!(csms.sent("StartTransaction").is_empty());
+}
+
+#[test]
+fn given_remote_starts_authorized_first_and_a_listed_id_tag_when_remote_started_then_started_without_authorize_per_5_11()
+ {
+    let mut csms = authorizing_remote_starts(plugged());
+    assert_eq!(csms.configure(0, "LocalPreAuthorize", "true"), "Accepted");
+    let list = json!({
+        "listVersion": 1,
+        "updateType": "Full",
+        "localAuthorizationList": [{"idTag": "R1", "idTagInfo": {"status": "Accepted"}}],
+    });
+    csms.call(0, "SendLocalList", list);
+
+    remote_start_r1(&mut csms);
+
+    assert_eq!(csms.expect("StartTransaction")["idTag"], "R1");
+    assert!(csms.sent("Authorize").is_empty());
+}
+
+#[test]
+fn given_remote_starts_authorized_first_and_no_ev_when_authorized_and_plugged_in_then_started_per_5_11()
+ {
+    let mut csms = authorizing_remote_starts(Csms::booted());
+    remote_start_r1(&mut csms);
+    csms.answer(0, json!({"idTagInfo": {"status": "Accepted"}}));
+
+    let ev = EvSpec::default();
+    csms.intent(MINUTE, Intent::PlugIn { connector: 1, ev });
+
+    assert_eq!(csms.expect("StartTransaction")["idTag"], "R1");
 }

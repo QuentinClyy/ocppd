@@ -2,9 +2,8 @@ use super::Transaction;
 use crate::api::intent::{EvSpec, Intent};
 use crate::api::io::Output;
 use crate::protocol::v16::charge_point::ChargePoint;
-use crate::protocol::v16::messages::transaction::{AuthorizeRequest, Reason};
+use crate::protocol::v16::messages::transaction::Reason;
 use crate::wire::ci_string::CiString;
-use serde_json::json;
 
 impl ChargePoint {
     pub(crate) fn intent(&mut self, out: &mut Vec<Output>, now: u64, intent: Intent) {
@@ -96,7 +95,7 @@ impl ChargePoint {
                     [] if self.held.is_some() => {
                         return self.reject(out, now, None, "authorization pending");
                     }
-                    [] => return self.hold_for_authorization(out, now, id_tag, None),
+                    [] => return self.hold_for_authorization(out, now, id_tag, None, None),
                     _ => return self.reject(out, now, None, "ambiguous connector"),
                 }
             }
@@ -113,17 +112,9 @@ impl ChargePoint {
             return self.reject(out, now, connector, "authorization pending");
         }
         if !plugged {
-            return self.hold_for_authorization(out, now, id_tag, Some(index));
+            return self.hold_for_authorization(out, now, id_tag, Some(index), None);
         }
-        if let Some(info) = self.locally_authorized(&id_tag, now) {
-            return self.authorized(out, now, index, id_tag, info);
-        }
-        let request = AuthorizeRequest {
-            id_tag: id_tag.clone(),
-        };
-        self.outbox
-            .push("Authorize", index as u32 + 1, json!(request));
-        self.transactions[index] = Transaction::Authorizing { id_tag };
+        self.authorize_on(out, now, index, id_tag, None);
     }
 
     fn stop_by_driver(&mut self, out: &mut Vec<Output>, now: u64, index: usize) {

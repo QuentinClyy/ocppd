@@ -2,6 +2,7 @@ pub(super) mod trigger;
 
 use crate::api::io::Output;
 use crate::protocol::v16::charge_point::ChargePoint;
+use crate::protocol::v16::charge_point::provisioning::configuration::AUTHORIZE_REMOTE_TX_REQUESTS;
 use crate::protocol::v16::charge_point::transaction::Transaction;
 use crate::protocol::v16::event::EventKind;
 use crate::protocol::v16::messages::datatypes::generic_status::GenericStatus;
@@ -47,12 +48,20 @@ impl ChargePoint {
             return GenericStatus::Rejected;
         }
         let id_tag = request.id_tag.as_str().to_owned();
-        match connector {
-            Some(index) if plugged(index) => {
-                self.start_transaction(out, now, index, request.id_tag);
-                self.attach_profile(index, request.charging_profile);
+        let profile = request.charging_profile;
+        match (
+            connector,
+            self.configuration.flag(AUTHORIZE_REMOTE_TX_REQUESTS),
+        ) {
+            (Some(index), true) if plugged(index) => {
+                self.authorize_on(out, now, index, request.id_tag, profile)
             }
-            _ => self.hold_authorized(now, request.id_tag, connector, request.charging_profile),
+            (_, true) => self.hold_for_authorization(out, now, request.id_tag, connector, profile),
+            (Some(index), false) if plugged(index) => {
+                self.start_transaction(out, now, index, request.id_tag);
+                self.attach_profile(index, profile);
+            }
+            (_, false) => self.hold_authorized(now, request.id_tag, connector, profile),
         }
         let kind = EventKind::RemoteStart {
             connector: connector.map(|index| index as u32 + 1),

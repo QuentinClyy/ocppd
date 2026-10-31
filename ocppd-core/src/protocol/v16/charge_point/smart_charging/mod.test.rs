@@ -201,6 +201,22 @@ fn given_remote_start_with_profile_when_transaction_started_then_it_becomes_the_
 }
 
 #[test]
+fn given_remote_starts_authorized_first_when_a_remote_start_with_profile_is_authorized_and_started_then_it_becomes_the_transaction_profile()
+ {
+    let mut csms = plugged();
+    csms.configure(0, "AuthorizeRemoteTxRequests", "true");
+    remote_start(&mut csms, tx_profile(&[(0, 8.0)]));
+    csms.answer(0, json!({"idTagInfo": {"status": "Accepted"}}));
+
+    started(&mut csms, 0);
+
+    assert!(csms.events.contains(&EventKind::ChargingProfileSet {
+        connector: 1,
+        charging_profile_id: 1,
+    }));
+}
+
+#[test]
 fn given_transaction_started_with_a_remote_profile_when_meter_values_sent_then_limited() {
     let mut csms = plugged();
     remote_start(&mut csms, tx_profile(&[(0, 8.0)]));

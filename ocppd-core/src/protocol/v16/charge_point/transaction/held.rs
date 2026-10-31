@@ -22,21 +22,22 @@ impl ChargePoint {
         now: u64,
         id_tag: IdToken,
         connector: Option<usize>,
+        profile: Option<ChargingProfile>,
     ) {
-        if self.locally_authorized(&id_tag, now).is_some() {
-            let accepted = AuthorizationStatus::Accepted;
-            return self.held_decided(out, now, id_tag, connector, accepted);
-        }
-        let request = AuthorizeRequest {
-            id_tag: id_tag.clone(),
-        };
-        self.outbox.push("Authorize", 0, json!(request));
-        self.held = Some(Held {
+        let held = Held {
             id_tag,
             connector,
             expires: None,
-            profile: None,
-        });
+            profile,
+        };
+        if self.locally_authorized(&held.id_tag, now).is_some() {
+            return self.held_decided(out, now, held, AuthorizationStatus::Accepted);
+        }
+        let request = AuthorizeRequest {
+            id_tag: held.id_tag.clone(),
+        };
+        self.outbox.push("Authorize", 0, json!(request));
+        self.held = Some(held);
     }
 
     pub(crate) fn hold_authorized(
@@ -64,25 +65,24 @@ impl ChargePoint {
         };
         self.remember(&held.id_tag, &response.id_tag_info);
         let status = response.id_tag_info.status;
-        self.held_decided(out, now, held.id_tag, held.connector, status);
+        self.held_decided(out, now, held, status);
     }
 
     fn held_decided(
         &mut self,
         out: &mut Vec<Output>,
         now: u64,
-        id_tag: IdToken,
-        connector: Option<usize>,
+        held: Held,
         status: AuthorizationStatus,
     ) {
         let kind = EventKind::Authorization {
-            connector: connector.map(|index| index as u32 + 1),
-            id_tag: id_tag.as_str().to_owned(),
+            connector: held.connector.map(|index| index as u32 + 1),
+            id_tag: held.id_tag.as_str().to_owned(),
             status,
         };
         self.emit(out, now, kind);
         if status == AuthorizationStatus::Accepted {
-            self.hold_authorized(now, id_tag, connector, None);
+            self.hold_authorized(now, held.id_tag, held.connector, held.profile);
             self.start_held(out, now);
         }
     }

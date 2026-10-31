@@ -9,6 +9,7 @@ use serde_json::Value;
 
 pub const AUTHORIZATION_CACHE_ENABLED: &str = "AuthorizationCacheEnabled";
 pub const AUTHORIZATION_KEY: &str = "AuthorizationKey";
+pub const AUTHORIZE_REMOTE_TX_REQUESTS: &str = "AuthorizeRemoteTxRequests";
 pub const CERTIFICATE_STORE_MAX_LENGTH: &str = "CertificateStoreMaxLength";
 pub const CHARGE_PROFILE_MAX_STACK_LEVEL: &str = "ChargeProfileMaxStackLevel";
 pub const CHARGING_SCHEDULE_MAX_PERIODS: &str = "ChargingScheduleMaxPeriods";
@@ -75,11 +76,7 @@ impl Configuration {
         let table = [
             (AUTHORIZATION_CACHE_ENABLED, "true", Access::Boolean),
             (AUTHORIZATION_KEY, "", Access::WriteOnly),
-            (
-                "AuthorizeRemoteTxRequests",
-                "false",
-                Access::CurrentValueOnly,
-            ),
+            (AUTHORIZE_REMOTE_TX_REQUESTS, "false", Access::Boolean),
             (
                 CERTIFICATE_STORE_MAX_LENGTH,
                 "10",
