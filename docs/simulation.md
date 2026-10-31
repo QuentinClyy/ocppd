@@ -37,7 +37,8 @@ station is simulated.
     to the EV: it refuses `SoC` as a measurand.
   - Voltage and current carry a small noise (±0.5 %, ±1 %), the same at the
     same time for the same station; a station spawned with `jitter` `false`
-    has none. The energy register is exact.
+    has none. The energy register is exact. Noise never lifts the power above
+    what the station offers.
 - **Keep-alive:** while connected, the station pings the CSMS every 30 s;
   `WebSocketPingInterval` changes that, and 0 turns it off.
 - **Time:** the clock is the host's.
