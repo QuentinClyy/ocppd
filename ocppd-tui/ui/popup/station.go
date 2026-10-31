@@ -25,6 +25,7 @@ type Result struct {
 	Popup  *Station
 	Send   []string
 	Prompt *command.Target
+	Plug   *command.Target
 }
 
 func OpenStation(id string, connector int) (Station, string) {
@@ -62,6 +63,10 @@ func (p Station) Key(msg tea.KeyPressMsg, s fleet.Station) Result {
 		}
 	case "o":
 		return Result{Popup: &p, Send: []string{command.Link(s.ID, s.Held)}}
+	case "P":
+		if len(s.Connectors) > 0 {
+			return Result{Popup: &p, Plug: &command.Target{Station: s.ID, Connector: s.Connectors[current].ID}}
+		}
 	case "p", "s", "u", "f", "c", "x":
 		at := command.Target{Station: s.ID}
 		if len(s.Connectors) > 0 {

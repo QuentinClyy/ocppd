@@ -10,6 +10,16 @@ import (
 	"github.com/QuentinClyy/ocppd/ocppd-tui/ui/popup"
 )
 
+type form interface {
+	Key(tea.KeyPressMsg) (string, bool)
+	Paste(string)
+	Pastes(string) bool
+	Typing() bool
+	Frame(int) draw.Frame
+	Bindings() []draw.Binding
+	Bar(int) string
+}
+
 type Model struct {
 	csms        string
 	expected    string
@@ -39,7 +49,7 @@ type Model struct {
 	sideWidth   int
 	bottomRows  int
 	prompt      *prompt
-	form        *popup.Spawn
+	form        form
 	details     *popup.Station
 	confirm     *confirmation
 	stopping    bool

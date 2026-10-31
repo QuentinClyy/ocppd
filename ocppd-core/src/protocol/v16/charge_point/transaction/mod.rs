@@ -254,7 +254,8 @@ impl ChargePoint {
             last_register_wh: self.station.connectors[index].register_wh,
         };
         let limit_w = self.composite_limit_w(index as u32 + 1, now);
-        self.station.connectors[index].start_charging(now, limit_w);
+        let supply = self.station.supply(index);
+        self.station.connectors[index].start_charging(now, supply, limit_w);
     }
 
     pub(crate) fn stop(&mut self, out: &mut Vec<Output>, now: u64, index: usize, reason: Reason) {

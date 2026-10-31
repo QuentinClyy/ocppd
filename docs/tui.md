@@ -68,7 +68,8 @@ at the right end of the bottom bar.
 | `z` | zoom the focused pane, hiding the other; again to show both |
 | `/` | filter the focused pane: stations by id or OCPP version (`2.0.1`), the log by text; `enter` keeps the filter, `esc` clears it |
 | `drag` | select text and copy it; Shift-drag selects with the terminal |
-| `p` | plug in an EV |
+| `p` | plug in the default EV |
+| `P` | plug in an EV you describe (the EV form below) |
 | `a` | present an id tag: type it, `enter` sends, `esc` cancels |
 | `s` | stop the transaction |
 | `u` | unplug |
@@ -141,8 +142,10 @@ filter.
 
 - **entry**: a list of ids, each with its own password (`ctrl+n` adds one),
   or a prefix and a count sharing one password. `←` / `→` switches.
-- **ocpp**, **current** (`←` / `→` switches `ac` and `dc`), **vendor**, **model**, **phases**, **max A**, **connectors**,
-  **csms**: an empty field keeps ocppd's default, shown in grey.
+- **ocpp**, **current** (`←` / `→` switches `ac` and `dc`), **vendor**, **model**, **voltage V**, **phases**, **max A**, **connectors**,
+  **dc out A**, **csms**: an empty field keeps ocppd's default, shown in grey.
+  Under the rating, the form shows the power it gives: for `dc`, from the grid
+  and to the EV. A `dc` station is always three-phase, so **phases** hides.
 - **connect**: `no` spawns the stations offline; `o` brings each one online.
 
 `tab` / `⇧tab` move between fields and `enter` spawns. `esc` switches to
@@ -153,3 +156,11 @@ mode and, when the spawn is refused, why. Passwords show as typed. On a small
 terminal the form shrinks to fit and scrolls to the focused field.
 
 In normal mode, `?` lists the form's keys.
+
+## EV form
+
+`P` on a connector, from the stations pane or the details, opens a form that
+describes the EV before plugging it in (see [Usage](usage.md)): **capacity
+kWh**, **soc %**, **target %**, **pack V**, **ac kW**, **ac phases** and **dc
+kW**. An empty field keeps the default, shown in grey. It has the spawn form's
+keys; `enter` plugs the EV in.

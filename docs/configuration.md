@@ -31,7 +31,8 @@ security profile gets profile 1 on `ws://` and 2 on `wss://`.
 | `ocpp` | `"1.6"` | `"1.6"` or `"2.0.1"` |
 | `csms` | `--csms` | another CSMS url for these stations, so one process can run a mixed fleet |
 | `vendor`, `model`, `firmware_version` | `"ocppd"`, `"sim"`, the ocppd version | reported at boot |
-| `voltage_v`, `max_current_a`, `phases` | `230`, `32`, `3` | the electrical rating on the grid side; `phases` is 1 to 3 |
+| `voltage_v`, `max_current_a`, `phases` | `230`, `32`, `1` (`3` for `dc`) | the electrical rating on the grid side, `voltage_v` line to neutral: power is `voltage_v × max_current_a × phases`; `phases` is 1 to 3, and 3 for `dc` |
+| `max_output_a` | `500` | a `dc` station's maximum output current |
 | `current` | `"ac"` | `"ac"` or `"dc"`; a `dc` station needs `phases` 3, and a 2.0.1 one has `cCCS2` connectors |
 | `connectors` | `1` | the number of connectors; a 2.0.1 station has one EVSE per connector |
 | `jitter` | `true` | spread heartbeats and reconnects; `false` aligns the whole fleet, to test load storms |

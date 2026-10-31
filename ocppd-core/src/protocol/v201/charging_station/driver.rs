@@ -44,7 +44,11 @@ impl ChargingStation {
         match intent {
             Intent::PlugIn { .. } if plugged => self.reject(out, now, evse, "already plugged in"),
             Intent::PlugIn { ev, .. } => {
-                self.station.connectors[index].plug_in(ev.ev(), ev.soc);
+                let described = match ev.ev() {
+                    Ok(described) => described,
+                    Err(reason) => return self.reject(out, now, evse, reason),
+                };
+                self.station.connectors[index].plug_in(described, ev.soc);
                 if self.station.connectors[index].fault == Some(Fault::ConnectorLock) {
                     self.lock_failed(now, index);
                 }

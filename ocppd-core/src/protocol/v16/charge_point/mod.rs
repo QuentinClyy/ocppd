@@ -89,6 +89,7 @@ impl ChargePoint {
             meter_serial_number: None,
         };
         let connectors = station.connectors.len();
+        let configuration = Configuration::new(connectors, station.current())?;
         Ok(ChargePoint {
             station,
             outbox: Outbox::new(&TRANSACTION_MESSAGES),
@@ -102,7 +103,7 @@ impl ChargePoint {
             csms_url: String::new(),
             held: None,
             reservations: vec![None; connectors],
-            configuration: Configuration::new(connectors)?,
+            configuration,
             local_list: LocalList::default(),
             cache: IdTags::default(),
             charging_profiles: ChargingProfiles::default(),

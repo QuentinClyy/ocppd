@@ -20,20 +20,28 @@ pub struct Run {
     pub pings: usize,
 }
 
+pub fn station(connectors: usize) -> Station {
+    Station {
+        id: "CS1".into(),
+        vendor: "ocppd".into(),
+        model: "sim".into(),
+        serial_number: "SN-1".into(),
+        firmware_version: "0.1.0".into(),
+        voltage_v: 230.0,
+        max_current_a: 32.0,
+        phases: 3,
+        max_output_a: 500.0,
+        jitter: false,
+        connectors: vec![Connector::default(); connectors],
+    }
+}
+
 impl Run {
     pub fn new(connectors: usize) -> Run {
-        let station = Station {
-            id: "CS1".into(),
-            vendor: "ocppd".into(),
-            model: "sim".into(),
-            serial_number: "SN-1".into(),
-            firmware_version: "0.1.0".into(),
-            voltage_v: 230.0,
-            max_current_a: 32.0,
-            phases: 3,
-            jitter: false,
-            connectors: vec![Connector::default(); connectors],
-        };
+        Run::of(station(connectors))
+    }
+
+    pub fn of(station: Station) -> Run {
         Run {
             station: ChargingStation::new(station).unwrap(),
             calls: Vec::new(),

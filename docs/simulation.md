@@ -5,21 +5,40 @@ station is simulated.
 
 ## The station
 
-- **Power:** by default a station has one connector, rated 230 V × 32 A × 3
-  phases (22 kW); the [station model](configuration.md#station-model) changes
-  that. A 2.0.1 station has one EVSE per connector, of type `cType2`.
-- **EV charging:** an EV charges at its own maximum, within the station's
-  limits and the CSMS's charging profiles. The curve depends on the station's
-  `current`:
-  - `ac`: the car's onboard charger sets the pace. Power is flat up to 99 %
-    and tapers after that.
-  - `dc`: the car's battery management sets the pace. Power is flat up to
-    50 %, falls to half at 80 % and to 5 % at 100 %.
-  - A station limit scales the curve down; it does not change its shape.
-  - A `dc` station is three-phase on the grid side. Meter values stay on that
-    side: there is no DC voltage or current, and no converter loss.
+- **Power:** by default a station has one connector, rated 230 V × 32 A on
+  1 phase (7.4 kW), or on 3 phases (22 kW) for `dc`; the
+  [station model](configuration.md#station-model) changes that. A 2.0.1 station has one EVSE per connector, of type `cType2`, or
+  `cCCS2` for `dc`.
+- **The battery:** its voltage rises with the state of charge, from 0.90 to
+  1.15 × the EV's `pack_v`. It accepts its peak current up to 20 %, a little
+  less as it fills, and from 60 % a current that falls in a straight line to
+  C/20 at 100 % (constant voltage).
+- **The current** is the lowest of what the battery accepts and what the
+  station supplies:
+  - `ac`: the onboard charger draws its `ac_kw` over `ac_phases` phases, within
+    the station's limit on those phases. The battery only limits it near 100 %,
+    so power is flat almost to the end.
+  - `dc`: the station's grid power, minus 5 % conversion loss, at the battery
+    voltage, up to `max_output_a`. On a current limit, power rises with the
+    battery voltage; on a power limit, it is flat; then the battery tapers it.
+    An 800 V EV draws twice the power of a 400 V one at the same current.
+  - CSMS charging profiles lower the station's limit.
+- **DC start-up:** 5 s of cable check and pre-charge without current, then the
+  current ramps at 50 A/s. A limit change during the session does not ramp.
 - **Meter values:** the meter values and the EVSE `Power` variable follow that
-  curve.
+  current.
+  - `ac`: voltage on every phase of the station, current only on the phases
+    the EV uses.
+  - `dc`: at the `Outlet`, the battery voltage and the DC current, without a
+    phase; at the `Inlet`, the grid voltage and current on each phase, and the
+    grid power with the loss.
+  - `SoC` only on a `dc` station, where the EV sends it during the DC
+    session (DIN SPEC 70121, ISO 15118-2). An `ac` station has no data link
+    to the EV: it refuses `SoC` as a measurand.
+  - Voltage and current carry a small noise (±0.5 %, ±1 %), the same at the
+    same time for the same station; a station spawned with `jitter` `false`
+    has none. The energy register is exact. Noise never lifts the power above
+    what the station offers.
 - **Time:** the clock is the host's.
 
 ## What is simulated

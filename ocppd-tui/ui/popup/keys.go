@@ -5,7 +5,8 @@ import "github.com/QuentinClyy/ocppd/ocppd-tui/ui/draw"
 var detailsBindings = []draw.Binding{
 	{Group: "connectors", Keys: "j / k", Help: "next / previous connector", Bar: "connector"},
 	{Group: "connectors", Keys: "gg / G", Help: "first / last connector"},
-	{Group: "driver", Keys: "p", Help: "plug in an EV", Bar: "plug"},
+	{Group: "driver", Keys: "p", Help: "plug in the default EV", Bar: "plug"},
+	{Group: "driver", Keys: "P", Help: "plug in an EV you describe"},
 	{Group: "driver", Keys: "a", Help: "present an id tag", Bar: "auth"},
 	{Group: "driver", Keys: "s", Help: "stop the transaction", Bar: "stop tx"},
 	{Group: "driver", Keys: "u", Help: "unplug", Bar: "unplug"},
@@ -35,5 +36,14 @@ var spawnBindings = []draw.Binding{
 	{Group: "fields", Keys: "p", Help: "paste the clipboard into the field"},
 	{Group: "fields", Keys: "ctrl+n", Help: "add a station"},
 	{Group: "form", Keys: "enter", Help: "spawn", Bar: "spawn"},
+	{Group: "form", Keys: "esc / q", Help: "cancel", Bar: "cancel"},
+}
+
+var plugBindings = []draw.Binding{
+	{Group: "fields", Keys: "j / k", Help: "next / previous field", Bar: "field"},
+	{Group: "fields", Keys: "gg / G", Help: "first / last field"},
+	{Group: "fields", Keys: "i / a", Help: "type in the field", Bar: "edit"},
+	{Group: "fields", Keys: "p", Help: "paste the clipboard into the field"},
+	{Group: "form", Keys: "enter", Help: "plug in", Bar: "plug in"},
 	{Group: "form", Keys: "esc / q", Help: "cancel", Bar: "cancel"},
 }
