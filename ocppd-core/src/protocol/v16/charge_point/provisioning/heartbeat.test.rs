@@ -1,6 +1,6 @@
 use crate::api::io::Input;
 use crate::fixtures::v16::raw::{
-    boot_response, booted_and_reported, calls, drained, only_call, result, station,
+    boot_response, booted_and_reported, calls, drained, only_call, result, station, without_ping,
 };
 use crate::protocol::v16::charge_point::ChargePoint;
 use crate::station::Station;
@@ -25,7 +25,7 @@ fn first_heartbeat(id: &str, jitter: bool) -> u64 {
         jitter,
         ..station()
     };
-    let mut charge_point = ChargePoint::new(station).unwrap();
+    let mut charge_point = without_ping(ChargePoint::new(station).unwrap());
     let (boot_id, _, _) = only_call(&charge_point.handle(0, Input::Connected));
     let accepted = boot_response("Accepted", 300);
     let outputs = charge_point.handle(1_000_000, result(&boot_id, accepted));

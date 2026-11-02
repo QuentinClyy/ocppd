@@ -20,29 +20,35 @@ pub struct Run {
     pub pings: usize,
 }
 
+pub fn station(connectors: usize) -> Station {
+    Station {
+        id: "CS1".into(),
+        vendor: "ocppd".into(),
+        model: "sim".into(),
+        serial_number: "SN-1".into(),
+        firmware_version: "0.1.0".into(),
+        voltage_v: 230.0,
+        max_current_a: 32.0,
+        phases: 3,
+        jitter: false,
+        connectors: vec![Connector::default(); connectors],
+    }
+}
+
 impl Run {
     pub fn new(connectors: usize) -> Run {
-        let station = Station {
-            id: "CS1".into(),
-            vendor: "ocppd".into(),
-            model: "sim".into(),
-            serial_number: "SN-1".into(),
-            firmware_version: "0.1.0".into(),
-            voltage_v: 230.0,
-            max_current_a: 32.0,
-            phases: 3,
-            jitter: false,
-            connectors: vec![Connector::default(); connectors],
-        };
-        Run {
-            station: ChargingStation::new(station).unwrap(),
+        let mut run = Run {
+            station: ChargingStation::new(station(connectors)).unwrap(),
             calls: Vec::new(),
             pending: None,
             events: Vec::new(),
             replies: Vec::new(),
             closed: false,
             pings: 0,
-        }
+        };
+        let ping = json!({"component": {"name": "OCPPCommCtrlr"}, "variable": {"name": "WebSocketPingInterval"}, "attributeValue": "0"});
+        run.result(0, "SetVariables", json!({"setVariableData": [ping]}));
+        run
     }
 
     pub fn accepted(interval: u32) -> Run {

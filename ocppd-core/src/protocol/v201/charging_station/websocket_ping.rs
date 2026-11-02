@@ -1,8 +1,7 @@
 use super::ChargingStation;
 use super::device_model::table::OCPP_COMM_CTRLR;
 use crate::api::io::Output;
-
-pub const WEB_SOCKET_PING_INTERVAL: &str = "WebSocketPingInterval";
+use crate::protocol::shared::ping::{self, WEB_SOCKET_PING_INTERVAL};
 
 impl ChargingStation {
     pub(super) fn ping_deadline(&self) -> Option<u64> {
@@ -14,18 +13,10 @@ impl ChargingStation {
             .device_model
             .number(OCPP_COMM_CTRLR, WEB_SOCKET_PING_INTERVAL)
             .unwrap_or(0);
-        if !self.is_connected() || seconds == 0 {
-            self.next_ping = None;
-            return;
-        }
-        let interval = seconds * 1000;
-        match self.next_ping {
-            Some(at) if at <= now => {
-                out.push(Output::Ping);
-                self.next_ping = Some(now + interval);
-            }
-            Some(_) => {}
-            None => self.next_ping = Some(now + interval),
+        let (next, due) = ping::next(self.next_ping, now, seconds, self.is_connected());
+        self.next_ping = next;
+        if due {
+            out.push(Output::Ping);
         }
     }
 }

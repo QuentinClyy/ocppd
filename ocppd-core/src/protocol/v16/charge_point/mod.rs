@@ -11,6 +11,7 @@ mod reservation;
 pub mod security;
 mod smart_charging;
 mod transaction;
+mod websocket_ping;
 
 use crate::api::event::{Event, Kind, LinkEvent};
 use crate::api::io::{Input, Output};
@@ -73,6 +74,7 @@ pub struct ChargePoint {
     registration: Registration,
     certificate_refusal_reported: bool,
     failing: FailingTransfers,
+    next_ping: Option<u64>,
 }
 
 impl ChargePoint {
@@ -119,6 +121,7 @@ impl ChargePoint {
             registration: Registration::Offline,
             certificate_refusal_reported: false,
             failing: FailingTransfers::default(),
+            next_ping: None,
         })
     }
 
@@ -141,6 +144,7 @@ impl ChargePoint {
             self.firmware_deadline(),
             self.uploading_until,
             self.log_upload_deadline(),
+            self.ping_deadline(),
         ]
         .into_iter()
         .flatten()
@@ -179,6 +183,7 @@ impl ChargePoint {
             Input::Intent(intent) => self.intent(&mut out, now, intent),
         }
         self.apply_limits(&mut out, now);
+        self.ping_tick(&mut out, now);
         if self.is_accepted() {
             self.report_statuses(&mut out, now);
         }

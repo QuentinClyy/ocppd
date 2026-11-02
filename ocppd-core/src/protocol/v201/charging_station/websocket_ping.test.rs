@@ -1,5 +1,6 @@
 use crate::api::io::Input;
-use crate::fixtures::v201::station::{MINUTE, Run};
+use crate::fixtures::v201::station::{MINUTE, Run, station};
+use crate::protocol::v201::charging_station::ChargingStation;
 use serde_json::json;
 
 fn ping_every(run: &mut Run, seconds: &str) {
@@ -12,12 +13,14 @@ fn ping_every(run: &mut Run, seconds: &str) {
 }
 
 #[test]
-fn given_default_configuration_when_time_passes_then_no_ping() {
-    let mut run = Run::accepted(86_400);
+fn given_a_new_station_when_the_ping_interval_is_read_then_it_is_30_seconds() {
+    let station = ChargingStation::new(station(1)).unwrap();
 
-    run.input(10 * MINUTE, Input::Tick);
+    let seconds = station
+        .device_model
+        .number("OCPPCommCtrlr", "WebSocketPingInterval");
 
-    assert_eq!(run.pings, 0);
+    assert_eq!(seconds, Some(30));
 }
 
 #[test]

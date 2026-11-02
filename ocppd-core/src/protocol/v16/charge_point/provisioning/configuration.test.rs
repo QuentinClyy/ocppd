@@ -22,13 +22,13 @@ fn value_of(csms: &mut Csms, key: &str) -> Value {
 }
 
 #[test]
-fn given_booted_charge_point_when_every_key_asked_then_all_35_keys_without_unknown() {
+fn given_booted_charge_point_when_every_key_asked_then_all_41_keys_without_unknown() {
     let mut csms = Csms::booted();
 
     let payload = result(csms.call(0, "GetConfiguration", json!({})));
 
     let keys = payload["configurationKey"].as_array().unwrap();
-    assert_eq!(keys.len(), 35);
+    assert_eq!(keys.len(), 41);
     assert!(keys.contains(&json!({"key": "NumberOfConnectors", "readonly": true, "value": "1"})));
     assert!(
         keys.contains(&json!({"key": "HeartbeatInterval", "readonly": false, "value": "86400"}))
@@ -351,5 +351,75 @@ fn given_disconnected_charge_point_when_a_read_only_limit_is_set_to_text_then_re
                 connector: None,
                 reason: "LocalAuthListMaxLength refused: not a valid value".into(),
             }))
+    );
+}
+
+#[test]
+fn given_booted_charge_point_when_max_length_keys_asked_then_read_only_and_sized_to_what_it_supports()
+ {
+    let mut csms = Csms::booted();
+    let names = [
+        "ConnectorPhaseRotationMaxLength",
+        "MeterValuesAlignedDataMaxLength",
+        "StopTxnAlignedDataMaxLength",
+        "StopTxnSampledDataMaxLength",
+        "SupportedFeatureProfilesMaxLength",
+    ];
+
+    let payload = result(csms.call(0, "GetConfiguration", json!({"key": names})));
+
+    assert!(payload.get("unknownKey").is_none());
+    let values: Vec<_> = payload["configurationKey"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|key| {
+            (
+                key["key"].as_str().unwrap(),
+                key["readonly"].clone(),
+                key["value"].as_str().unwrap(),
+            )
+        })
+        .collect();
+    let readonly = json!(true);
+    assert_eq!(
+        values,
+        [
+            ("ConnectorPhaseRotationMaxLength", readonly.clone(), "2"),
+            ("MeterValuesAlignedDataMaxLength", readonly.clone(), "7"),
+            ("StopTxnAlignedDataMaxLength", readonly.clone(), "7"),
+            ("StopTxnSampledDataMaxLength", readonly.clone(), "7"),
+            ("SupportedFeatureProfilesMaxLength", readonly, "6"),
+        ]
+    );
+}
+
+#[test]
+fn given_a_charge_point_with_three_connectors_when_phase_rotation_length_asked_then_connector_zero_is_counted()
+ {
+    let mut csms = Csms::booted_with(3);
+
+    assert_eq!(value_of(&mut csms, "ConnectorPhaseRotationMaxLength"), "4");
+}
+
+#[test]
+fn given_a_max_length_key_when_changed_then_rejected() {
+    let mut csms = Csms::booted();
+
+    assert_eq!(
+        csms.configure(0, "StopTxnSampledDataMaxLength", "3"),
+        "Rejected"
+    );
+}
+
+#[test]
+fn given_the_list_keys_when_their_max_lengths_are_read_then_they_match_the_lists() {
+    let mut csms = Csms::booted();
+    let profiles = value_of(&mut csms, "SupportedFeatureProfiles");
+    let profile_count = profiles.as_str().unwrap().split(',').count().to_string();
+
+    assert_eq!(
+        value_of(&mut csms, "SupportedFeatureProfilesMaxLength"),
+        profile_count.as_str()
     );
 }
