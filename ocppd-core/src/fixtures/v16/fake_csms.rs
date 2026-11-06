@@ -1,6 +1,6 @@
 use crate::api::intent::{EvSpec, Intent};
 use crate::api::io::{Input, Output};
-use crate::fixtures::v16::raw::v16_kind;
+use crate::fixtures::v16::raw::{v16_kind, without_ping};
 use crate::protocol::v16::charge_point::ChargePoint;
 use crate::protocol::v16::event::EventKind;
 use crate::protocol::v16::messages::availability::ChargePointStatus;
@@ -30,6 +30,7 @@ pub struct Csms {
     pub events: Vec<EventKind>,
     replies: Vec<Frame>,
     pub closed: bool,
+    pub pings: usize,
     pub answered_by_test: Vec<&'static str>,
 }
 
@@ -52,12 +53,13 @@ impl Csms {
             connectors: vec![Connector::default(); connectors],
         };
         let mut csms = Csms {
-            charge_point: ChargePoint::new(station).unwrap(),
+            charge_point: without_ping(ChargePoint::new(station).unwrap()),
             pending: None,
             sent: Vec::new(),
             events: Vec::new(),
             replies: Vec::new(),
             closed: false,
+            pings: 0,
             answered_by_test: Vec::new(),
         };
         csms.input(0, Input::Connected);
@@ -97,7 +99,7 @@ impl Csms {
                 }
                 Output::Send(reply) => self.replies.push(reply),
                 Output::Close => self.closed = true,
-                Output::Ping => {}
+                Output::Ping => self.pings += 1,
                 Output::Emit(event) => self.events.push(v16_kind(event)),
             }
         }

@@ -1,5 +1,6 @@
 use super::Entry;
 use super::row::{Row, row};
+use crate::protocol::shared::ping::{DEFAULT_PING_SECONDS, WEB_SOCKET_PING_INTERVAL};
 use crate::protocol::v201::charging_station::metering::{
     ALIGNED_DATA_CTRLR, MEASURANDS, SAMPLED_DATA_CTRLR,
 };
@@ -7,7 +8,6 @@ use crate::protocol::v201::charging_station::provisioning::network_profile::{
     ACTIVE_NETWORK_PROFILE, NETWORK_CONFIGURATION_PRIORITY, NETWORK_PROFILE_CONNECTION_ATTEMPTS,
     SLOTS,
 };
-use crate::protocol::v201::charging_station::websocket_ping::WEB_SOCKET_PING_INTERVAL;
 use crate::protocol::v201::messages::provisioning::report::{DataType, Mutability};
 use crate::station::Station;
 use crate::wire::ci_string::TooLong;
@@ -113,7 +113,7 @@ pub fn entries(station: &Station) -> Result<Vec<Entry>, TooLong> {
         row(
             OCPP_COMM_CTRLR,
             WEB_SOCKET_PING_INTERVAL,
-            "0",
+            &DEFAULT_PING_SECONDS.to_string(),
             ReadWrite,
             Integer,
         )

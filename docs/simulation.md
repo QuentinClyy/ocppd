@@ -20,6 +20,8 @@ station is simulated.
     side: there is no DC voltage or current, and no converter loss.
 - **Meter values:** the meter values and the EVSE `Power` variable follow that
   curve.
+- **Keep-alive:** while connected, the station pings the CSMS every 30 s;
+  `WebSocketPingInterval` changes that, and 0 turns it off.
 - **Time:** the clock is the host's.
 
 ## What is simulated

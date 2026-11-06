@@ -1,4 +1,5 @@
 use crate::api::setting::Setting;
+use crate::protocol::shared::ping::{DEFAULT_PING_SECONDS, WEB_SOCKET_PING_INTERVAL};
 use crate::protocol::v16::messages::datatypes::meter_value::Measurand;
 use crate::protocol::v16::messages::provisioning::configuration::{
     ChangeConfigurationRequest, ConfigurationStatus, GetConfigurationRequest,
@@ -73,6 +74,8 @@ enum Shape {
 
 impl Configuration {
     pub fn new(connectors: usize) -> Result<Self, TooLong> {
+        let measurand_count = SUPPORTED_MEASURANDS.len().to_string();
+        let phase_rotation_count = (connectors + 1).to_string();
         let table = [
             (AUTHORIZATION_CACHE_ENABLED, "true", Access::Boolean),
             (AUTHORIZATION_KEY, "", Access::WriteOnly),
@@ -100,6 +103,11 @@ impl Configuration {
             ("ClockAlignedDataInterval", "0", Access::CurrentValueOnly),
             (CONNECTION_TIME_OUT, "60", Access::Integer),
             ("ConnectorPhaseRotation", "1.RST", Access::CurrentValueOnly),
+            (
+                "ConnectorPhaseRotationMaxLength",
+                &phase_rotation_count,
+                Access::ReadOnly(Shape::Integer),
+            ),
             (CPO_NAME, "", Access::Text),
             (
                 "GetConfigurationMaxKeys",
@@ -121,6 +129,11 @@ impl Configuration {
                 Access::ReadOnly(Shape::Integer),
             ),
             ("MeterValuesAlignedData", "", Access::CurrentValueOnly),
+            (
+                "MeterValuesAlignedDataMaxLength",
+                &measurand_count,
+                Access::ReadOnly(Shape::Integer),
+            ),
             (
                 METER_VALUES_SAMPLED_DATA,
                 DEFAULT_MEASURANDS,
@@ -160,11 +173,26 @@ impl Configuration {
                 Access::CurrentValueOnly,
             ),
             ("StopTxnAlignedData", "", Access::CurrentValueOnly),
+            (
+                "StopTxnAlignedDataMaxLength",
+                &measurand_count,
+                Access::ReadOnly(Shape::Integer),
+            ),
             ("StopTxnSampledData", "", Access::CurrentValueOnly),
+            (
+                "StopTxnSampledDataMaxLength",
+                &measurand_count,
+                Access::ReadOnly(Shape::Integer),
+            ),
             (
                 "SupportedFeatureProfiles",
                 "Core,FirmwareManagement,LocalAuthListManagement,RemoteTrigger,Reservation,SmartCharging",
                 Access::ReadOnly(Shape::Text),
+            ),
+            (
+                "SupportedFeatureProfilesMaxLength",
+                "6",
+                Access::ReadOnly(Shape::Integer),
             ),
             (TRANSACTION_MESSAGE_ATTEMPTS, "3", Access::Integer),
             (TRANSACTION_MESSAGE_RETRY_INTERVAL, "60", Access::Integer),
@@ -172,6 +200,11 @@ impl Configuration {
                 "UnlockConnectorOnEVSideDisconnect",
                 "true",
                 Access::CurrentValueOnly,
+            ),
+            (
+                WEB_SOCKET_PING_INTERVAL,
+                &DEFAULT_PING_SECONDS.to_string(),
+                Access::Integer,
             ),
         ];
         let mut keys = Vec::with_capacity(table.len());

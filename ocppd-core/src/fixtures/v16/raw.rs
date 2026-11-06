@@ -23,7 +23,13 @@ pub fn station() -> Station {
 }
 
 pub fn charge_point() -> ChargePoint {
-    ChargePoint::new(station()).unwrap()
+    without_ping(ChargePoint::new(station()).unwrap())
+}
+
+pub fn without_ping(mut charge_point: ChargePoint) -> ChargePoint {
+    let call = json!([2, "ping-off", "ChangeConfiguration", {"key": "WebSocketPingInterval", "value": "0"}]);
+    charge_point.handle(0, Input::Frame(call.to_string()));
+    charge_point
 }
 
 pub fn calls(outputs: &[Output]) -> Vec<(String, String, Value)> {
