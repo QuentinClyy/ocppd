@@ -1,7 +1,7 @@
 use super::*;
 
 #[test]
-fn given_no_model_fields_when_station_built_then_a_3_phase_32_a_sim_with_one_connector() {
+fn given_no_model_fields_when_station_built_then_a_1_phase_32_a_sim_with_one_connector() {
     let model = Model::default();
 
     let station = model.station("CP1", true).unwrap();
@@ -12,7 +12,7 @@ fn given_no_model_fields_when_station_built_then_a_3_phase_32_a_sim_with_one_con
     );
     assert_eq!(
         (station.voltage_v, station.max_current_a, station.phases),
-        (230.0, 32.0, 3)
+        (230.0, 32.0, 1)
     );
     assert_eq!(station.connectors.len(), 1);
     assert_eq!(station.serial_number, "CP1");
@@ -41,7 +41,7 @@ fn given_a_spawn_line_with_model_fields_when_station_built_then_it_carries_them(
 #[test]
 fn given_4_phases_when_station_built_then_refused() {
     let model = Model {
-        phases: 4,
+        phases: Some(4),
         ..Model::default()
     };
 
@@ -73,7 +73,7 @@ fn given_zero_current_when_station_built_then_refused() {
 
     assert_eq!(
         station.err(),
-        Some("voltage_v and max_current_a must be positive")
+        Some("voltage_v, max_current_a and max_output_a must be positive")
     );
 }
 
@@ -81,7 +81,7 @@ fn given_zero_current_when_station_built_then_refused() {
 fn given_dc_with_one_phase_when_station_built_then_refused() {
     let model = Model {
         current: Current::Dc,
-        phases: 1,
+        phases: Some(1),
         ..Model::default()
     };
 
@@ -103,4 +103,5 @@ fn given_dc_spawn_line_when_station_built_then_every_connector_is_dc() {
             .iter()
             .all(|connector| connector.current == Current::Dc)
     );
+    assert_eq!(station.phases, 3);
 }

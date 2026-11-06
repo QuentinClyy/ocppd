@@ -38,6 +38,7 @@ fn given_random_range_of_5_s_when_connections_fail_then_each_wait_adds_a_random_
         voltage_v: 230.0,
         max_current_a: 32.0,
         phases: 3,
+        max_output_a: 500.0,
         jitter: true,
         connectors: vec![Connector::default()],
     };

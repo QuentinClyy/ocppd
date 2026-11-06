@@ -1,4 +1,4 @@
-use super::charge::{self, Charging, Current, Ev, Sample};
+use super::charge::{self, Charging, Current, Ev, Sample, Supply};
 
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct Connector {
@@ -44,15 +44,16 @@ impl Connector {
         self.plugged = None;
     }
 
-    pub fn start_charging(&mut self, now: u64, limit_w: f64) {
-        let (current, register_wh) = (self.current, self.register_wh);
+    pub fn start_charging(&mut self, now: u64, supply: Supply, limit_w: f64) {
+        let register_wh = self.register_wh;
         if let Some(plugged) = self.plugged.as_mut() {
             plugged.charging = Some(Charging {
-                current,
+                supply,
                 start: now,
                 start_soc: plugged.soc,
                 start_register_wh: register_wh,
                 limit_w,
+                ramp_from: Some(now),
             });
         }
     }
@@ -78,6 +79,8 @@ impl Connector {
         let idle = |soc| Sample {
             register_wh: self.register_wh,
             power_w: 0.0,
+            current_a: 0.0,
+            voltage_v: 0.0,
             soc,
         };
         match &self.plugged {

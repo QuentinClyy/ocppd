@@ -107,6 +107,14 @@ func (m Model) fleetKey(key string, count int) Model {
 			s := m.fleet.Stations[r.station]
 			return m.sendLine(command.Link(s.ID, s.Held))
 		}
+	case "P":
+		at, ok := m.target()
+		if ok && at.Connector == 0 {
+			return m.open()
+		}
+		if ok {
+			m.form = popup.NewPlug(at)
+		}
 	case "p", "s", "u", "f", "c", "x":
 		at, ok := m.target()
 		if !ok {
