@@ -58,7 +58,10 @@ impl ChargePoint {
         if connector.plugged.is_some() {
             return self.reject(out, now, Some(index as u32 + 1), "already plugged in");
         }
-        connector.plug_in(ev.ev(), ev.soc);
+        match ev.ev() {
+            Ok(described) => connector.plug_in(described, ev.soc),
+            Err(reason) => return self.reject(out, now, Some(index as u32 + 1), reason),
+        }
         self.start_held(out, now);
     }
 

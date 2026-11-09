@@ -3,7 +3,6 @@ package popup
 import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/QuentinClyy/ocppd/ocppd-tui/ui/draw"
-	"github.com/QuentinClyy/ocppd/ocppd-tui/ui/motion"
 )
 
 type choice struct {
@@ -29,20 +28,11 @@ type Spawn struct {
 	phases     draw.Editor
 	maxCurrent draw.Editor
 	connectors draw.Editor
+	voltage    draw.Editor
+	maxOutput  draw.Editor
 	csms       draw.Editor
 	connect    choice
-	focus      int
-	normal     bool
-	pending    string
-	err        string
-}
-
-type slot struct {
-	label  string
-	text   *draw.Editor
-	choice *choice
-	hint   string
-	width  int
+	fields
 }
 
 func NewSpawn() *Spawn {
@@ -56,40 +46,30 @@ func NewSpawn() *Spawn {
 }
 
 func (f *Spawn) Key(msg tea.KeyPressMsg) (string, bool) {
-	key := msg.String()
-	switch {
-	case key == "esc" && !f.normal:
-		f.normal = true
-		return "", false
-	case f.normal && f.pending == "" && (key == "esc" || key == "q"):
-		return "", true
-	}
-	if !f.edit(msg) {
-		return "", false
-	}
-	line, err := f.line()
-	if err != nil {
-		f.err = err.Error()
-		return "", false
-	}
-	return line, true
+	return f.submit(msg, f.slots(), f.addStation, f.line)
 }
 
 func (f *Spawn) Paste(text string) {
-	slots := f.slots()
-	current := slots[min(f.focus, len(slots)-1)]
-	if current.text != nil {
-		*current.text = current.text.Paste(text)
-		f.err = ""
-	}
+	f.paste(f.slots(), text)
 }
 
 func (f *Spawn) Pastes(key string) bool {
-	return f.normal && f.pending == "" && key == "p"
+	return f.pastes(key)
 }
 
 func (f *Spawn) Typing() bool {
 	return !f.normal
+}
+
+func (f *Spawn) addStation(string) {
+	if f.isListed() {
+		f.stations = append(f.stations, credential{})
+		f.focus = 2*len(f.stations) - 1
+	}
+}
+
+func (f *Spawn) isDC() bool {
+	return f.current.index == 1
 }
 
 func (f *Spawn) isListed() bool {
@@ -110,82 +90,23 @@ func (f *Spawn) slots() []slot {
 			slot{label: "count", text: &f.count, hint: "1", width: 6},
 			slot{label: "password", text: &f.password, width: 24})
 	}
-	return append(slots,
+	slots = append(slots,
 		slot{label: "ocpp", choice: &f.ocpp},
 		slot{label: "current", choice: &f.current},
 		slot{label: "vendor", text: &f.vendor, hint: "ocppd", width: 24},
 		slot{label: "model", text: &f.model, hint: "sim", width: 24},
-		slot{label: "phases", text: &f.phases, hint: "3", width: 6},
+		slot{label: "voltage V", text: &f.voltage, hint: "230", width: 6})
+	if !f.isDC() {
+		slots = append(slots, slot{label: "phases", text: &f.phases, hint: "1", width: 6})
+	}
+	slots = append(slots,
 		slot{label: "max A", text: &f.maxCurrent, hint: "32", width: 6},
-		slot{label: "connectors", text: &f.connectors, hint: "1", width: 6},
+		slot{label: "connectors", text: &f.connectors, hint: "1", width: 6})
+	if f.isDC() {
+		slots = append(slots, slot{label: "dc out A", text: &f.maxOutput, hint: "500", width: 6})
+	}
+	return append(slots,
 		slot{label: "csms", text: &f.csms, hint: "default (--csms)", width: 46},
 		slot{label: "connect", choice: &f.connect},
 	)
-}
-
-func (f *Spawn) edit(key tea.KeyPressMsg) bool {
-	slots := f.slots()
-	f.focus = min(f.focus, len(slots)-1)
-	if f.normal {
-		return f.normalKey(key.String(), slots)
-	}
-	current := slots[f.focus]
-	switch key.String() {
-	case "enter":
-		return true
-	case "tab":
-		f.focus = (f.focus + 1) % len(slots)
-	case "shift+tab":
-		f.focus = (f.focus + len(slots) - 1) % len(slots)
-	case "ctrl+n":
-		if f.isListed() {
-			f.stations = append(f.stations, credential{})
-			f.focus = 2*len(f.stations) - 1
-		}
-	case "space", "left", "right":
-		if current.choice != nil {
-			current.choice.index = (current.choice.index + 1) % len(current.choice.options)
-		} else {
-			*current.text = current.text.Edit(key)
-		}
-	default:
-		if current.text != nil {
-			*current.text = current.text.Edit(key)
-		}
-	}
-	f.err = ""
-	return false
-}
-
-func (f *Spawn) normalKey(key string, slots []slot) bool {
-	pending, count, key := motion.Feed(f.pending, key, "g")
-	f.pending = pending
-	current := slots[f.focus]
-	switch key {
-	case "tab":
-		key = "j"
-	case "shift+tab":
-		key = "k"
-	}
-	if index, ok := motion.Move(key, count, f.focus, len(slots)-1); ok {
-		f.focus = index
-		return false
-	}
-	switch key {
-	case "enter":
-		return true
-	case "h", "l", "left", "right":
-		if current.choice != nil {
-			current.choice.index = (current.choice.index + 1) % len(current.choice.options)
-		}
-	case "i", "a":
-		f.normal = false
-	case "ctrl+n":
-		if f.isListed() {
-			f.stations = append(f.stations, credential{})
-			f.focus = 2*len(f.stations) - 1
-		}
-	}
-	f.err = ""
-	return false
 }

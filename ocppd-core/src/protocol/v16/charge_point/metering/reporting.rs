@@ -7,6 +7,7 @@ use crate::protocol::v16::event::EventKind;
 use crate::protocol::v16::messages::availability::ChargePointStatus;
 use crate::protocol::v16::messages::datatypes::meter_value::{Measurand, ReadingContext};
 use crate::protocol::v16::messages::meter_values::MeterValuesRequest;
+use crate::station::electrical;
 use serde_json::json;
 
 impl ChargePoint {
@@ -71,9 +72,13 @@ impl ChargePoint {
     ) -> Reading {
         let connector = &self.station.connectors[index];
         let sample = connector.sample(at);
+        let offered_w = connector.offered_w().unwrap_or(self.station.limit_w());
         Reading {
             sample,
-            offered_w: connector.offered_w().unwrap_or(self.station.limit_w()),
+            lines: electrical::lines(&self.station, index, &sample, at),
+            offered_w,
+            offered_a: electrical::offered_a(&self.station, index, &sample, offered_w),
+            soc: connector.plugged.as_ref().map(|_| sample.soc),
             interval_wh: sample.register_wh - last_register_wh,
             context,
         }
@@ -93,7 +98,7 @@ impl ChargePoint {
         let request = MeterValuesRequest {
             connector_id: index as u32 + 1,
             transaction_id,
-            meter_value: vec![meter_value(at, reading, &self.station, measurands)],
+            meter_value: vec![meter_value(at, reading, measurands)],
         };
         self.outbox
             .push("MeterValues", index as u32 + 1, json!(request));

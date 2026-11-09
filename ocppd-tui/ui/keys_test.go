@@ -102,3 +102,15 @@ func Test_given_an_offline_station_when_o_on_a_connector_then_connect_is_sent(t 
 		t.Fatalf("got %v", *sent)
 	}
 }
+
+func Test_given_a_selected_connector_when_shift_p_then_the_ev_form_opens_and_enter_plugs_in(t *testing.T) {
+	m, sent := recording()
+
+	m = press(m, "j", "j", "P")
+	opened := m.form != nil
+	press(m, "enter")
+
+	if !opened || len(*sent) != 1 || (*sent)[0] != `{"command":"plug_in","connector":2,"station":"CP1"}` {
+		t.Fatalf("opened %v, got %v", opened, *sent)
+	}
+}

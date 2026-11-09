@@ -30,6 +30,7 @@ pub fn station(connectors: usize) -> Station {
         voltage_v: 230.0,
         max_current_a: 32.0,
         phases: 3,
+        max_output_a: 500.0,
         jitter: false,
         connectors: vec![Connector::default(); connectors],
     }
@@ -37,8 +38,12 @@ pub fn station(connectors: usize) -> Station {
 
 impl Run {
     pub fn new(connectors: usize) -> Run {
+        Run::of(station(connectors))
+    }
+
+    pub fn of(station: Station) -> Run {
         let mut run = Run {
-            station: ChargingStation::new(station(connectors)).unwrap(),
+            station: ChargingStation::new(station).unwrap(),
             calls: Vec::new(),
             pending: None,
             events: Vec::new(),

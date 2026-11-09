@@ -233,6 +233,7 @@ impl ChargingStation {
         );
         let suspended = self.sessions[index].suspended || !self.operative(index);
         let limit_w = self.limit_w(index, now);
+        let supply = self.station.supply(index);
         let connector = &mut self.station.connectors[index];
         let plugged = connector.plugged.is_some();
         let charging = connector
@@ -241,7 +242,7 @@ impl ChargingStation {
             .is_some_and(|plugged| plugged.charging.is_some());
         let allowed = plugged && authorized && !suspended;
         match (allowed, charging) {
-            (true, false) => connector.start_charging(now, limit_w),
+            (true, false) => connector.start_charging(now, supply, limit_w),
             (false, true) => connector.stop_charging(now),
             _ => {}
         }
